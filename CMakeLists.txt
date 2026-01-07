@@ -28,6 +28,14 @@ FetchContent_Declare(
 set(CGLM_SHARED OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(cglm)
 
+FetchContent_Declare(
+  flecs
+  GIT_REPOSITORY https://github.com/SanderMertens/flecs.git
+  GIT_TAG v4.1.4
+)
+set(FLECS_SHARED OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(flecs)
+
 add_executable(flecs_engine src/main.c src/macos_surface.m)
 target_compile_definitions(flecs_engine PRIVATE GLFW_EXPOSE_NATIVE_COCOA)
 
@@ -63,7 +71,8 @@ else()
   target_link_libraries(flecs_engine PRIVATE wgpu_native_lib)
 endif()
 
-target_link_libraries(flecs_engine PRIVATE glfw cglm)
+target_include_directories(flecs_engine PRIVATE ${flecs_SOURCE_DIR}/include)
+target_link_libraries(flecs_engine PRIVATE glfw cglm flecs_static)
 
 if(APPLE)
   find_library(COCOA_FRAMEWORK Cocoa REQUIRED)

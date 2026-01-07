@@ -8,6 +8,7 @@
 #include <cglm/cglm.h>
 #include <cglm/clipspace/persp_rh_zo.h>
 #include <webgpu.h>
+#include <flecs.h>
 
 typedef struct {
   float x, y, z;
