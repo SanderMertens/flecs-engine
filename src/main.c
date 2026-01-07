@@ -10,7 +10,7 @@
 
 typedef struct {
   float x, y, z;
-  float r, g, b;
+  uint8_t r, g, b, a;
 } Vertex;
 
 typedef struct {
@@ -115,14 +115,14 @@ static void create_depth_resources(WGPUDevice device, uint32_t width,
 }
 
 static const Vertex kVertices[] = {
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.2f, 0.2f},
-    {1.0f, -1.0f, -1.0f, 0.2f, 1.0f, 0.2f},
-    {1.0f, 1.0f, -1.0f, 0.2f, 0.2f, 1.0f},
-    {-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 0.2f},
-    {-1.0f, -1.0f, 1.0f, 0.2f, 1.0f, 1.0f},
-    {1.0f, -1.0f, 1.0f, 1.0f, 0.2f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-    {-1.0f, 1.0f, 1.0f, 0.2f, 0.2f, 0.2f},
+    {-1.0f, -1.0f, -1.0f, 0, 51, 51, 255},
+    {1.0f, -1.0f, -1.0f, 51, 255, 51, 255},
+    {1.0f, 1.0f, -1.0f, 51, 51, 255, 255},
+    {-1.0f, 1.0f, -1.0f, 255, 255, 51, 255},
+    {-1.0f, -1.0f, 1.0f, 51, 255, 255, 255},
+    {1.0f, -1.0f, 1.0f, 255, 51, 255, 255},
+    {1.0f, 1.0f, 1.0f, 255, 255, 255, 255},
+    {-1.0f, 1.0f, 1.0f, 51, 51, 51, 255},
 };
 
 static const uint16_t kIndices[] = {
@@ -201,7 +201,7 @@ static const char *kShaderSource =
     "@group(0) @binding(0) var<uniform> uniforms : Uniforms;\n"
     "struct VertexInput {\n"
     "  @location(0) pos : vec3<f32>,\n"
-    "  @location(1) color : vec3<f32>\n"
+    "  @location(1) color : vec4<f32>\n"
     "};\n"
     "struct VertexOutput {\n"
     "  @builtin(position) pos : vec4<f32>,\n"
@@ -210,7 +210,7 @@ static const char *kShaderSource =
     "@vertex fn vs_main(input : VertexInput) -> VertexOutput {\n"
     "  var out : VertexOutput;\n"
     "  out.pos = uniforms.mvp * vec4<f32>(input.pos, 1.0);\n"
-    "  out.color = input.color;\n"
+    "  out.color = input.color.rgb;\n"
     "  return out;\n"
     "}\n"
     "@fragment fn fs_main(input : VertexOutput) -> @location(0) vec4<f32> {\n"
@@ -367,7 +367,7 @@ int main(void) {
   // Vertex layout: position and color attributes.
   WGPUVertexAttribute vertex_attrs[2] = {
       {.format = WGPUVertexFormat_Float32x3, .offset = 0, .shaderLocation = 0},
-      {.format = WGPUVertexFormat_Float32x3,
+      {.format = WGPUVertexFormat_Unorm8x4,
        .offset = sizeof(float) * 3,
        .shaderLocation = 1}};
   WGPUVertexBufferLayout vertex_layout = {
