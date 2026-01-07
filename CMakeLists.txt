@@ -20,6 +20,14 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
 
+FetchContent_Declare(
+  cglm
+  GIT_REPOSITORY https://github.com/recp/cglm.git
+  GIT_TAG v0.9.2
+)
+set(CGLM_SHARED OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(cglm)
+
 add_executable(flecs_engine src/main.c src/macos_surface.m)
 target_compile_definitions(flecs_engine PRIVATE GLFW_EXPOSE_NATIVE_COCOA)
 
@@ -55,7 +63,7 @@ else()
   target_link_libraries(flecs_engine PRIVATE wgpu_native_lib)
 endif()
 
-target_link_libraries(flecs_engine PRIVATE glfw)
+target_link_libraries(flecs_engine PRIVATE glfw cglm)
 
 if(APPLE)
   find_library(COCOA_FRAMEWORK Cocoa REQUIRED)

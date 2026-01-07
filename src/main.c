@@ -1,92 +1,18 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <cglm/cglm.h>
+#include <cglm/clipspace/persp_rh_zo.h>
 #include <webgpu.h>
 
 typedef struct {
   float x, y, z;
   uint8_t r, g, b, a;
 } Vertex;
-
-typedef struct {
-  float m[16];
-} Mat4;
-
-// Identity matrix for column-major transforms.
-static Mat4 mat4_identity(void) {
-  Mat4 m = {0};
-  m.m[0] = 1.0f;
-  m.m[5] = 1.0f;
-  m.m[10] = 1.0f;
-  m.m[15] = 1.0f;
-  return m;
-}
-
-// Column-major 4x4 matrix multiply (r = a * b).
-static Mat4 mat4_mul(Mat4 a, Mat4 b) {
-  Mat4 r = {0};
-  for (int col = 0; col < 4; ++col) {
-    for (int row = 0; row < 4; ++row) {
-      r.m[col * 4 + row] =
-          a.m[0 * 4 + row] * b.m[col * 4 + 0] +
-          a.m[1 * 4 + row] * b.m[col * 4 + 1] +
-          a.m[2 * 4 + row] * b.m[col * 4 + 2] +
-          a.m[3 * 4 + row] * b.m[col * 4 + 3];
-    }
-  }
-  return r;
-}
-
-// Translation matrix in column-major form.
-static Mat4 mat4_translation(float x, float y, float z) {
-  Mat4 m = mat4_identity();
-  m.m[12] = x;
-  m.m[13] = y;
-  m.m[14] = z;
-  return m;
-}
-
-// Right-handed rotation around Y axis.
-static Mat4 mat4_rotation_y(float angle) {
-  Mat4 m = mat4_identity();
-  float c = cosf(angle);
-  float s = sinf(angle);
-  m.m[0] = c;
-  m.m[2] = s;
-  m.m[8] = -s;
-  m.m[10] = c;
-  return m;
-}
-
-// Right-handed rotation around X axis.
-static Mat4 mat4_rotation_x(float angle) {
-  Mat4 m = mat4_identity();
-  float c = cosf(angle);
-  float s = sinf(angle);
-  m.m[5] = c;
-  m.m[6] = -s;
-  m.m[9] = s;
-  m.m[10] = c;
-  return m;
-}
-
-// Perspective projection for 0..1 depth (WebGPU/D3D/Metal).
-static Mat4 mat4_perspective(float fovy_radians, float aspect, float znear,
-                             float zfar) {
-  Mat4 m = {0};
-  float f = 1.0f / tanf(fovy_radians * 0.5f);
-  m.m[0] = f / aspect;
-  m.m[5] = f;
-  m.m[10] = zfar / (znear - zfar);
-  m.m[11] = -1.0f;
-  m.m[14] = (zfar * znear) / (znear - zfar);
-  return m;
-}
 
 // Allocate a depth texture sized to the current framebuffer.
 static void create_depth_resources(WGPUDevice device, uint32_t width,
@@ -329,7 +255,7 @@ int main(void) {
   // Uniform buffer: per-frame MVP matrix.
   WGPUBufferDescriptor uniform_desc = {
       .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
-      .size = sizeof(Mat4)};
+      .size = sizeof(mat4)};
   WGPUBuffer uniform_buffer = wgpuDeviceCreateBuffer(device, &uniform_desc);
 
   // Bind group layout: a single uniform buffer at binding 0 in the vertex stage.
@@ -337,7 +263,7 @@ int main(void) {
       .binding = 0,
       .visibility = WGPUShaderStage_Vertex,
       .buffer = {.type = WGPUBufferBindingType_Uniform,
-                 .minBindingSize = sizeof(Mat4)}};
+                 .minBindingSize = sizeof(mat4)}};
   WGPUBindGroupLayoutDescriptor bind_layout_desc = {
       .entryCount = 1,
       .entries = &bind_entry};
@@ -348,7 +274,7 @@ int main(void) {
   WGPUBindGroupEntry bind_group_entry = {
       .binding = 0,
       .buffer = uniform_buffer,
-      .size = sizeof(Mat4)};
+      .size = sizeof(mat4)};
   WGPUBindGroupDescriptor bind_group_desc = {
       .layout = bind_layout,
       .entryCount = 1,
@@ -451,13 +377,25 @@ int main(void) {
     }
 
     float time = (float)(glfwGetTime() - start_time);
-    Mat4 model = mat4_mul(mat4_rotation_y(time),
-                          mat4_rotation_x(time * 0.7f));
-    Mat4 view = mat4_translation(0.0f, 0.0f, -5.0f);
-    Mat4 proj = mat4_perspective(0.7f, (float)width / (float)height, 0.1f,
-                                 100.0f);
-    Mat4 mvp = mat4_mul(proj, mat4_mul(view, model));
-    wgpuQueueWriteBuffer(queue, uniform_buffer, 0, &mvp, sizeof(Mat4));
+    mat4 rot_y = GLM_MAT4_IDENTITY_INIT;
+    mat4 rot_x = GLM_MAT4_IDENTITY_INIT;
+    mat4 model;
+    glm_rotate_y(rot_y, time, rot_y);
+    glm_rotate_x(rot_x, time * 0.7f, rot_x);
+    glm_mat4_mul(rot_y, rot_x, model);
+
+    mat4 view = GLM_MAT4_IDENTITY_INIT;
+    glm_translate(view, (vec3){0.0f, 0.0f, -5.0f});
+
+    mat4 proj;
+    glm_perspective_rh_zo(0.7f, (float)width / (float)height, 0.1f, 100.0f,
+                          proj);
+
+    mat4 view_model;
+    mat4 mvp;
+    glm_mat4_mul(view, model, view_model);
+    glm_mat4_mul(proj, view_model, mvp);
+    wgpuQueueWriteBuffer(queue, uniform_buffer, 0, mvp, sizeof(mat4));
 
     // Acquire the next swapchain texture.
     WGPUSurfaceTexture surface_texture = {0};
