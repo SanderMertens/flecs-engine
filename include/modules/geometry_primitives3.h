@@ -12,6 +12,12 @@ ECS_STRUCT(FlecsBox, {
     float z;
 });
 
+ECS_STRUCT(FlecsPyramid, {
+    float x;
+    float y;
+    float z;
+});
+
 ECS_STRUCT(FlecsQuad, {
     float x;
     float y;

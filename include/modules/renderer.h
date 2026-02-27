@@ -59,6 +59,10 @@ ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
 ecs_entity_t flecsEngine_createBatch_boxes(
     ecs_world_t *world);
 
+// Render scalable pyramid primitives without IsA grouping
+ecs_entity_t flecsEngine_createBatch_pyramids(
+    ecs_world_t *world);
+
 // Render scalable quad primitives without IsA grouping
 ecs_entity_t flecsEngine_createBatch_quads(
     ecs_world_t *world);
