@@ -1,93 +1,31 @@
 #include "../renderer.h"
 #include "../shaders/shaders.h"
 #include "../../geometry3/geometry3.h"
+#include "batches.h"
 #include "flecs_engine.h"
 
-typedef struct {
-    WGPUBuffer instance_transform;
-    WGPUBuffer instance_color;
-    WGPUBuffer instance_size;
-    int32_t count;
-    int32_t capacity;
-    const FlecsMesh3Impl *mesh;
-} flecs_lit_colored_boxes_group_ctx_t;
-
-static flecs_lit_colored_boxes_group_ctx_t* flecsEngine_boxes_createCtx(
+static flecs_engine_batch_ctx_t* flecsEngine_boxes_createCtx(
     ecs_world_t *world) 
 {
-    flecs_lit_colored_boxes_group_ctx_t *result = 
-        ecs_os_calloc_t(flecs_lit_colored_boxes_group_ctx_t);
-    result->mesh = flecsGeometry3_getBoxAsset(world);
+    flecs_engine_batch_ctx_t *result =
+        ecs_os_calloc_t(flecs_engine_batch_ctx_t);
+    flecsEngine_batchCtx_init(result, flecsGeometry3_getBoxAsset(world));
     return result;
 }
 
 static void flecsEngine_boxes_deleteCtx(
     void *arg)
 {
-    flecs_lit_colored_boxes_group_ctx_t *ctx = arg;
-    if (ctx->instance_transform) {
-        wgpuBufferRelease(ctx->instance_transform);
-    }
-    if (ctx->instance_color) {
-        wgpuBufferRelease(ctx->instance_color);
-    }
-    if (ctx->instance_size) {
-        wgpuBufferRelease(ctx->instance_size);
-    }
-
+    flecs_engine_batch_ctx_t *ctx = arg;
+    flecsEngine_batchCtx_fini(ctx);
     ecs_os_free(ctx);
-}
-
-static void flecsEngine_boxes_ensureCapacity(
-    const FlecsEngineImpl *engine,
-    flecs_lit_colored_boxes_group_ctx_t *ctx,
-    int32_t count)
-{
-    if (count <= ctx->capacity) {
-        return;
-    }
-
-    int32_t new_capacity = count;
-    if (new_capacity < 64) {
-        new_capacity = 64;
-    }
-
-    if (ctx->instance_transform) {
-        wgpuBufferRelease(ctx->instance_transform);
-    }
-    if (ctx->instance_color) {
-        wgpuBufferRelease(ctx->instance_color);
-    }
-    if (ctx->instance_size) {
-        wgpuBufferRelease(ctx->instance_size);
-    }
-
-    ctx->instance_transform = wgpuDeviceCreateBuffer(engine->device,
-        &(WGPUBufferDescriptor){
-            .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
-            .size = (uint64_t)new_capacity * sizeof(mat4)
-        });
-
-    ctx->instance_color = wgpuDeviceCreateBuffer(engine->device,
-        &(WGPUBufferDescriptor){
-            .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
-            .size = (uint64_t)new_capacity * sizeof(flecs_rgba_t)
-        });
-
-    ctx->instance_size = wgpuDeviceCreateBuffer(engine->device,
-        &(WGPUBufferDescriptor){
-            .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
-            .size = (uint64_t)new_capacity * sizeof(FlecsInstanceSize)
-        });
-
-    ctx->capacity = new_capacity;
 }
 
 static void flecsEngine_boxes_prepareInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,
-    flecs_lit_colored_boxes_group_ctx_t *ctx)
+    flecs_engine_batch_ctx_t *ctx)
 {
 redo: {
         ecs_iter_t it = ecs_query_iter(world, batch->query);
@@ -116,17 +54,16 @@ redo: {
                 wgpuQueueWriteBuffer(
                     engine->queue,
                     ctx->instance_size,
-                    ctx->count * sizeof(vec3),
+                    ctx->count * sizeof(FlecsInstanceSize),
                     boxes,
-                    it.count * sizeof(vec3));
+                    it.count * sizeof(FlecsBox));
             }
 
             ctx->count += it.count;
         }
 
         if (ctx->count > ctx->capacity) {
-            flecsEngine_boxes_ensureCapacity(
-                engine, ctx, ctx->count);
+            flecsEngine_batchCtx_ensureCapacity(engine, ctx, ctx->count);
             ecs_assert(ctx->count <= ctx->capacity, ECS_INTERNAL_ERROR, NULL);
             goto redo;
         }
@@ -139,19 +76,9 @@ static void flecsEngine_boxes_callback(
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
-    flecs_lit_colored_boxes_group_ctx_t *ctx = batch->ctx;
-
+    flecs_engine_batch_ctx_t *ctx = batch->ctx;
     flecsEngine_boxes_prepareInstances(world, engine, batch, ctx);
-    if (!ctx->count) {
-        return;
-    }
-
-    wgpuRenderPassEncoderSetVertexBuffer(pass, 0, ctx->mesh->vertex_buffer, 0, WGPU_WHOLE_SIZE);
-    wgpuRenderPassEncoderSetVertexBuffer(pass, 1, ctx->instance_transform, 0, WGPU_WHOLE_SIZE);
-    wgpuRenderPassEncoderSetVertexBuffer(pass, 2, ctx->instance_color, 0, WGPU_WHOLE_SIZE);
-    wgpuRenderPassEncoderSetVertexBuffer(pass, 3, ctx->instance_size, 0, WGPU_WHOLE_SIZE);
-    wgpuRenderPassEncoderSetIndexBuffer(pass, ctx->mesh->index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
-    wgpuRenderPassEncoderDrawIndexed(pass, ctx->mesh->index_count, ctx->count, 0, 0, 0);
+    flecsEngine_batchCtx_draw(pass, ctx);
 }
 
 ecs_entity_t flecsEngine_createBatch_boxes(

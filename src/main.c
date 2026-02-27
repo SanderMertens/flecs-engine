@@ -165,19 +165,21 @@ int main(
   ecs_entity_t view = ecs_new(world);
   FlecsRenderView *s = ecs_ensure(world, view, FlecsRenderView);
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
+  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_litColoredGeometry(world);
   s->camera = camera;
   ecs_modified(world, view, FlecsRenderView);
 
-  for (int x = 0; x < 200; x ++) {
-    for (int y = 0; y < 100; y ++) {
-      ecs_entity_t box = ecs_new(world);
-      ecs_set(world, box, FlecsBox, {1.0f, y + 1, 1.0f});
-      ecs_set(world, box, FlecsPosition3, {(x - 50) * 2, -2 + 0.5 * (y + 1), -10 - y * 2});
-      ecs_set(world, box, FlecsRotation3, {0, 0, 0});
-      ecs_set(world, box, FlecsRgba, {0, 64 * ((50 - y) / 50.0), 64, 255});
-    }
-  }
+  ecs_entity_t box = ecs_new(world);
+  ecs_set(world, box, FlecsBox, {1, 1, 1});
+  ecs_set(world, box, FlecsPosition3, {-6, -2, -10});
+  ecs_set(world, box, FlecsRgba, {255, 0, 0});
+
+  ecs_entity_t quad = ecs_new(world);
+  ecs_set(world, quad, FlecsQuad, {1, 1});
+  ecs_set(world, quad, FlecsPosition3, {-3, -2, -10});
+  ecs_set(world, quad, FlecsRotation3, {-M_PI / 2, 0, 0});
+  ecs_set(world, quad, FlecsRgba, {255, 0, 0});
 
   return ecs_app_run(world, &(ecs_app_desc_t) {
     .enable_rest = !options.frame_output_mode,
