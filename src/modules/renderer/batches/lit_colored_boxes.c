@@ -222,7 +222,7 @@ static void flecsEngine_litColoredBoxes_callback(
         return;
     }
 
-    const FlecsMesh3Impl *mesh = flecsEngineGeometry3EnsureUnitBoxMesh((ecs_world_t*)world);
+    const FlecsMesh3Impl *mesh = flecsEngineGeometry3EnsureUnitBox((ecs_world_t*)world);
     if (!mesh || !mesh->vertex_buffer || !mesh->index_buffer || !mesh->index_count) {
         if (flecsEngineLitBoxLogEnabled()) {
             ecs_dbg("[lit-box] unit box mesh missing");

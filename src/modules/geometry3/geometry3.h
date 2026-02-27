@@ -16,10 +16,7 @@ typedef struct {
 
 extern ECS_COMPONENT_DECLARE(FlecsGeometryConflict3);
 
-ecs_entity_t flecsEngineGeometry3EnsureUnitBoxAsset(
-    ecs_world_t *world);
-
-const FlecsMesh3Impl* flecsEngineGeometry3EnsureUnitBoxMesh(
+const FlecsMesh3Impl* flecsEngineGeometry3EnsureUnitBox(
     ecs_world_t *world);
 
 void FlecsEngineGeometry3Import(
