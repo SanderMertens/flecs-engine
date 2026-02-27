@@ -506,8 +506,8 @@ void FlecsRenderBatch_on_set(
             .depthStencil = &depth_state,
             .primitive = {
                 .topology = WGPUPrimitiveTopology_TriangleList,
-                .cullMode = WGPUCullMode_None,
-                .frontFace = WGPUFrontFace_CCW
+                .cullMode = WGPUCullMode_Back,
+                .frontFace = WGPUFrontFace_CW
             },
             .multisample = {
                 .count = 1
