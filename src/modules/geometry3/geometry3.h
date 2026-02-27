@@ -4,19 +4,19 @@
 #define FLECS_ENGINE_GEOMETRY_3D_IMPL
 
 typedef struct {
-    ecs_entity_t asset;
-    int32_t source;
-} FlecsGeometryBinding3;
+    ecs_map_t sphere_cache;
+    ecs_map_t cylinder_cache;
+    ecs_entity_t unit_box_asset;
+} FlecsGeometry3Cache;
 
-extern ECS_COMPONENT_DECLARE(FlecsGeometryBinding3);
+extern ECS_COMPONENT_DECLARE(FlecsGeometry3Cache);
 
-typedef struct {
-    uint8_t value;
-} FlecsGeometryConflict3;
+ecs_entity_t flecsGeometry3_createAsset(
+    ecs_world_t *world,
+    FlecsGeometry3Cache *ctx,
+    const char *name);
 
-extern ECS_COMPONENT_DECLARE(FlecsGeometryConflict3);
-
-const FlecsMesh3Impl* flecsEngineGeometry3EnsureUnitBox(
+const FlecsMesh3Impl* flecsGeometry3_getBoxAsset(
     ecs_world_t *world);
 
 void FlecsEngineGeometry3Import(

@@ -227,8 +227,7 @@ ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
             { .id = ecs_id(FlecsMesh3Impl), .src.id = EcsUp, .trav = EcsIsA },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf, .oper = EcsOptional },
-            { .id = ecs_id(FlecsRgba), .src.id = EcsUp, .trav = EcsIsA, .oper = EcsOptional },
-            { .id = ecs_id(FlecsGeometryConflict3), .src.id = EcsSelf, .oper = EcsNot }
+            { .id = ecs_id(FlecsRgba), .src.id = EcsUp, .trav = EcsIsA, .oper = EcsOptional }
         },
         .cache_kind = EcsQueryCacheAuto,
         .group_by = EcsIsA,

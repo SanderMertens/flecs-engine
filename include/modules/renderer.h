@@ -56,7 +56,7 @@ ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
     ecs_world_t *world);
 
 // Render scalable box primitives without IsA grouping
-ecs_entity_t flecsEngine_createBatch_litColoredBoxes(
+ecs_entity_t flecsEngine_createBatch_boxes(
     ecs_world_t *world);
 
 // Render a list of batches in order

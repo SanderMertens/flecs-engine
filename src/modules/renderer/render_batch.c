@@ -1,24 +1,6 @@
 #include "renderer.h"
 #include "flecs_engine.h"
 
-static const int32_t kRenderBatchLogLimit = 120;
-static int32_t g_render_batch_log_count = 0;
-
-static bool flecsRenderBatchLogEnabled(void) {
-    return g_render_batch_log_count < kRenderBatchLogLimit;
-}
-
-static bool flecsStringEquals(
-    const char *a,
-    const char *b)
-{
-    if (!a || !b) {
-        return a == b;
-    }
-
-    return ecs_os_strcmp(a, b) == 0;
-}
-
 static void flecsShaderImplRelease(
     FlecsShaderImpl *ptr)
 {
@@ -179,9 +161,9 @@ ecs_entity_t flecsEngineEnsureShader(
 
     const FlecsShader *existing = ecs_get(world, shader_entity, FlecsShader);
     if (!existing ||
-        !flecsStringEquals(existing->source, shader->source) ||
-        !flecsStringEquals(existing->vertex_entry, shader->vertex_entry) ||
-        !flecsStringEquals(existing->fragment_entry, shader->fragment_entry))
+        !ecs_os_strcmp(existing->source, shader->source) ||
+        !ecs_os_strcmp(existing->vertex_entry, shader->vertex_entry) ||
+        !ecs_os_strcmp(existing->fragment_entry, shader->fragment_entry))
     {
         ecs_set_ptr(world, shader_entity, FlecsShader, shader);
     }
@@ -523,21 +505,6 @@ void FlecsRenderBatch_on_set(
             continue;
         }
 
-        if (flecsRenderBatchLogEnabled()) {
-            char *batch_name = ecs_get_path(world, e);
-            char *shader_name = ecs_get_path(world, rb[i].shader);
-            ecs_log(0,
-                "[batch] pipeline ready batch=%s shader=%s vertex_type=%llu instance0=%llu uniforms0=%llu",
-                batch_name ? batch_name : "<unnamed>",
-                shader_name ? shader_name : "<unnamed>",
-                (unsigned long long)rb[i].vertex_type,
-                (unsigned long long)rb[i].instance_types[0],
-                (unsigned long long)rb[i].uniforms[0]);
-            ecs_os_free(shader_name);
-            ecs_os_free(batch_name);
-            g_render_batch_log_count ++;
-        }
-
         ecs_set_ptr(world, e, FlecsRenderBatchImpl, &impl);
     }
 }
@@ -574,14 +541,6 @@ void flecsEngineRenderBatch(
 
     wgpuRenderPassEncoderSetPipeline(pass, impl->pipeline);
     wgpuRenderPassEncoderSetBindGroup(pass, 0, impl->bind_group, 0, NULL);
-
-    if (flecsRenderBatchLogEnabled()) {
-        ecs_dbg("[batch] render camera=%llu pipeline=%p uniform0=%p",
-            (unsigned long long)view->camera,
-            (void*)impl->pipeline,
-            (void*)impl->uniform_buffers[0]);
-        g_render_batch_log_count ++;
-    }
 
     batch->callback(world, engine, pass, batch);
 }

@@ -222,12 +222,6 @@ static int flecsEngineFrameCaptureConfigureTarget(
         return -1;
     }
 
-    ecs_dbg("[engine] frame-output mode enabled path=%s size=%ux%u format=%d",
-        impl->frame_output_path,
-        (uint32_t)impl->width,
-        (uint32_t)impl->height,
-        (int)impl->surface_config.format);
-
     return 0;
 }
 

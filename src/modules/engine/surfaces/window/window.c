@@ -4,8 +4,6 @@
 ECS_COMPONENT_DECLARE(FlecsWindow);
 
 static bool flecs_engine_glfw_initialized = false;
-static int32_t g_engine_log_frame_count = 0;
-static const int32_t kEngineLogFrameLimit = 120;
 
 static int flecsEngineWindowInitInstance(
     FlecsEngineImpl *impl,
@@ -125,12 +123,6 @@ static int flecsEngineWindowAcquireFrame(
         surface_frame.status !=
             WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal)
     {
-        if (g_engine_log_frame_count < kEngineLogFrameLimit) {
-            ecs_dbg("[engine] skip frame: surface status=%d",
-                (int)surface_frame.status);
-            g_engine_log_frame_count ++;
-        }
-
         if (surface_frame.texture) {
             wgpuTextureRelease(surface_frame.texture);
         }
@@ -171,14 +163,6 @@ static int flecsEngineWindowSubmitFrame(
     (void)world;
 
     wgpuSurfacePresent(impl->surface);
-
-    if (g_engine_log_frame_count < kEngineLogFrameLimit) {
-        ecs_dbg("[engine] frame submitted status=%d size=%dx%d",
-            (int)target->surface_status,
-            impl->width,
-            impl->height);
-        g_engine_log_frame_count ++;
-    }
 
     return 0;
 }
