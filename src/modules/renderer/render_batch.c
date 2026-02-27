@@ -1,6 +1,13 @@
 #include "renderer.h"
 #include "flecs_engine.h"
 
+static const int32_t kRenderBatchLogLimit = 120;
+static int32_t g_render_batch_log_count = 0;
+
+static bool flecsRenderBatchLogEnabled(void) {
+    return g_render_batch_log_count < kRenderBatchLogLimit;
+}
+
 static int32_t flecsVertexAttrFromType(
     const ecs_world_t *world,
     ecs_entity_t type,
@@ -29,7 +36,6 @@ static int32_t flecsVertexAttrFromType(
     ecs_member_t *members = ecs_vec_first(&s->members);
     int32_t attr = 0;
     for (i = 0; i < member_count; i ++) {
-        printf("%d: %s\n", location_offset + attr, members[i].name);
         if (members[i].type == ecs_id(flecs_vec3_t)) {
             attrs[attr].format = WGPUVertexFormat_Float32x3;
             attrs[attr].shaderLocation = location_offset + attr;
@@ -317,6 +323,18 @@ void FlecsRenderBatch_on_set(
         impl.pipeline = wgpuDeviceCreateRenderPipeline(
             engine->device, &pipeline_desc);
 
+        if (flecsRenderBatchLogEnabled()) {
+            char *batch_name = ecs_get_path(world, e);
+            ecs_log(0,
+                "[batch] pipeline ready batch=%s vertex_type=%llu instance0=%llu uniforms0=%llu",
+                batch_name ? batch_name : "<unnamed>",
+                (unsigned long long)rb[i].vertex_type,
+                (unsigned long long)rb[i].instance_types[0],
+                (unsigned long long)rb[i].uniforms[0]);
+            ecs_os_free(batch_name);
+            g_render_batch_log_count ++;
+        }
+
         ecs_set_ptr(world, e, FlecsRenderBatchImpl, &impl);
     }
 }
@@ -329,6 +347,11 @@ void flecsEngineRenderBatch(
     const FlecsRenderBatch *batch,
     const FlecsRenderBatchImpl *impl)
 {
+    if (!impl) {
+        ecs_err("[batch] missing batch impl for render call");
+        return;
+    }
+
     mat4 mvp; glm_mat4_identity(mvp);
     if (view->camera) {
         const FlecsCameraImpl *cam_impl = ecs_get(
@@ -348,6 +371,14 @@ void flecsEngineRenderBatch(
 
     wgpuRenderPassEncoderSetPipeline(pass, impl->pipeline);
     wgpuRenderPassEncoderSetBindGroup(pass, 0, impl->bind_group, 0, NULL);
+
+    if (flecsRenderBatchLogEnabled()) {
+        ecs_dbg("[batch] render camera=%llu pipeline=%p uniform0=%p",
+            (unsigned long long)view->camera,
+            (void*)impl->pipeline,
+            (void*)impl->uniform_buffers[0]);
+        g_render_batch_log_count ++;
+    }
 
     batch->callback(world, engine, pass, batch);
 }

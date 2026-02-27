@@ -1,5 +1,12 @@
 # Flecs engine
 
+## Batching model
+- Scalable primitives (`FlecsBox`) use a shared unit mesh asset and apply primitive size in per-instance transform data.
+- Non-scalable primitives (`FlecsSphere`, `FlecsCylinder`) use a geometry cache keyed by tessellation settings (`segments`) and batch instances per cached asset.
+- Mesh assets are rendered by grouping instances with `(IsA, asset)`.
+- Direct meshes (`FlecsMesh3` on a renderable entity) are auto-promoted to internal assets so they can use the same `IsA` batching path.
+- Color resolution is `instance FlecsRgba` override, then inherited asset `FlecsRgba`, then white fallback.
+
 ## Dependencies (macOS)
 - `wgpu-native` (provides `webgpu.h` + `libwgpu_native`)
 - `glfw`

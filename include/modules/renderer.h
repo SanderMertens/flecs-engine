@@ -41,6 +41,10 @@ extern ECS_COMPONENT_DECLARE(FlecsUniform);
 ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
     ecs_world_t *world);
 
+// Render scalable box primitives without IsA grouping
+ecs_entity_t flecsEngine_createBatch_litColoredBoxes(
+    ecs_world_t *world);
+
 // Render a list of batches in order
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;

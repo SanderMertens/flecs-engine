@@ -2,11 +2,17 @@
 #include "../../geometry3/geometry3.h"
 #include "flecs_engine.h"
 
-static const int32_t kLitIsaLogFrameLimit = 180;
-static int32_t g_lit_isa_log_frames = 0;
+static const int32_t kLitBoxLogFrameLimit = 180;
+static int32_t g_lit_box_log_frames = 0;
+static const uint64_t kBoxGroupId = 1;
+enum {
+    kBoxField_Box = 0,
+    kBoxField_WorldTransform = 1,
+    kBoxField_Color = 2
+};
 
-static bool flecsEngineLitIsaLogEnabled(void) {
-    return g_lit_isa_log_frames < kLitIsaLogFrameLimit;
+static bool flecsEngineLitBoxLogEnabled(void) {
+    return g_lit_box_log_frames < kLitBoxLogFrameLimit;
 }
 
 static const char *kShaderSource =
@@ -38,8 +44,7 @@ static const char *kShaderSource =
     "@fragment fn fs_main(input : VertexOutput) -> @location(0) vec4<f32> {\n"
     "  let light = normalize(vec3<f32>(0.4, 0.8, 0.2));\n"
     "  let diffuse = max(dot(normalize(input.normal), light), 0.0);\n"
-    "  let shade = 0.25 + (diffuse * 0.75);\n"
-    "  return vec4<f32>(input.color.rgb * shade, input.color.a);\n"
+    "  return vec4<f32>(input.color.rgb * diffuse, input.color.a);\n"
     "}\n";
 
 typedef struct {
@@ -49,9 +54,9 @@ typedef struct {
     flecs_rgba_t *cpu_colors;
     int32_t count;
     int32_t capacity;
-} flecs_lit_colored_geometry_group_ctx_t;
+} flecs_lit_colored_boxes_group_ctx_t;
 
-static void* flecsEngine_litColoredGeometry_onGroupCreate(
+static void* flecsEngine_litColoredBoxes_onGroupCreate(
     ecs_world_t *world,
     uint64_t group_id,
     void *ptr)
@@ -59,35 +64,24 @@ static void* flecsEngine_litColoredGeometry_onGroupCreate(
     (void)world;
     (void)ptr;
 
-    if (flecsEngineLitIsaLogEnabled()) {
-        char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-        ecs_dbg("[lit-isa] create group for asset=%s (%llu)",
-            group_name ? group_name : "<null>",
-            (unsigned long long)group_id);
-        ecs_os_free(group_name);
+    if (flecsEngineLitBoxLogEnabled()) {
+        ecs_dbg("[lit-box] create group=%llu", (unsigned long long)group_id);
     }
 
-    return ecs_os_calloc_t(flecs_lit_colored_geometry_group_ctx_t);
+    return ecs_os_calloc_t(flecs_lit_colored_boxes_group_ctx_t);
 }
 
-static void flecsEngine_litColoredGeometry_onGroupDelete(
+static void flecsEngine_litColoredBoxes_onGroupDelete(
     ecs_world_t *world,
     uint64_t group_id,
     void *group_ptr,
     void *ptr)
 {
+    (void)world;
+    (void)group_id;
     (void)ptr;
 
-    flecs_lit_colored_geometry_group_ctx_t *ctx = group_ptr;
-    if (flecsEngineLitIsaLogEnabled()) {
-        char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-        ecs_dbg("[lit-isa] delete group asset=%s (%llu), last_count=%d, capacity=%d",
-            group_name ? group_name : "<null>",
-            (unsigned long long)group_id,
-            ctx->count, ctx->capacity);
-        ecs_os_free(group_name);
-    }
-
+    flecs_lit_colored_boxes_group_ctx_t *ctx = group_ptr;
     if (ctx->instance_transform) {
         wgpuBufferRelease(ctx->instance_transform);
     }
@@ -104,9 +98,9 @@ static void flecsEngine_litColoredGeometry_onGroupDelete(
     ecs_os_free(ctx);
 }
 
-static void flecsEngine_litColoredGeometry_ensureCapacity(
+static void flecsEngine_litColoredBoxes_ensureCapacity(
     const FlecsEngineImpl *engine,
-    flecs_lit_colored_geometry_group_ctx_t *ctx,
+    flecs_lit_colored_boxes_group_ctx_t *ctx,
     int32_t count)
 {
     if (count <= ctx->capacity) {
@@ -148,74 +142,77 @@ static void flecsEngine_litColoredGeometry_ensureCapacity(
     ctx->cpu_colors = ecs_os_malloc_n(flecs_rgba_t, new_capacity);
     ctx->capacity = new_capacity;
 
-    if (flecsEngineLitIsaLogEnabled()) {
-        ecs_dbg("[lit-isa] resize instance buffers: new_capacity=%d", new_capacity);
+    if (flecsEngineLitBoxLogEnabled()) {
+        ecs_dbg("[lit-box] resize instance buffers: new_capacity=%d", new_capacity);
     }
 }
 
-static flecs_rgba_t flecsEngine_litColoredGeometry_pickColor(
+static flecs_rgba_t flecsEngine_litColoredBoxes_pickColorSelfOnly(
     const ecs_iter_t *it,
     int32_t row,
-    int32_t self_color_field,
-    int32_t asset_color_field)
+    int32_t field_index)
 {
-    const FlecsRgba *self_color = ecs_field(it, FlecsRgba, self_color_field);
+    const FlecsRgba *self_color = ecs_field(it, FlecsRgba, field_index);
     if (self_color) {
-        if (ecs_field_is_self(it, self_color_field)) {
+        if (ecs_field_is_self(it, field_index)) {
             return self_color[row];
         }
         return self_color[0];
     }
 
-    const FlecsRgba *asset_color = ecs_field(it, FlecsRgba, asset_color_field);
-    if (asset_color) {
-        if (ecs_field_is_self(it, asset_color_field)) {
-            return asset_color[row];
-        }
-        return asset_color[0];
-    }
-
     return (flecs_rgba_t){255, 255, 255, 255};
 }
 
-static void flecsEngine_litColoredGeometry_prepareInstances(
+static uint64_t flecsEngine_litColoredBoxes_groupBy(
+    ecs_world_t *world,
+    ecs_table_t *table,
+    ecs_id_t group_id,
+    void *ctx)
+{
+    (void)world;
+    (void)table;
+    (void)group_id;
+    (void)ctx;
+    return kBoxGroupId;
+}
+
+static void flecsEngine_litColoredBoxes_prepareInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,
-    uint64_t group_id,
-    flecs_lit_colored_geometry_group_ctx_t *ctx)
+    flecs_lit_colored_boxes_group_ctx_t *ctx)
 {
     ecs_query_t *q = batch->query;
     ctx->count = 0;
 
     ecs_iter_t count_it = ecs_query_iter(world, q);
-    ecs_iter_set_group(&count_it, group_id);
+    ecs_iter_set_group(&count_it, kBoxGroupId);
     while (ecs_query_next(&count_it)) {
         ctx->count += count_it.count;
     }
 
     if (!ctx->count) {
-        if (flecsEngineLitIsaLogEnabled()) {
-            char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-            ecs_dbg("[lit-isa] group has zero instances asset=%s",
-                group_name ? group_name : "<null>");
-            ecs_os_free(group_name);
-        }
         return;
     }
 
-    flecsEngine_litColoredGeometry_ensureCapacity(engine, ctx, ctx->count);
+    flecsEngine_litColoredBoxes_ensureCapacity(engine, ctx, ctx->count);
 
     int32_t offset = 0;
     ecs_iter_t write_it = ecs_query_iter(world, q);
-    ecs_iter_set_group(&write_it, group_id);
+    ecs_iter_set_group(&write_it, kBoxGroupId);
     while (ecs_query_next(&write_it)) {
-        const FlecsWorldTransform3 *wt = ecs_field(&write_it, FlecsWorldTransform3, 1);
+        const FlecsWorldTransform3 *wt = ecs_field(
+            &write_it, FlecsWorldTransform3, kBoxField_WorldTransform);
+        const FlecsBox *boxes = ecs_field(&write_it, FlecsBox, kBoxField_Box);
 
         for (int32_t i = 0; i < write_it.count; i ++) {
             glm_mat4_copy((vec4*)wt[i].m, ctx->cpu_transforms[offset]);
-            ctx->cpu_colors[offset] = flecsEngine_litColoredGeometry_pickColor(
-                &write_it, i, 2, 3);
+
+            vec3 size = {boxes[i].x, boxes[i].y, boxes[i].z};
+            glm_scale(ctx->cpu_transforms[offset], size);
+
+            ctx->cpu_colors[offset] =
+                flecsEngine_litColoredBoxes_pickColorSelfOnly(&write_it, i, kBoxField_Color);
             offset ++;
         }
     }
@@ -235,34 +232,33 @@ static void flecsEngine_litColoredGeometry_prepareInstances(
         (uint64_t)ctx->count * sizeof(flecs_rgba_t));
 }
 
-static void flecsEngine_litColoredGeometry_renderGroup(
+static void flecsEngine_litColoredBoxes_callback(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
-    const FlecsRenderBatch *batch,
-    uint64_t group_id)
+    const FlecsRenderBatch *batch)
 {
-    flecs_lit_colored_geometry_group_ctx_t *ctx =
-        ecs_query_get_group_ctx(batch->query, group_id);
-    ecs_assert(ctx != NULL, ECS_INTERNAL_ERROR, NULL);
+    flecs_lit_colored_boxes_group_ctx_t *ctx =
+        ecs_query_get_group_ctx(batch->query, kBoxGroupId);
+    if (!ctx) {
+        return;
+    }
 
-    const FlecsMesh3Impl *mesh = ecs_get(world, (ecs_entity_t)group_id, FlecsMesh3Impl);
-    if (!mesh || !mesh->vertex_buffer || !mesh->index_buffer || !mesh->index_count) {
-        if (flecsEngineLitIsaLogEnabled()) {
-            char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-            ecs_dbg("[lit-isa] skip group asset=%s mesh_missing=%d vb=%p ib=%p index_count=%d",
-                group_name ? group_name : "<null>",
-                mesh == NULL,
-                mesh ? (void*)mesh->vertex_buffer : NULL,
-                mesh ? (void*)mesh->index_buffer : NULL,
-                mesh ? mesh->index_count : 0);
-            ecs_os_free(group_name);
+    flecsEngine_litColoredBoxes_prepareInstances(world, engine, batch, ctx);
+    if (!ctx->count) {
+        if (flecsEngineLitBoxLogEnabled()) {
+            ecs_dbg("[lit-box] no box instances matched");
+            g_lit_box_log_frames ++;
         }
         return;
     }
 
-    flecsEngine_litColoredGeometry_prepareInstances(world, engine, batch, group_id, ctx);
-    if (!ctx->count) {
+    const FlecsMesh3Impl *mesh = flecsEngineGeometry3EnsureUnitBoxMesh((ecs_world_t*)world);
+    if (!mesh || !mesh->vertex_buffer || !mesh->index_buffer || !mesh->index_count) {
+        if (flecsEngineLitBoxLogEnabled()) {
+            ecs_dbg("[lit-box] unit box mesh missing");
+            g_lit_box_log_frames ++;
+        }
         return;
     }
 
@@ -272,57 +268,29 @@ static void flecsEngine_litColoredGeometry_renderGroup(
     wgpuRenderPassEncoderSetIndexBuffer(pass, mesh->index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderDrawIndexed(pass, (uint32_t)mesh->index_count, (uint32_t)ctx->count, 0, 0, 0);
 
-    if (flecsEngineLitIsaLogEnabled()) {
-        char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-        ecs_dbg("[lit-isa] draw asset=%s instances=%d indices=%d",
-            group_name ? group_name : "<null>",
-            ctx->count, mesh->index_count);
-        ecs_os_free(group_name);
+    if (flecsEngineLitBoxLogEnabled()) {
+        ecs_dbg("[lit-box] draw instances=%d indices=%d", ctx->count, mesh->index_count);
+        g_lit_box_log_frames ++;
     }
 }
 
-static void flecsEngine_litColoredGeometry_callback(
-    const ecs_world_t *world,
-    const FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
-    const FlecsRenderBatch *batch)
-{
-    const ecs_map_t *groups = ecs_query_get_groups(batch->query);
-    ecs_assert(groups != NULL, ECS_INTERNAL_ERROR, NULL);
-
-    int32_t group_count = ecs_map_count(groups);
-    if (flecsEngineLitIsaLogEnabled()) {
-        ecs_dbg("[lit-isa] frame groups=%d", group_count);
-    }
-
-    ecs_map_iter_t git = ecs_map_iter(groups);
-    while (ecs_map_next(&git)) {
-        uint64_t group = ecs_map_key(&git);
-        flecsEngine_litColoredGeometry_renderGroup(world, engine, pass, batch, group);
-    }
-
-    if (flecsEngineLitIsaLogEnabled()) {
-        g_lit_isa_log_frames ++;
-    }
-}
-
-ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
+ecs_entity_t flecsEngine_createBatch_litColoredBoxes(
     ecs_world_t *world)
 {
     ecs_entity_t batch = ecs_new(world);
 
     ecs_query_t *q = ecs_query(world, {
         .terms = {
-            { .id = ecs_id(FlecsMesh3Impl), .src.id = EcsUp, .trav = EcsIsA },
+            { .id = ecs_id(FlecsBox), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf, .oper = EcsOptional },
-            { .id = ecs_id(FlecsRgba), .src.id = EcsUp, .trav = EcsIsA, .oper = EcsOptional },
             { .id = ecs_id(FlecsGeometryConflict3), .src.id = EcsSelf, .oper = EcsNot }
         },
         .cache_kind = EcsQueryCacheAuto,
-        .group_by = EcsIsA,
-        .on_group_create = flecsEngine_litColoredGeometry_onGroupCreate,
-        .on_group_delete = flecsEngine_litColoredGeometry_onGroupDelete
+        .group_by = ecs_id(FlecsBox),
+        .group_by_callback = flecsEngine_litColoredBoxes_groupBy,
+        .on_group_create = flecsEngine_litColoredBoxes_onGroupCreate,
+        .on_group_delete = flecsEngine_litColoredBoxes_onGroupDelete
     });
 
     ecs_set(world, batch, FlecsRenderBatch, {
@@ -336,7 +304,7 @@ ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_litColoredGeometry_callback
+        .callback = flecsEngine_litColoredBoxes_callback
     });
 
     return batch;

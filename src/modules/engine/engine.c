@@ -11,6 +11,8 @@ ECS_COMPONENT_DECLARE(flecs_mat4_t);
 ECS_COMPONENT_DECLARE(flecs_rgba_t);
 
 ECS_COMPONENT_DECLARE(FlecsEngineImpl);
+static int32_t g_engine_log_frame_count = 0;
+static const int32_t kEngineLogFrameLimit = 120;
 
 static void flecsEngineWaitForFuture(
     WGPUInstance instance, 
@@ -142,6 +144,7 @@ int flecsEngineInit(
     };
 
     impl.surface = wgpuInstanceCreateSurface(impl.instance, &surface_desc);
+    ecs_dbg("[engine] created instance=%p surface=%p", (void*)impl.instance, (void*)impl.surface);
 
     bool future_cond = false;
 
@@ -165,6 +168,7 @@ int flecsEngineInit(
     if (!impl.adapter) {
         goto error;
     }
+    ecs_dbg("[engine] adapter acquired=%p", (void*)impl.adapter);
 
     future_cond = false;
 
@@ -185,6 +189,7 @@ int flecsEngineInit(
     if (!impl.device) {
         goto error;
     }
+    ecs_dbg("[engine] device acquired=%p", (void*)impl.device);
 
     // Get wgpu queue
     impl.queue = wgpuDeviceGetQueue(impl.device);
@@ -214,6 +219,9 @@ int flecsEngineInit(
 
     wgpuSurfaceConfigure(impl.surface, &impl.surface_config);
     wgpuSurfaceCapabilitiesFreeMembers(surface_caps);
+    ecs_dbg("[engine] surface configured %ux%u format=%d",
+        impl.surface_config.width, impl.surface_config.height,
+        (int)impl.surface_config.format);
 
     // Configure depth resources
     flecsEngineCreateDepthResources(
@@ -288,6 +296,10 @@ static void FlecsEngineRender(ecs_iter_t *it) {
             WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal &&
         surface_texture.status !=
             WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal) {
+      if (g_engine_log_frame_count < kEngineLogFrameLimit) {
+        ecs_dbg("[engine] skip frame: surface status=%d", (int)surface_texture.status);
+        g_engine_log_frame_count ++;
+      }
       wgpuSurfaceConfigure(impl->surface, &impl->surface_config);
       return;
     }
@@ -311,6 +323,12 @@ static void FlecsEngineRender(ecs_iter_t *it) {
 
     // Present surface
     wgpuSurfacePresent(impl->surface);
+
+    if (g_engine_log_frame_count < kEngineLogFrameLimit) {
+        ecs_dbg("[engine] frame submitted status=%d size=%dx%d",
+            (int)surface_texture.status, impl->width, impl->height);
+        g_engine_log_frame_count ++;
+    }
 
     // Release resources
     wgpuCommandBufferRelease(cmd);
