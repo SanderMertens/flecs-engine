@@ -37,6 +37,14 @@ typedef struct {
 
 extern ECS_COMPONENT_DECLARE(FlecsUniform);
 
+typedef struct {
+    const char *source;
+    const char *vertex_entry;
+    const char *fragment_entry;
+} FlecsShader;
+
+extern ECS_COMPONENT_DECLARE(FlecsShader);
+
 // Render entities with FlecsMesh, FlecsWorldTransform with lighting
 ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
     ecs_world_t *world);

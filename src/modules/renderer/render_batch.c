@@ -8,6 +8,181 @@ static bool flecsRenderBatchLogEnabled(void) {
     return g_render_batch_log_count < kRenderBatchLogLimit;
 }
 
+static bool flecsStringEquals(
+    const char *a,
+    const char *b)
+{
+    if (!a || !b) {
+        return a == b;
+    }
+
+    return ecs_os_strcmp(a, b) == 0;
+}
+
+static void flecsShaderImplRelease(
+    FlecsShaderImpl *ptr)
+{
+    if (ptr->shader_module) {
+        wgpuShaderModuleRelease(ptr->shader_module);
+        ptr->shader_module = NULL;
+    }
+}
+
+static void flecsRenderBatchImplRelease(
+    FlecsRenderBatchImpl *ptr)
+{
+    for (int32_t i = 0; i < FLECS_ENGINE_UNIFORMS_MAX; i ++) {
+        if (ptr->uniform_buffers[i]) {
+            wgpuBufferRelease(ptr->uniform_buffers[i]);
+            ptr->uniform_buffers[i] = NULL;
+        }
+    }
+
+    if (ptr->bind_group) {
+        wgpuBindGroupRelease(ptr->bind_group);
+        ptr->bind_group = NULL;
+    }
+
+    if (ptr->bind_layout) {
+        wgpuBindGroupLayoutRelease(ptr->bind_layout);
+        ptr->bind_layout = NULL;
+    }
+
+    if (ptr->pipeline) {
+        wgpuRenderPipelineRelease(ptr->pipeline);
+        ptr->pipeline = NULL;
+    }
+}
+
+ECS_DTOR(FlecsShaderImpl, ptr, {
+    flecsShaderImplRelease(ptr);
+})
+
+ECS_DTOR(FlecsRenderBatchImpl, ptr, {
+    flecsRenderBatchImplRelease(ptr);
+})
+
+static bool flecsShaderCompile(
+    ecs_world_t *world,
+    ecs_entity_t shader_entity,
+    const FlecsShader *shader,
+    FlecsShaderImpl *shader_impl)
+{
+    const FlecsEngineImpl *engine = ecs_singleton_get(world, FlecsEngineImpl);
+    ecs_assert(engine != NULL, ECS_INVALID_OPERATION, NULL);
+
+    if (!shader || !shader->source) {
+        char *name = ecs_get_path(world, shader_entity);
+        ecs_err("shader asset '%s' has no source", name ? name : "<unnamed>");
+        ecs_os_free(name);
+        flecsShaderImplRelease(shader_impl);
+        return false;
+    }
+
+    flecsShaderImplRelease(shader_impl);
+
+    WGPUShaderSourceWGSL wgsl_desc = {
+        .chain = {
+            .sType = WGPUSType_ShaderSourceWGSL
+        },
+        .code = (WGPUStringView){
+            .data = shader->source,
+            .length = WGPU_STRLEN
+        }
+    };
+
+    shader_impl->shader_module = wgpuDeviceCreateShaderModule(
+        engine->device, &(WGPUShaderModuleDescriptor){
+            .nextInChain = (WGPUChainedStruct *)&wgsl_desc
+        });
+
+    if (!shader_impl->shader_module) {
+        char *name = ecs_get_path(world, shader_entity);
+        ecs_err("failed to compile shader asset '%s'", name ? name : "<unnamed>");
+        ecs_os_free(name);
+        return false;
+    }
+
+    return true;
+}
+
+static void flecsMarkShaderUsersDirty(
+    ecs_world_t *world,
+    ecs_entity_t shader_entity)
+{
+    ecs_iter_t qit = ecs_each_id(world, ecs_id(FlecsRenderBatch));
+    while (ecs_each_next(&qit)) {
+        FlecsRenderBatch *batches = ecs_field(&qit, FlecsRenderBatch, 0);
+        for (int32_t i = 0; i < qit.count; i ++) {
+            if (batches[i].shader == shader_entity) {
+                ecs_modified(world, qit.entities[i], FlecsRenderBatch);
+            }
+        }
+    }
+}
+
+void FlecsShader_on_set(
+    ecs_iter_t *it)
+{
+    ecs_world_t *world = it->world;
+    FlecsShader *shaders = ecs_field(it, FlecsShader, 0);
+
+    for (int32_t i = 0; i < it->count; i ++) {
+        ecs_entity_t shader_entity = it->entities[i];
+        FlecsShaderImpl *shader_impl = ecs_ensure(world, shader_entity, FlecsShaderImpl);
+        if (!flecsShaderCompile(world, shader_entity, &shaders[i], shader_impl)) {
+            continue;
+        }
+
+        flecsMarkShaderUsersDirty(world, shader_entity);
+    }
+}
+
+static const FlecsShaderImpl* flecsEnsureShaderImpl(
+    ecs_world_t *world,
+    ecs_entity_t shader_entity)
+{
+    const FlecsShader *shader = ecs_get(world, shader_entity, FlecsShader);
+    if (!shader) {
+        char *name = ecs_get_path(world, shader_entity);
+        ecs_err("entity '%s' does not have FlecsShader", name ? name : "<unnamed>");
+        ecs_os_free(name);
+        return NULL;
+    }
+
+    FlecsShaderImpl *shader_impl = ecs_ensure(world, shader_entity, FlecsShaderImpl);
+    if (!shader_impl->shader_module) {
+        if (!flecsShaderCompile(world, shader_entity, shader, shader_impl)) {
+            return NULL;
+        }
+    }
+
+    return shader_impl;
+}
+
+ecs_entity_t flecsEngineEnsureShader(
+    ecs_world_t *world,
+    const char *name,
+    const FlecsShader *shader)
+{
+    ecs_entity_t renderer_module = ecs_lookup(world, "flecs.engine.renderer");
+    ecs_entity_t shader_entity = ecs_entity_init(world, &(ecs_entity_desc_t){
+        .name = name,
+        .parent = renderer_module
+    });
+
+    const FlecsShader *existing = ecs_get(world, shader_entity, FlecsShader);
+    if (!existing ||
+        !flecsStringEquals(existing->source, shader->source) ||
+        !flecsStringEquals(existing->vertex_entry, shader->vertex_entry) ||
+        !flecsStringEquals(existing->fragment_entry, shader->fragment_entry))
+    {
+        ecs_set_ptr(world, shader_entity, FlecsShader, shader);
+    }
+
+    return shader_entity;
+}
+
 static int32_t flecsVertexAttrFromType(
     const ecs_world_t *world,
     ecs_entity_t type,
@@ -195,11 +370,11 @@ void FlecsRenderBatch_on_set(
     FlecsRenderBatch *rb = ecs_field(it, FlecsRenderBatch, 0);
     WGPUVertexAttribute instance_attrs[256] = {0};
     WGPUVertexBufferLayout vertex_buffers[1 + FLECS_ENGINE_INSTANCE_TYPES_MAX] = {0};
-    int32_t vertex_buffer_count = 0;
-
     const FlecsEngineImpl *engine = ecs_singleton_get(world, FlecsEngineImpl);
+    ecs_assert(engine != NULL, ECS_INVALID_OPERATION, NULL);
     for (int i = 0; i < it->count; i ++) {
         ecs_entity_t e = it->entities[i];
+        int32_t vertex_buffer_count = 0;
 
         FlecsRenderBatchImpl impl = {};
 
@@ -214,6 +389,30 @@ void FlecsRenderBatch_on_set(
             char *batch_name = ecs_get_path(world, e);
             ecs_err("missing instance type for render batch %s", batch_name);
             ecs_os_free(batch_name);
+            continue;
+        }
+
+        if (!rb[i].shader) {
+            char *batch_name = ecs_get_path(world, e);
+            ecs_err("missing shader asset for render batch %s", batch_name);
+            ecs_os_free(batch_name);
+            continue;
+        }
+
+        const FlecsShader *shader = ecs_get(world, rb[i].shader, FlecsShader);
+        if (!shader) {
+            char *batch_name = ecs_get_path(world, e);
+            char *shader_name = ecs_get_path(world, rb[i].shader);
+            ecs_err("invalid shader asset '%s' for render batch %s",
+                shader_name ? shader_name : "<unnamed>",
+                batch_name ? batch_name : "<unnamed>");
+            ecs_os_free(shader_name);
+            ecs_os_free(batch_name);
+            continue;
+        }
+
+        const FlecsShaderImpl *shader_impl = flecsEnsureShaderImpl(world, rb[i].shader);
+        if (!shader_impl || !shader_impl->shader_module) {
             continue;
         }
 
@@ -244,22 +443,6 @@ void FlecsRenderBatch_on_set(
         flecsSetupUniformBindings(world, engine, 
             rb[i].uniforms, WGPUShaderStage_Vertex, &impl);
 
-        // Setup shader
-        WGPUShaderSourceWGSL wgsl_desc = {
-            .chain = { 
-                .sType = WGPUSType_ShaderSourceWGSL
-            },
-            .code = (WGPUStringView){
-                .data = rb[i].shader, 
-                .length = WGPU_STRLEN
-            }
-        };
-
-        impl.shader = wgpuDeviceCreateShaderModule(
-            engine->device, &(WGPUShaderModuleDescriptor){
-                .nextInChain = (WGPUChainedStruct *)&wgsl_desc
-            });
-
         // Setup pipeline layout
         WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
             .bindGroupLayoutCount = 1,
@@ -286,9 +469,10 @@ void FlecsRenderBatch_on_set(
 
         // Vertex stage: entry point and vertex buffer layout.
         WGPUVertexState vertex_state = {
-            .module = impl.shader,
+            .module = shader_impl->shader_module,
             .entryPoint = (WGPUStringView){
-                .data = "vs_main", .length = WGPU_STRLEN
+                .data = shader->vertex_entry ? shader->vertex_entry : "vs_main",
+                .length = WGPU_STRLEN
             },
             .bufferCount = vertex_buffer_count,
             .buffers = vertex_buffers
@@ -296,9 +480,10 @@ void FlecsRenderBatch_on_set(
 
         // Fragment stage: entry point and color target.
         WGPUFragmentState fragment_state = {
-            .module = impl.shader,
+            .module = shader_impl->shader_module,
             .entryPoint = (WGPUStringView){
-                .data = "fs_main", .length = WGPU_STRLEN
+                .data = shader->fragment_entry ? shader->fragment_entry : "fs_main",
+                .length = WGPU_STRLEN
             },
             .targetCount = 1,
             .targets = &color_target
@@ -322,15 +507,24 @@ void FlecsRenderBatch_on_set(
 
         impl.pipeline = wgpuDeviceCreateRenderPipeline(
             engine->device, &pipeline_desc);
+        wgpuPipelineLayoutRelease(pipeline_layout);
+
+        if (!impl.pipeline) {
+            flecsRenderBatchImplRelease(&impl);
+            continue;
+        }
 
         if (flecsRenderBatchLogEnabled()) {
             char *batch_name = ecs_get_path(world, e);
+            char *shader_name = ecs_get_path(world, rb[i].shader);
             ecs_log(0,
-                "[batch] pipeline ready batch=%s vertex_type=%llu instance0=%llu uniforms0=%llu",
+                "[batch] pipeline ready batch=%s shader=%s vertex_type=%llu instance0=%llu uniforms0=%llu",
                 batch_name ? batch_name : "<unnamed>",
+                shader_name ? shader_name : "<unnamed>",
                 (unsigned long long)rb[i].vertex_type,
                 (unsigned long long)rb[i].instance_types[0],
                 (unsigned long long)rb[i].uniforms[0]);
+            ecs_os_free(shader_name);
             ecs_os_free(batch_name);
             g_render_batch_log_count ++;
         }

@@ -12,6 +12,8 @@ ECS_COMPONENT_DECLARE(FlecsLitVertex);
 ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
 ECS_COMPONENT_DECLARE(FlecsInstanceColor);
 ECS_COMPONENT_DECLARE(FlecsUniform);
+ECS_COMPONENT_DECLARE(FlecsShader);
+ECS_COMPONENT_DECLARE(FlecsShaderImpl);
 
 ECS_CTOR(FlecsRenderView, ptr, {
     ecs_vec_init_t(NULL, &ptr->batches, ecs_entity_t, 0);
@@ -97,10 +99,27 @@ void FlecsEngineRendererImport(
     ECS_COMPONENT_DEFINE(world, FlecsInstanceTransform);
     ECS_COMPONENT_DEFINE(world, FlecsInstanceColor);
     ECS_COMPONENT_DEFINE(world, FlecsUniform);
+    ECS_COMPONENT_DEFINE(world, FlecsShader);
+    ECS_COMPONENT_DEFINE(world, FlecsShaderImpl);
 
     ecs_set_hooks(world, FlecsRenderBatch, {
         .ctor = flecs_default_ctor,
         .on_set = FlecsRenderBatch_on_set
+    });
+
+    ecs_set_hooks(world, FlecsRenderBatchImpl, {
+        .ctor = flecs_default_ctor,
+        .dtor = ecs_dtor(FlecsRenderBatchImpl)
+    });
+
+    ecs_set_hooks(world, FlecsShader, {
+        .ctor = flecs_default_ctor,
+        .on_set = FlecsShader_on_set
+    });
+
+    ecs_set_hooks(world, FlecsShaderImpl, {
+        .ctor = flecs_default_ctor,
+        .dtor = ecs_dtor(FlecsShaderImpl)
     });
 
     ecs_set_hooks(world, FlecsRenderView, {
@@ -143,6 +162,15 @@ void FlecsEngineRendererImport(
         .entity = ecs_id(FlecsUniform),
         .members = {
             { .name = "vp", .type = ecs_id(flecs_mat4_t) },
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsShader),
+        .members = {
+            { .name = "source", .type = ecs_id(ecs_string_t) },
+            { .name = "vertex_entry", .type = ecs_id(ecs_string_t) },
+            { .name = "fragment_entry", .type = ecs_id(ecs_string_t) }
         }
     });
 }

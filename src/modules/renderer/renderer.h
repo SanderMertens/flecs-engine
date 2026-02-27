@@ -18,7 +18,7 @@ typedef void (*flecs_render_batch_callback)(
 
 // Render entities matching a query with specified shader
 ECS_STRUCT(FlecsRenderBatch, {
-    const char *shader;
+    ecs_entity_t shader;
     ecs_query_t *query;
     ecs_entity_t vertex_type;
     ecs_entity_t instance_types[FLECS_ENGINE_INSTANCE_TYPES_MAX];
@@ -29,6 +29,24 @@ ECS_PRIVATE
 
 void FlecsRenderBatch_on_set(
     ecs_iter_t *it);
+
+void FlecsShader_on_set(
+    ecs_iter_t *it);
+
+void FlecsShaderImpl_dtor(
+    void *_ptr,
+    int32_t _count,
+    const ecs_type_info_t *type_info);
+
+void FlecsRenderBatchImpl_dtor(
+    void *_ptr,
+    int32_t _count,
+    const ecs_type_info_t *type_info);
+
+ecs_entity_t flecsEngineEnsureShader(
+    ecs_world_t *world,
+    const char *name,
+    const FlecsShader *shader);
 
 void flecsEngineRenderViews(
     const ecs_world_t *world,

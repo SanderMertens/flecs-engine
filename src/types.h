@@ -37,7 +37,12 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsMesh3Impl);
 
 typedef struct {
-    WGPUShaderModule shader;
+    WGPUShaderModule shader_module;
+} FlecsShaderImpl;
+
+extern ECS_COMPONENT_DECLARE(FlecsShaderImpl);
+
+typedef struct {
     WGPUBindGroupLayout bind_layout;
     WGPUBindGroup bind_group;
     WGPURenderPipeline pipeline;

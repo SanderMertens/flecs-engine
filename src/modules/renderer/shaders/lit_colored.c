@@ -1,0 +1,56 @@
+#include "shaders.h"
+#include "../renderer.h"
+
+static const char *kShaderSource =
+    "struct Uniforms { vp : mat4x4<f32> }\n"
+    "@group(0) @binding(0) var<uniform> uniforms : Uniforms;\n"
+    "struct VertexInput {\n"
+    "  @location(0) pos : vec3<f32>,\n"
+    "  @location(1) nrm : vec3<f32>,\n"
+    "  @location(2) m0 : vec4<f32>,\n"
+    "  @location(3) m1 : vec4<f32>,\n"
+    "  @location(4) m2 : vec4<f32>,\n"
+    "  @location(5) m3 : vec4<f32>,\n"
+    "  @location(6) color : vec4<f32>\n"
+    "};\n"
+    "struct VertexOutput {\n"
+    "  @builtin(position) pos : vec4<f32>,\n"
+    "  @location(0) color : vec4<f32>,\n"
+    "  @location(1) normal : vec3<f32>\n"
+    "};\n"
+    "fn transform_normal(model3 : mat3x3<f32>, nrm : vec3<f32>) -> vec3<f32> {\n"
+    "  let c0 = cross(model3[1], model3[2]);\n"
+    "  let c1 = cross(model3[2], model3[0]);\n"
+    "  let c2 = cross(model3[0], model3[1]);\n"
+    "  let det = dot(model3[0], c0);\n"
+    "  if (abs(det) > 1e-8) {\n"
+    "    return normalize((mat3x3<f32>(c0, c1, c2) * nrm) / det);\n"
+    "  }\n"
+    "  return normalize(model3 * nrm);\n"
+    "}\n"
+    "@vertex fn vs_main(input : VertexInput) -> VertexOutput {\n"
+    "  var out : VertexOutput;\n"
+    "  let model = mat4x4<f32>(input.m0, input.m1, input.m2, input.m3);\n"
+    "  let model3 = mat3x3<f32>(input.m0.xyz, input.m1.xyz, input.m2.xyz);\n"
+    "  let world_pos = model * vec4<f32>(input.pos, 1.0);\n"
+    "  out.pos = uniforms.vp * world_pos;\n"
+    "  out.normal = transform_normal(model3, input.nrm);\n"
+    "  out.color = input.color;\n"
+    "  return out;\n"
+    "}\n"
+    "@fragment fn fs_main(input : VertexOutput) -> @location(0) vec4<f32> {\n"
+    "  let light = normalize(vec3<f32>(0.4, 0.8, 0.2));\n"
+    "  let diffuse = max(dot(normalize(input.normal), light), 0.0);\n"
+    "  return vec4<f32>(input.color.rgb * diffuse, input.color.a);\n"
+    "}\n";
+
+ecs_entity_t flecsEngineShader_litColored(
+    ecs_world_t *world)
+{
+    return flecsEngineEnsureShader(world, "LitColoredShader",
+        &(FlecsShader){
+            .source = kShaderSource,
+            .vertex_entry = "vs_main",
+            .fragment_entry = "fs_main"
+        });
+}
