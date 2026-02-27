@@ -24,6 +24,8 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(flecs_rgba_t);
 
 #include "modules/window.h"
+#include "modules/frame_output.h"
+#include "modules/engine.h"
 #include "modules/renderer.h"
 #include "modules/transform3.h"
 #include "modules/camera.h"

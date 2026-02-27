@@ -7,18 +7,29 @@
 #define FLECS_ENGINE_UNIFORMS_MAX (8)
 #define FLECS_ENGINE_INSTANCE_TYPES_MAX (8)
 
+struct FlecsEngineSurfaceInterface;
+
 typedef struct {
     GLFWwindow *window;
     int32_t width;
     int32_t height;
+    const struct FlecsEngineSurfaceInterface *surface_impl;
+    bool output_done;
+    const char *frame_output_path;
 
     WGPUInstance instance;
     WGPUSurface surface;
     WGPUAdapter adapter;
     WGPUDevice device;
     WGPUQueue queue;
+
+    WGPUTexture frame_output_texture;
+    WGPUTextureView frame_output_texture_view;
+
     WGPUTexture depth_texture;
     WGPUTextureView depth_texture_view;
+    uint32_t depth_texture_width;
+    uint32_t depth_texture_height;
 
     WGPUSurfaceConfiguration surface_config;
 

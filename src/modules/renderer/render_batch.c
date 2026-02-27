@@ -69,7 +69,13 @@ static bool flecsShaderCompile(
     FlecsShaderImpl *shader_impl)
 {
     const FlecsEngineImpl *engine = ecs_singleton_get(world, FlecsEngineImpl);
-    ecs_assert(engine != NULL, ECS_INVALID_OPERATION, NULL);
+    if (!engine) {
+        char *name = ecs_get_path(world, shader_entity);
+        ecs_err("cannot compile shader '%s': engine is not initialized",
+            name ? name : "<unnamed>");
+        ecs_os_free(name);
+        return false;
+    }
 
     if (!shader || !shader->source) {
         char *name = ecs_get_path(world, shader_entity);
@@ -371,7 +377,10 @@ void FlecsRenderBatch_on_set(
     WGPUVertexAttribute instance_attrs[256] = {0};
     WGPUVertexBufferLayout vertex_buffers[1 + FLECS_ENGINE_INSTANCE_TYPES_MAX] = {0};
     const FlecsEngineImpl *engine = ecs_singleton_get(world, FlecsEngineImpl);
-    ecs_assert(engine != NULL, ECS_INVALID_OPERATION, NULL);
+    if (!engine) {
+        ecs_err("cannot build render batches: engine is not initialized");
+        return;
+    }
     for (int i = 0; i < it->count; i ++) {
         ecs_entity_t e = it->entities[i];
         int32_t vertex_buffer_count = 0;

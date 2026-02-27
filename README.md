@@ -19,6 +19,11 @@ cmake --build build
 ./build/flecs_engine
 ```
 
+Single-frame image output mode (no window):
+```sh
+./build/flecs_engine --frame-out /tmp/frame.ppm --size 1280x800
+```
+
 For asan:
 ```sh
 cmake --build build-asan

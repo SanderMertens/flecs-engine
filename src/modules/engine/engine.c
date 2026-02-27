@@ -1,5 +1,9 @@
+#define FLECS_ENGINE_ENGINE_IMPL
 #include "engine.h"
-#include "../window/window.h"
+
+#include "surfaces/frame_capture/frame_capture.h"
+#include "surfaces/window/window.h"
+
 #include "../renderer/renderer.h"
 #include "../geometry3/geometry3.h"
 #include "../transform3/transform3.h"
@@ -11,13 +15,11 @@ ECS_COMPONENT_DECLARE(flecs_mat4_t);
 ECS_COMPONENT_DECLARE(flecs_rgba_t);
 
 ECS_COMPONENT_DECLARE(FlecsEngineImpl);
-static int32_t g_engine_log_frame_count = 0;
-static const int32_t kEngineLogFrameLimit = 120;
 
 static void flecsEngineWaitForFuture(
-    WGPUInstance instance, 
+    WGPUInstance instance,
     WGPUFuture future,
-    bool *done) 
+    bool *done)
 {
     WGPUFutureWaitInfo wait_info = { .future = future };
     while (!*done) {
@@ -28,40 +30,38 @@ static void flecsEngineWaitForFuture(
 
 static void flecsEngineOnRequestAdapter(
     WGPURequestAdapterStatus status,
-    WGPUAdapter adapter, 
+    WGPUAdapter adapter,
     WGPUStringView message,
-    void *userdata1, 
-    void *userdata2) 
+    void *userdata1,
+    void *userdata2)
 {
-  (void)userdata2;
+    WGPUAdapter *adapter_out = userdata1;
+    bool *future_cond = userdata2;
 
-  WGPUAdapter *adapter_out = userdata1;
-  bool *future_cond = userdata2;
-  if (status == WGPURequestAdapterStatus_Success) {
-    *adapter_out = adapter;
-  } else {
-    if (message.data) {
-        ecs_err("Adapter request failed: %.*s\n",
-            (int)message.length, message.data);
+    if (status == WGPURequestAdapterStatus_Success) {
+        *adapter_out = adapter;
     } else {
-        ecs_err("Adapter request failed: unknown\n");
+        if (message.data) {
+            ecs_err("Adapter request failed: %.*s\n",
+                (int)message.length, message.data);
+        } else {
+            ecs_err("Adapter request failed: unknown\n");
+        }
     }
-  }
 
-  *future_cond = true;
+    *future_cond = true;
 }
 
 static void flecsEngineOnRequestDevice(
-    WGPURequestDeviceStatus status, 
+    WGPURequestDeviceStatus status,
     WGPUDevice device,
-    WGPUStringView message, 
+    WGPUStringView message,
     void *userdata1,
-    void *userdata2) 
+    void *userdata2)
 {
-    (void)userdata2;
-
     WGPUDevice *device_out = userdata1;
     bool *future_cond = userdata2;
+
     if (status == WGPURequestDeviceStatus_Success) {
         *device_out = device;
     } else {
@@ -77,11 +77,11 @@ static void flecsEngineOnRequestDevice(
 }
 
 static void flecsEngineCreateDepthResources(
-    WGPUDevice device, 
+    WGPUDevice device,
     uint32_t width,
-    uint32_t height, 
+    uint32_t height,
     WGPUTexture *texture,
-    WGPUTextureView *view) 
+    WGPUTextureView *view)
 {
     if (*view) {
         wgpuTextureViewRelease(*view);
@@ -107,22 +107,169 @@ static void flecsEngineCreateDepthResources(
     };
 
     *texture = wgpuDeviceCreateTexture(device, &depth_desc);
+    if (!*texture) {
+        ecs_err("Failed to create depth texture\n");
+        return;
+    }
+
     *view = wgpuTextureCreateView(*texture, NULL);
+    if (!*view) {
+        ecs_err("Failed to create depth texture view\n");
+        wgpuTextureRelease(*texture);
+        *texture = NULL;
+    }
+}
+
+static int flecsEngineEnsureDepthResources(
+    FlecsEngineImpl *impl)
+{
+    if (impl->width <= 0 || impl->height <= 0) {
+        return 0;
+    }
+
+    uint32_t width = (uint32_t)impl->width;
+    uint32_t height = (uint32_t)impl->height;
+
+    if (impl->depth_texture &&
+        impl->depth_texture_view &&
+        impl->depth_texture_width == width &&
+        impl->depth_texture_height == height)
+    {
+        return 0;
+    }
+
+    flecsEngineCreateDepthResources(
+        impl->device,
+        width,
+        height,
+        &impl->depth_texture,
+        &impl->depth_texture_view);
+    if (!impl->depth_texture || !impl->depth_texture_view) {
+        impl->depth_texture_width = 0;
+        impl->depth_texture_height = 0;
+        return -1;
+    }
+
+    impl->depth_texture_width = width;
+    impl->depth_texture_height = height;
+    return 0;
+}
+
+static bool FlecsEngineSurfaceInterfaceValid(
+    const FlecsEngineSurfaceInterface *ops)
+{
+    return ops != NULL &&
+        ops->prepare_frame != NULL &&
+        ops->acquire_frame != NULL &&
+        ops->encode_frame != NULL &&
+        ops->submit_frame != NULL &&
+        ops->on_frame_failed != NULL &&
+        ops->cleanup != NULL;
+}
+
+static void flecsEngineReleaseFrameTarget(
+    FlecsEngineSurface *target)
+{
+    if (target->owns_view_texture && target->view_texture) {
+        wgpuTextureViewRelease(target->view_texture);
+    }
+
+    if (target->surface_texture) {
+        wgpuTextureRelease(target->surface_texture);
+    }
+
+    if (target->readback_buffer) {
+        wgpuBufferRelease(target->readback_buffer);
+    }
+
+    target->view_texture = NULL;
+    target->surface_texture = NULL;
+    target->owns_view_texture = false;
+    target->surface_status = WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal;
+    target->readback_buffer = NULL;
+    target->readback_bytes_per_row = 0;
+    target->readback_buffer_size = 0;
+}
+
+static void flecsEngineCleanup(
+    FlecsEngineImpl *impl,
+    bool terminate_runtime)
+{
+    if (impl->view_query) {
+        ecs_query_fini(impl->view_query);
+        impl->view_query = NULL;
+    }
+
+    if (impl->surface_impl) {
+        impl->surface_impl->cleanup(impl, terminate_runtime);
+    }
+
+    if (impl->depth_texture_view) {
+        wgpuTextureViewRelease(impl->depth_texture_view);
+        impl->depth_texture_view = NULL;
+    }
+
+    if (impl->depth_texture) {
+        wgpuTextureRelease(impl->depth_texture);
+        impl->depth_texture = NULL;
+    }
+
+    impl->depth_texture_width = 0;
+    impl->depth_texture_height = 0;
+
+    if (impl->queue) {
+        wgpuQueueRelease(impl->queue);
+        impl->queue = NULL;
+    }
+
+    if (impl->device) {
+        wgpuDeviceRelease(impl->device);
+        impl->device = NULL;
+    }
+
+    if (impl->adapter) {
+        wgpuAdapterRelease(impl->adapter);
+        impl->adapter = NULL;
+    }
+
+    if (impl->instance) {
+        wgpuInstanceRelease(impl->instance);
+        impl->instance = NULL;
+    }
+
+    if (impl->frame_output_path) {
+        ecs_os_free((char*)impl->frame_output_path);
+        impl->frame_output_path = NULL;
+    }
 }
 
 int flecsEngineInit(
     ecs_world_t *world,
-    GLFWwindow *window,
-    int32_t width,
-    int32_t height)
+    const FlecsEngineOutputDesc *output)
 {
+    if (!output || !FlecsEngineSurfaceInterfaceValid(output->ops)) {
+        ecs_err("Invalid engine output backend\n");
+        return -1;
+    }
+
+    int32_t width = output->width;
+    int32_t height = output->height;
+    if (width <= 0) {
+        width = 1280;
+    }
+    if (height <= 0) {
+        height = 800;
+    }
+
     FlecsEngineImpl impl = {
-        .window = window,
         .width = width,
-        .height = height
+        .height = height,
+        .surface_impl = output->ops,
+        .output_done = false,
+        .depth_texture_width = 0,
+        .depth_texture_height = 0
     };
 
-    // Create wgpu instance
     WGPUInstanceDescriptor instance_desc = {0};
     impl.instance = wgpuCreateInstance(&instance_desc);
     if (!impl.instance) {
@@ -130,25 +277,14 @@ int flecsEngineInit(
         goto error;
     }
 
-    // Create wgpu surface
-    void *metal_layer = flecs_create_metal_layer(
-        glfwGetCocoaWindow(impl.window));
-
-    WGPUSurfaceSourceMetalLayer metal_desc = {
-        .chain = { .sType = WGPUSType_SurfaceSourceMetalLayer },
-        .layer = metal_layer
-    };
-
-    WGPUSurfaceDescriptor surface_desc = {
-        .nextInChain = (WGPUChainedStruct *)&metal_desc
-    };
-
-    impl.surface = wgpuInstanceCreateSurface(impl.instance, &surface_desc);
-    ecs_dbg("[engine] created instance=%p surface=%p", (void*)impl.instance, (void*)impl.surface);
+    if (impl.surface_impl->init_instance &&
+        impl.surface_impl->init_instance(&impl, output->config))
+    {
+        goto error;
+    }
 
     bool future_cond = false;
 
-    // Create wgpu adapter
     WGPURequestAdapterOptions adapter_options = {
         .compatibleSurface = impl.surface
     };
@@ -163,8 +299,7 @@ int flecsEngineInit(
     WGPUFuture adapter_future = wgpuInstanceRequestAdapter(
         impl.instance, &adapter_options, adapter_callback);
 
-    flecsEngineWaitForFuture(
-        impl.instance, adapter_future, &future_cond);
+    flecsEngineWaitForFuture(impl.instance, adapter_future, &future_cond);
     if (!impl.adapter) {
         goto error;
     }
@@ -172,7 +307,6 @@ int flecsEngineInit(
 
     future_cond = false;
 
-    // Create wgpu device
     WGPUDeviceDescriptor device_desc = {0};
 
     WGPURequestDeviceCallbackInfo device_callback = {
@@ -181,7 +315,7 @@ int flecsEngineInit(
         .userdata1 = &impl.device,
         .userdata2 = &future_cond
     };
- 
+
     WGPUFuture device_future = wgpuAdapterRequestDevice(
         impl.adapter, &device_desc, device_callback);
 
@@ -191,57 +325,35 @@ int flecsEngineInit(
     }
     ecs_dbg("[engine] device acquired=%p", (void*)impl.device);
 
-    // Get wgpu queue
     impl.queue = wgpuDeviceGetQueue(impl.device);
 
-    // Configure surface
-    WGPUSurfaceCapabilities surface_caps = {0};
-    if (wgpuSurfaceGetCapabilities(impl.surface, impl.adapter,
-                                    &surface_caps) != WGPUStatus_Success ||
-        surface_caps.formatCount == 0) {
-        ecs_err("Failed to get surface capabilities\n");
+    if (impl.surface_impl->configure_target &&
+        impl.surface_impl->configure_target(&impl))
+    {
         goto error;
     }
 
-    // Choose the first supported surface format.
-    WGPUTextureFormat surface_format = surface_caps.formats[0];
+    if (flecsEngineEnsureDepthResources(&impl)) {
+        goto error;
+    }
 
-    // Surface config: color attachment usage, format, size, present mode.
-    impl.surface_config = (WGPUSurfaceConfiguration){
-        .device = impl.device,
-        .usage = WGPUTextureUsage_RenderAttachment,
-        .format = surface_format,
-        .width = (uint32_t)width,
-        .height = (uint32_t)height,
-        .presentMode = WGPUPresentMode_Fifo,
-        .alphaMode = surface_caps.alphaModes[0]
-    };
-
-    wgpuSurfaceConfigure(impl.surface, &impl.surface_config);
-    wgpuSurfaceCapabilitiesFreeMembers(surface_caps);
-    ecs_dbg("[engine] surface configured %ux%u format=%d",
-        impl.surface_config.width, impl.surface_config.height,
-        (int)impl.surface_config.format);
-
-    // Configure depth resources
-    flecsEngineCreateDepthResources(
-        impl.device, width, height, 
-        &impl.depth_texture, &impl.depth_texture_view);
-
-
-    // Create query to iterate active views
     impl.view_query = ecs_query(world, {
-        .entity = ecs_entity(world, { 
-            .parent = ecs_lookup(world, "flecs.engine") 
+        .entity = ecs_entity(world, {
+            .parent = ecs_lookup(world, "flecs.engine")
         }),
         .terms = {{ ecs_id(FlecsRenderView) }},
         .cache_kind = EcsQueryCacheAuto
     });
+    if (!impl.view_query) {
+        ecs_err("Failed to create render view query\n");
+        goto error;
+    }
 
     ecs_singleton_set_ptr(world, FlecsEngineImpl, &impl);
-
     return 0;
+
 error:
+    flecsEngineCleanup(&impl, false);
     return -1;
 }
 
@@ -249,92 +361,89 @@ static void FlecsEngineDestroy(
     ecs_iter_t *it)
 {
     FlecsEngineImpl *impl = ecs_field(it, FlecsEngineImpl, 0);
-
-    wgpuSurfaceRelease(impl->surface);
-    wgpuQueueRelease(impl->queue);
-    wgpuDeviceRelease(impl->device);
-    wgpuAdapterRelease(impl->adapter);
-    wgpuInstanceRelease(impl->instance);
-    glfwDestroyWindow(impl->window);
-    glfwTerminate();
+    flecsEngineCleanup(impl, true);
 }
 
-static void FlecsEngineHandleResize(
-    FlecsEngineImpl *impl)
+static void FlecsEngineRender(
+    ecs_iter_t *it)
 {
-    int w, h;
-    glfwGetFramebufferSize(impl->window, &w, &h);
-
-    if (w != impl->width || h != impl->height) {
-        impl->width = impl->surface_config.width = (uint32_t)w;
-        impl->height = impl->surface_config.height = (uint32_t)h;
-        wgpuSurfaceConfigure(impl->surface, &impl->surface_config);
-
-        flecsEngineCreateDepthResources(impl->device, w, h, 
-            &impl->depth_texture, &impl->depth_texture_view);
-    }
-}
-
-static void FlecsEngineRender(ecs_iter_t *it) {
     FlecsEngineImpl *impl = ecs_field(it, FlecsEngineImpl, 0);
-    if (glfwWindowShouldClose(impl->window)) {
-        ecs_quit(it->world);
-    }
 
-    glfwPollEvents();
-    
-    FlecsEngineHandleResize(impl);
+    int prep_result = impl->surface_impl->prepare_frame(it->world, impl);
+    if (prep_result > 0) {
+        return;
+    }
+    if (prep_result < 0) {
+        impl->surface_impl->on_frame_failed(it->world, impl);
+        return;
+    }
 
     if (!impl->width || !impl->height) {
         return;
     }
 
-    // Acquire the next swapchain texture.
-    WGPUSurfaceTexture surface_texture = {0};
-    wgpuSurfaceGetCurrentTexture(impl->surface, &surface_texture);
-    if (surface_texture.status !=
-            WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal &&
-        surface_texture.status !=
-            WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal) {
-      if (g_engine_log_frame_count < kEngineLogFrameLimit) {
-        ecs_dbg("[engine] skip frame: surface status=%d", (int)surface_texture.status);
-        g_engine_log_frame_count ++;
-      }
-      wgpuSurfaceConfigure(impl->surface, &impl->surface_config);
-      return;
+    if (flecsEngineEnsureDepthResources(impl)) {
+        impl->surface_impl->on_frame_failed(it->world, impl);
+        return;
     }
 
-    // Create a view of the swapchain texture.
-    WGPUTextureView view_texture =
-        wgpuTextureCreateView(surface_texture.texture, NULL);
+    bool failed = false;
+    FlecsEngineSurface frame_target = {0};
+    WGPUCommandEncoder encoder = NULL;
+    WGPUCommandBuffer cmd = NULL;
 
-    // Record GPU commands for this frame
+    int target_result = impl->surface_impl->acquire_frame(impl, &frame_target);
+    if (target_result > 0) {
+        return;
+    }
+
+    if (target_result < 0) {
+        failed = true;
+        goto cleanup;
+    }
+
     WGPUCommandEncoderDescriptor encoder_desc = {0};
-    WGPUCommandEncoder encoder =
-        wgpuDeviceCreateCommandEncoder(impl->device, &encoder_desc);
+    encoder = wgpuDeviceCreateCommandEncoder(impl->device, &encoder_desc);
+    if (!encoder) {
+        ecs_err("Failed to create command encoder\n");
+        failed = true;
+        goto cleanup;
+    }
 
-    // Render
-    flecsEngineRenderViews(it->world, impl, view_texture, encoder);
+    flecsEngineRenderViews(it->world, impl, frame_target.view_texture, encoder);
 
-    // Finalize the command buffer for submission.
+    if (impl->surface_impl->encode_frame(impl, encoder, &frame_target)) {
+        failed = true;
+        goto cleanup;
+    }
+
     WGPUCommandBufferDescriptor cmd_desc = {0};
-    WGPUCommandBuffer cmd = wgpuCommandEncoderFinish(encoder, &cmd_desc);
+    cmd = wgpuCommandEncoderFinish(encoder, &cmd_desc);
+    if (!cmd) {
+        ecs_err("Failed to create command buffer\n");
+        failed = true;
+        goto cleanup;
+    }
+
     wgpuQueueSubmit(impl->queue, 1, &cmd);
 
-    // Present surface
-    wgpuSurfacePresent(impl->surface);
-
-    if (g_engine_log_frame_count < kEngineLogFrameLimit) {
-        ecs_dbg("[engine] frame submitted status=%d size=%dx%d",
-            (int)surface_texture.status, impl->width, impl->height);
-        g_engine_log_frame_count ++;
+    if (impl->surface_impl->submit_frame(it->world, impl, &frame_target)) {
+        failed = true;
     }
 
-    // Release resources
-    wgpuCommandBufferRelease(cmd);
-    wgpuCommandEncoderRelease(encoder);
-    wgpuTextureViewRelease(view_texture);
-    wgpuTextureRelease(surface_texture.texture);
+cleanup:
+    if (cmd) {
+        wgpuCommandBufferRelease(cmd);
+    }
+    if (encoder) {
+        wgpuCommandEncoderRelease(encoder);
+    }
+
+    flecsEngineReleaseFrameTarget(&frame_target);
+
+    if (failed) {
+        impl->surface_impl->on_frame_failed(it->world, impl);
+    }
 }
 
 void FlecsEngineImport(
@@ -375,6 +484,7 @@ void FlecsEngineImport(
     });
 
     ECS_IMPORT(world, FlecsEngineWindow);
+    ECS_IMPORT(world, FlecsEngineFrameCapture);
     ECS_IMPORT(world, FlecsEngineRenderer);
     ECS_IMPORT(world, FlecsEngineGeometry3);
     ECS_IMPORT(world, FlecsEngineTransform3);
