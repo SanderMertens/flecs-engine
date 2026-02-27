@@ -29,6 +29,7 @@ static int32_t flecsVertexAttrFromType(
     ecs_member_t *members = ecs_vec_first(&s->members);
     int32_t attr = 0;
     for (i = 0; i < member_count; i ++) {
+        printf("%d: %s\n", location_offset + attr, members[i].name);
         if (members[i].type == ecs_id(flecs_vec3_t)) {
             attrs[attr].format = WGPUVertexFormat_Float32x3;
             attrs[attr].shaderLocation = location_offset + attr;

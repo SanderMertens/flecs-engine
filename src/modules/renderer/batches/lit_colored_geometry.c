@@ -35,10 +35,7 @@ static void* flecsEngine_litColoredGeometry_onGroupCreate(
     uint64_t group_id,
     void *ptr)
 {
-    flecs_lit_colored_geometry_group_ctx_t *ctx = 
-        ecs_os_calloc_t(flecs_lit_colored_geometry_group_ctx_t);
-
-    return ctx;
+    return ecs_os_calloc_t(flecs_lit_colored_geometry_group_ctx_t);
 }
 
 // Prefab group is deleted, delete instance buffer
@@ -52,8 +49,11 @@ static void flecsEngine_litColoredGeometry_onGroupDelete(
     const FlecsEngineImpl *engine = ecs_singleton_get(world, FlecsEngineImpl);
     ecs_assert(engine != NULL, ECS_INVALID_OPERATION, NULL);
 
-    wgpuBufferRelease(ctx->instance_transform);
-    wgpuBufferRelease(ctx->instance_color);
+    if (ctx->size) {
+        wgpuBufferRelease(ctx->instance_transform);
+        wgpuBufferRelease(ctx->instance_color);
+    }
+
     ecs_os_free(ctx);
 }
 
@@ -93,34 +93,38 @@ static void flecsEngine_litColoredGeometry_renderGroup(
         ecs_query_get_group_ctx(q, group_id);
     ecs_assert(ctx != NULL, ECS_INTERNAL_ERROR, NULL);
 
+    const FlecsMesh3 *m = ecs_get(world, group_id, FlecsMesh3);
+
 redo: {
-    ecs_iter_t it = ecs_query_iter(world, q);
-    ecs_iter_set_group(&it, group_id);
+        ecs_iter_t it = ecs_query_iter(world, q);
+        ecs_iter_set_group(&it, group_id);
 
-    ctx->count = 0;
+        ctx->count = 0;
 
-    while (ecs_query_next(&it)) {
-        if ((ctx->count + it.count) < ctx->size) {
-            FlecsWorldTransform3 *t = ecs_field(&it, FlecsWorldTransform3, 1);
-            FlecsRgba *c = ecs_field(&it, FlecsRgba, 2);
+        while (ecs_query_next(&it)) {
+            if ((ctx->count + it.count) < ctx->size) {
+                ecs_assert(m == ecs_field(&it, FlecsMesh3, 0), ECS_INVALID_OPERATION,
+                    "instance of prefab '%s' matched with a different mesh");
+                FlecsWorldTransform3 *t = ecs_field(&it, FlecsWorldTransform3, 1);
+                FlecsRgba *c = ecs_field(&it, FlecsRgba, 2);
 
-            wgpuQueueWriteBuffer(engine->queue, ctx->instance_transform, 
-                ctx->count * sizeof(mat4), 
-                t, it.count * sizeof(mat4));
+                wgpuQueueWriteBuffer(engine->queue, ctx->instance_transform, 
+                    ctx->count * sizeof(mat4), 
+                    t, it.count * sizeof(mat4));
 
-            wgpuQueueWriteBuffer(engine->queue, ctx->instance_color, 
-                ctx->count * sizeof(flecs_rgba_t), 
-                c, it.count * sizeof(flecs_rgba_t));
+                wgpuQueueWriteBuffer(engine->queue, ctx->instance_color, 
+                    ctx->count * sizeof(flecs_rgba_t), 
+                    c, it.count * sizeof(flecs_rgba_t));
+            }
+
+            ctx->count += it.count;
         }
 
-        ctx->count += it.count;
+        if (ctx->count > ctx->size) {
+            flecsEngine_litColoredGeometry_resizeBuffers(engine, ctx);
+            goto redo;
+        }
     }
-
-    if (ctx->count > ctx->size) {
-        flecsEngine_litColoredGeometry_resizeBuffers(engine, ctx);
-        goto redo;
-    }
-}
 }
 
 static void flecsEngine_litColoredGeometry_callback(
@@ -148,7 +152,7 @@ ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
 
     ecs_query_t *q = ecs_query(world, {
         .terms = {
-            { ecs_id(FlecsMesh3Impl) },
+            { ecs_id(FlecsMesh3Impl), .src.id = EcsUp, .trav = EcsIsA },
             { ecs_id(FlecsWorldTransform3) },
             { ecs_id(FlecsRgba) }
         },
