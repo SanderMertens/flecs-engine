@@ -6,6 +6,7 @@
 
 ECS_COMPONENT_DECLARE(FlecsMesh3);
 ECS_COMPONENT_DECLARE(FlecsBox);
+ECS_COMPONENT_DECLARE(FlecsQuad);
 ECS_COMPONENT_DECLARE(FlecsSphere);
 ECS_COMPONENT_DECLARE(FlecsCylinder);
 ECS_COMPONENT_DECLARE(FlecsMesh3Impl);
@@ -50,6 +51,7 @@ ECS_CTOR(FlecsGeometry3Cache, ptr, {
     ecs_map_init(&ptr->sphere_cache, NULL);
     ecs_map_init(&ptr->cylinder_cache, NULL);
     ptr->unit_box_asset = 0;
+    ptr->unit_quad_asset = 0;
 })
 
 ECS_DTOR(FlecsGeometry3Cache, ptr, {
@@ -153,6 +155,7 @@ void FlecsEngineGeometry3Import(
     ECS_COMPONENT_DEFINE(world, FlecsMesh3);
     ECS_COMPONENT_DEFINE(world, FlecsMesh3Impl);
     ECS_COMPONENT_DEFINE(world, FlecsBox);
+    ECS_COMPONENT_DEFINE(world, FlecsQuad);
     ECS_COMPONENT_DEFINE(world, FlecsSphere);
     ECS_COMPONENT_DEFINE(world, FlecsCylinder);
     ECS_COMPONENT_DEFINE(world, FlecsGeometry3Cache);
@@ -170,6 +173,14 @@ void FlecsEngineGeometry3Import(
         .entity = ecs_id(FlecsSphere),
         .members = {
             { .name = "segments", .type = ecs_id(ecs_i32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsQuad),
+        .members = {
+            { .name = "x", .type = ecs_id(ecs_f32_t) },
+            { .name = "y", .type = ecs_id(ecs_f32_t) }
         }
     });
 

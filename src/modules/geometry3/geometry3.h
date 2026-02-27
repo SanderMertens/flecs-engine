@@ -7,6 +7,7 @@ typedef struct {
     ecs_map_t sphere_cache;
     ecs_map_t cylinder_cache;
     ecs_entity_t unit_box_asset;
+    ecs_entity_t unit_quad_asset;
 } FlecsGeometry3Cache;
 
 extern ECS_COMPONENT_DECLARE(FlecsGeometry3Cache);
@@ -17,6 +18,9 @@ ecs_entity_t flecsGeometry3_createAsset(
     const char *name);
 
 const FlecsMesh3Impl* flecsGeometry3_getBoxAsset(
+    ecs_world_t *world);
+
+const FlecsMesh3Impl* flecsGeometry3_getQuadAsset(
     ecs_world_t *world);
 
 void FlecsEngineGeometry3Import(

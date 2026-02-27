@@ -12,6 +12,11 @@ ECS_STRUCT(FlecsBox, {
     float z;
 });
 
+ECS_STRUCT(FlecsQuad, {
+    float x;
+    float y;
+});
+
 ECS_STRUCT(FlecsSphere, {
     int32_t segments;
 });
