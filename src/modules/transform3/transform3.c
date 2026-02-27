@@ -23,6 +23,7 @@ static void flecsTransform3RotationAndScale(
 {
     FlecsRotation3 *r = ecs_field(it, FlecsRotation3, 2);
     FlecsScale3 *s = ecs_field(it, FlecsScale3, 3);
+    FlecsBox *b = ecs_field(it, FlecsBox, 4);
     int i;
 
     if (r) {
@@ -46,6 +47,12 @@ static void flecsTransform3RotationAndScale(
             glm_scale(t[i].m, *(vec3*)&s[i]);
         }
     }
+
+    if (b) {
+        for (i = 0; i < it->count; i ++) {
+            glm_scale(t[i].m, *(vec3*)&b[i]);
+        }
+    }
 }
 
 static bool flecsTransform3ChildOf(ecs_iter_t *it) {
@@ -54,7 +61,7 @@ static bool flecsTransform3ChildOf(ecs_iter_t *it) {
     while (ecs_query_next(it)) {
         FlecsWorldTransform3 *t = ecs_field(it, FlecsWorldTransform3, 0);
         FlecsPosition3 *p = ecs_field(it, FlecsPosition3, 1);
-        FlecsWorldTransform3 *t_parent = ecs_field(it, FlecsWorldTransform3, 4);
+        FlecsWorldTransform3 *t_parent = ecs_field(it, FlecsWorldTransform3, 5);
         int i;
 
         if (!t_parent) {
@@ -94,7 +101,7 @@ static bool flecsTransform3Parent(ecs_iter_t *it) {
     while (ecs_query_next(it)) {
         FlecsWorldTransform3 *t = ecs_field(it, FlecsWorldTransform3, 0);
         FlecsPosition3 *p = ecs_field(it, FlecsPosition3, 1);
-        EcsParent *parents = ecs_field(it, EcsParent, 4);
+        EcsParent *parents = ecs_field(it, EcsParent, 5);
         int i;
 
         for (i = 0; i < it->count; i ++) {
@@ -189,6 +196,10 @@ void FlecsEngineTransform3Import(
             .inout = EcsIn,
             .oper = EcsOptional
         }, {
+            .id = ecs_id(FlecsBox),
+            .inout = EcsIn,
+            .oper = EcsOptional
+        }, {
             .id = ecs_id(FlecsWorldTransform3), 
             .inout = EcsIn,
             .oper = EcsOptional,
@@ -214,6 +225,10 @@ void FlecsEngineTransform3Import(
             .oper = EcsOptional
         }, {
             .id = ecs_id(FlecsScale3),
+            .inout = EcsIn,
+            .oper = EcsOptional
+        }, {
+            .id = ecs_id(FlecsBox),
             .inout = EcsIn,
             .oper = EcsOptional
         }, {

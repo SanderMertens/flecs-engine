@@ -3,17 +3,9 @@
 #include "../../geometry3/geometry3.h"
 #include "flecs_engine.h"
 
-enum {
-    kBoxField_Box = 0,
-    kBoxField_WorldTransform = 1,
-    kBoxField_Color = 2
-};
-
 typedef struct {
     WGPUBuffer instance_transform;
     WGPUBuffer instance_color;
-    mat4 *cpu_transforms;
-    flecs_rgba_t *cpu_colors;
     int32_t count;
     int32_t capacity;
 } flecs_lit_colored_boxes_group_ctx_t;
@@ -31,12 +23,6 @@ static void flecsEngine_litColoredBoxes_deleteCtx(
     }
     if (ctx->instance_color) {
         wgpuBufferRelease(ctx->instance_color);
-    }
-    if (ctx->cpu_transforms) {
-        ecs_os_free(ctx->cpu_transforms);
-    }
-    if (ctx->cpu_colors) {
-        ecs_os_free(ctx->cpu_colors);
     }
 
     ecs_os_free(ctx);
@@ -75,15 +61,6 @@ static void flecsEngine_litColoredBoxes_ensureCapacity(
             .size = (uint64_t)new_capacity * sizeof(flecs_rgba_t)
         });
 
-    if (ctx->cpu_transforms) {
-        ecs_os_free(ctx->cpu_transforms);
-    }
-    if (ctx->cpu_colors) {
-        ecs_os_free(ctx->cpu_colors);
-    }
-
-    ctx->cpu_transforms = ecs_os_malloc_n(mat4, new_capacity);
-    ctx->cpu_colors = ecs_os_malloc_n(flecs_rgba_t, new_capacity);
     ctx->capacity = new_capacity;
 }
 
@@ -93,52 +70,35 @@ static void flecsEngine_litColoredBoxes_prepareInstances(
     const FlecsRenderBatch *batch,
     flecs_lit_colored_boxes_group_ctx_t *ctx)
 {
-    ecs_query_t *q = batch->query;
     ctx->count = 0;
 
-    ecs_iter_t it = ecs_query_iter(world, q);
-    while (ecs_query_next(&it)) {
-        ctx->count += it.count;
-    }
-
-    if (!ctx->count) {
-        return;
-    }
-
-    flecsEngine_litColoredBoxes_ensureCapacity(engine, ctx, ctx->count);
-
-    int32_t offset = 0;
-    it = ecs_query_iter(world, q);
+    ecs_iter_t it = ecs_query_iter(world, batch->query);
     while (ecs_query_next(&it)) {
         const FlecsBox *boxes = ecs_field(&it, FlecsBox, 0);
         const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
         const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
 
-        for (int32_t i = 0; i < it.count; i ++) {
-            glm_mat4_copy((vec4*)wt[i].m, ctx->cpu_transforms[offset]);
+        flecsEngine_litColoredBoxes_ensureCapacity(
+            engine, ctx, ctx->count + it.count);
 
-            vec3 size = {boxes[i].x, boxes[i].y, boxes[i].z};
-            glm_scale(ctx->cpu_transforms[offset], size);
+        wgpuQueueWriteBuffer(
+            engine->queue,
+            ctx->instance_transform,
+            ctx->count,
+            wt,
+            it.count * sizeof(mat4));
 
-            ctx->cpu_colors[offset] = colors[i];
-
-            offset ++;
+        if (colors) {
+            wgpuQueueWriteBuffer(
+                engine->queue,
+                ctx->instance_color,
+                ctx->count,
+                colors,
+                it.count * sizeof(flecs_rgba_t));
         }
+
+        ctx->count += it.count;
     }
-
-    wgpuQueueWriteBuffer(
-        engine->queue,
-        ctx->instance_transform,
-        0,
-        ctx->cpu_transforms,
-        (uint64_t)ctx->count * sizeof(mat4));
-
-    wgpuQueueWriteBuffer(
-        engine->queue,
-        ctx->instance_color,
-        0,
-        ctx->cpu_colors,
-        (uint64_t)ctx->count * sizeof(flecs_rgba_t));
 }
 
 static void flecsEngine_litColoredBoxes_callback(
