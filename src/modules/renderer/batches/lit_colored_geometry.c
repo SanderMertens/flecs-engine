@@ -6,11 +6,40 @@
 typedef struct {
     WGPUBuffer instance_transform;
     WGPUBuffer instance_color;
+    WGPUBuffer instance_size;
     mat4 *cpu_transforms;
     flecs_rgba_t *cpu_colors;
+    FlecsInstanceSize *cpu_sizes;
     int32_t count;
     int32_t capacity;
 } flecs_lit_colored_geometry_group_ctx_t;
+
+static uint64_t flecsEngine_litColoredGeometry_groupByMesh(
+    ecs_world_t *world,
+    ecs_table_t *table,
+    ecs_id_t id,
+    void *ctx)
+{
+    (void)id;
+    (void)ctx;
+
+    ecs_entity_t tgt = 0;
+    if (ecs_search_relation(
+        world,
+        table,
+        0,
+        ecs_id(FlecsMesh3Impl),
+        EcsIsA,
+        EcsSelf | EcsUp,
+        &tgt,
+        NULL,
+        NULL) == -1)
+    {
+        return 0;
+    }
+
+    return tgt;
+}
 
 static void* flecsEngine_litColoredGeometry_onGroupCreate(
     ecs_world_t *world,
@@ -19,7 +48,6 @@ static void* flecsEngine_litColoredGeometry_onGroupCreate(
 {
     (void)world;
     (void)ptr;
-
     return ecs_os_calloc_t(flecs_lit_colored_geometry_group_ctx_t);
 }
 
@@ -39,11 +67,17 @@ static void flecsEngine_litColoredGeometry_onGroupDelete(
     if (ctx->instance_color) {
         wgpuBufferRelease(ctx->instance_color);
     }
+    if (ctx->instance_size) {
+        wgpuBufferRelease(ctx->instance_size);
+    }
     if (ctx->cpu_transforms) {
         ecs_os_free(ctx->cpu_transforms);
     }
     if (ctx->cpu_colors) {
         ecs_os_free(ctx->cpu_colors);
+    }
+    if (ctx->cpu_sizes) {
+        ecs_os_free(ctx->cpu_sizes);
     }
 
     ecs_os_free(ctx);
@@ -69,6 +103,9 @@ static void flecsEngine_litColoredGeometry_ensureCapacity(
     if (ctx->instance_color) {
         wgpuBufferRelease(ctx->instance_color);
     }
+    if (ctx->instance_size) {
+        wgpuBufferRelease(ctx->instance_size);
+    }
 
     ctx->instance_transform = wgpuDeviceCreateBuffer(engine->device,
         &(WGPUBufferDescriptor){
@@ -82,15 +119,25 @@ static void flecsEngine_litColoredGeometry_ensureCapacity(
             .size = (uint64_t)new_capacity * sizeof(flecs_rgba_t)
         });
 
+    ctx->instance_size = wgpuDeviceCreateBuffer(engine->device,
+        &(WGPUBufferDescriptor){
+            .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
+            .size = (uint64_t)new_capacity * sizeof(FlecsInstanceSize)
+        });
+
     if (ctx->cpu_transforms) {
         ecs_os_free(ctx->cpu_transforms);
     }
     if (ctx->cpu_colors) {
         ecs_os_free(ctx->cpu_colors);
     }
+    if (ctx->cpu_sizes) {
+        ecs_os_free(ctx->cpu_sizes);
+    }
 
     ctx->cpu_transforms = ecs_os_malloc_n(mat4, new_capacity);
     ctx->cpu_colors = ecs_os_malloc_n(flecs_rgba_t, new_capacity);
+    ctx->cpu_sizes = ecs_os_malloc_n(FlecsInstanceSize, new_capacity);
     ctx->capacity = new_capacity;
 }
 
@@ -151,6 +198,9 @@ static void flecsEngine_litColoredGeometry_prepareInstances(
             glm_mat4_copy((vec4*)wt[i].m, ctx->cpu_transforms[offset]);
             ctx->cpu_colors[offset] = flecsEngine_litColoredGeometry_pickColor(
                 &write_it, i, 2, 3);
+            ctx->cpu_sizes[offset] = (FlecsInstanceSize){
+                .size = {1.0f, 1.0f, 1.0f}
+            };
             offset ++;
         }
     }
@@ -168,6 +218,13 @@ static void flecsEngine_litColoredGeometry_prepareInstances(
         0,
         ctx->cpu_colors,
         (uint64_t)ctx->count * sizeof(flecs_rgba_t));
+
+    wgpuQueueWriteBuffer(
+        engine->queue,
+        ctx->instance_size,
+        0,
+        ctx->cpu_sizes,
+        (uint64_t)ctx->count * sizeof(FlecsInstanceSize));
 }
 
 static void flecsEngine_litColoredGeometry_renderGroup(
@@ -177,12 +234,37 @@ static void flecsEngine_litColoredGeometry_renderGroup(
     const FlecsRenderBatch *batch,
     uint64_t group_id)
 {
+    if (!group_id) {
+        return;
+    }
+
     flecs_lit_colored_geometry_group_ctx_t *ctx =
         ecs_query_get_group_ctx(batch->query, group_id);
     ecs_assert(ctx != NULL, ECS_INTERNAL_ERROR, NULL);
 
-    const FlecsMesh3Impl *mesh = ecs_get(world, (ecs_entity_t)group_id, FlecsMesh3Impl);
-    if (!mesh || !mesh->vertex_buffer || !mesh->index_buffer || !mesh->index_count) {
+    const FlecsMesh3Impl *mesh = ecs_get(
+        world, (ecs_entity_t)group_id, FlecsMesh3Impl);
+    if (!mesh) {
+        char *path = ecs_get_path(world, group_id);
+        ecs_err("missing Mesh3Impl component for geometry group '%s'", path);
+        ecs_os_free(path);
+        return;
+    }
+
+    if (!mesh->vertex_buffer || !mesh->index_buffer || !mesh->index_count) {
+        char *path = ecs_get_path(world, group_id);
+        ecs_err("missing GPU buffers for geometry group '%s'", path);
+        ecs_os_free(path);
+        return;
+    }
+
+    WGPUBufferUsage vertex_usage = wgpuBufferGetUsage(mesh->vertex_buffer);
+    if (!(vertex_usage & WGPUBufferUsage_Vertex)) {
+        return;
+    }
+
+    WGPUBufferUsage index_usage = wgpuBufferGetUsage(mesh->index_buffer);
+    if (!(index_usage & WGPUBufferUsage_Index)) {
         return;
     }
 
@@ -194,6 +276,7 @@ static void flecsEngine_litColoredGeometry_renderGroup(
     wgpuRenderPassEncoderSetVertexBuffer(pass, 0, mesh->vertex_buffer, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 1, ctx->instance_transform, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 2, ctx->instance_color, 0, WGPU_WHOLE_SIZE);
+    wgpuRenderPassEncoderSetVertexBuffer(pass, 3, ctx->instance_size, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetIndexBuffer(pass, mesh->index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderDrawIndexed(pass, (uint32_t)mesh->index_count, (uint32_t)ctx->count, 0, 0, 0);
 }
@@ -206,8 +289,6 @@ static void flecsEngine_litColoredGeometry_callback(
 {
     const ecs_map_t *groups = ecs_query_get_groups(batch->query);
     ecs_assert(groups != NULL, ECS_INTERNAL_ERROR, NULL);
-
-    int32_t group_count = ecs_map_count(groups);
 
     ecs_map_iter_t git = ecs_map_iter(groups);
     while (ecs_map_next(&git)) {
@@ -226,11 +307,11 @@ ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
         .terms = {
             { .id = ecs_id(FlecsMesh3Impl), .src.id = EcsUp, .trav = EcsIsA },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
-            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf, .oper = EcsOptional },
-            { .id = ecs_id(FlecsRgba), .src.id = EcsUp, .trav = EcsIsA, .oper = EcsOptional }
+            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
         },
         .cache_kind = EcsQueryCacheAuto,
         .group_by = EcsIsA,
+        .group_by_callback = flecsEngine_litColoredGeometry_groupByMesh,
         .on_group_create = flecsEngine_litColoredGeometry_onGroupCreate,
         .on_group_delete = flecsEngine_litColoredGeometry_onGroupDelete
     });

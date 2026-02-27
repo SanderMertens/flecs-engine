@@ -43,6 +43,12 @@ const FlecsMesh3Impl* flecsGeometry3_getTrianglePrismAsset(
 const FlecsMesh3Impl* flecsGeometry3_getRightTrianglePrismAsset(
     ecs_world_t *world);
 
+void FlecsSphere_on_replace(
+    ecs_iter_t *it);
+
+void FlecsSphere_on_set(
+    ecs_iter_t *it);
+
 void FlecsEngineGeometry3Import(
     ecs_world_t *world);
 

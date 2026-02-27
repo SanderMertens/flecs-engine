@@ -1,5 +1,34 @@
 #include "geometry3.h"
 #include <math.h>
+#include <stdio.h>
+
+#define FLECS_GEOMETRY3_SPHERE_SEGMENTS_MIN (3)
+#define FLECS_GEOMETRY3_SPHERE_SEGMENTS_MAX (254)
+
+static int32_t flecsGeometry3_sphereSegmentsNormalize(
+    int32_t segments)
+{
+    if (segments < FLECS_GEOMETRY3_SPHERE_SEGMENTS_MIN) {
+        return FLECS_GEOMETRY3_SPHERE_SEGMENTS_MIN;
+    }
+    if (segments > FLECS_GEOMETRY3_SPHERE_SEGMENTS_MAX) {
+        return FLECS_GEOMETRY3_SPHERE_SEGMENTS_MAX;
+    }
+    return segments;
+}
+
+static ecs_entity_t flecsGeometry3_findSphereAsset(
+    const FlecsGeometry3Cache *ctx,
+    int32_t segments)
+{
+    ecs_map_val_t *entry = ecs_map_get(
+        &ctx->sphere_cache, (ecs_map_key_t)segments);
+    if (!entry) {
+        return 0;
+    }
+
+    return (ecs_entity_t)entry[0];
+}
 
 static void flecsGeometry3_generateSphereMesh(
     FlecsMesh3 *mesh,
@@ -58,5 +87,59 @@ static void flecsGeometry3_generateSphereMesh(
             idx[ii ++] = c;
             idx[ii ++] = d;
         }
+    }
+}
+
+static ecs_entity_t flecsGeometry3_getSphereAsset(
+    ecs_world_t *world,
+    int32_t segments)
+{
+    int32_t normalized_segments = flecsGeometry3_sphereSegmentsNormalize(segments);
+    FlecsGeometry3Cache *ctx = ecs_singleton_ensure(world, FlecsGeometry3Cache);
+
+    ecs_entity_t asset = flecsGeometry3_findSphereAsset(ctx, normalized_segments);
+    if (asset) {
+        return asset;
+    }
+
+    char asset_name[32];
+    snprintf(asset_name, sizeof(asset_name), "Sphere.%d", normalized_segments);
+    asset = flecsGeometry3_createAsset(world, ctx, asset_name);
+
+    FlecsMesh3 *mesh = ecs_ensure(world, asset, FlecsMesh3);
+    flecsGeometry3_generateSphereMesh(mesh, normalized_segments);
+    ecs_modified(world, asset, FlecsMesh3);
+
+    ecs_map_insert(
+        &ctx->sphere_cache,
+        (ecs_map_key_t)normalized_segments,
+        (ecs_map_val_t)asset);
+
+    return asset;
+}
+
+void FlecsSphere_on_replace(
+    ecs_iter_t *it)
+{
+    ecs_world_t *world = it->world;
+    const FlecsSphere *old = ecs_field(it, FlecsSphere, 0);
+    const FlecsSphere *new = ecs_field(it, FlecsSphere, 1);
+    const FlecsGeometry3Cache *ctx = ecs_singleton_get(world, FlecsGeometry3Cache);
+    ecs_assert(ctx != NULL, ECS_INTERNAL_ERROR, NULL);
+
+    for (int32_t i = 0; i < it->count; i ++) {
+        int32_t old_segments = flecsGeometry3_sphereSegmentsNormalize(old[i].segments);
+        int32_t new_segments = flecsGeometry3_sphereSegmentsNormalize(new[i].segments);
+        if (old_segments == new_segments) {
+            continue;
+        }
+
+        ecs_entity_t old_asset = flecsGeometry3_findSphereAsset(ctx, old_segments);
+        if (old_asset) {
+            ecs_remove_pair(world, it->entities[i], EcsIsA, old_asset);
+        }
+
+        ecs_entity_t asset = flecsGeometry3_getSphereAsset(world, new_segments);
+        ecs_add_pair(world, it->entities[i], EcsIsA, asset);
     }
 }

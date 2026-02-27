@@ -93,6 +93,16 @@ void flecsEngine_batchCtx_draw(
         return;
     }
 
+    WGPUBufferUsage vertex_usage = wgpuBufferGetUsage(ctx->mesh.vertex_buffer);
+    if (!(vertex_usage & WGPUBufferUsage_Vertex)) {
+        return;
+    }
+
+    WGPUBufferUsage index_usage = wgpuBufferGetUsage(ctx->mesh.index_buffer);
+    if (!(index_usage & WGPUBufferUsage_Index)) {
+        return;
+    }
+
     wgpuRenderPassEncoderSetVertexBuffer(pass, 0, ctx->mesh.vertex_buffer, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 1, ctx->instance_transform, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 2, ctx->instance_color, 0, WGPU_WHOLE_SIZE);

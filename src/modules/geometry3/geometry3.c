@@ -285,12 +285,17 @@ void FlecsEngineGeometry3Import(
         .ctor = flecs_default_ctor
     });
 
+    ecs_set_hooks(world, FlecsSphere, {
+        .on_replace = FlecsSphere_on_replace
+    });
+
     ecs_set_hooks(world, FlecsGeometry3Cache, {
         .ctor = ecs_ctor(FlecsGeometry3Cache),
         .dtor = ecs_dtor(FlecsGeometry3Cache)
     });
 
     ecs_add_pair(world, ecs_id(FlecsMesh3), EcsWith, ecs_id(FlecsMesh3Impl));
+    ecs_add_pair(world, ecs_id(FlecsMesh3), EcsOnInstantiate, EcsInherit);
     ecs_add_pair(world, ecs_id(FlecsMesh3Impl), EcsOnInstantiate, EcsInherit);
 
     ecs_singleton_ensure(world, FlecsGeometry3Cache);

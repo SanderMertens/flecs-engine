@@ -199,6 +199,11 @@ int main(
   ecs_set(world, pyramid, FlecsRotation3, {0, M_PI / 4, 0});
   ecs_set(world, pyramid, FlecsRgba, {128, 0, 128});
 
+  ecs_entity_t sphere = ecs_new(world);
+  ecs_set(world, sphere, FlecsSphere, {5});
+  ecs_set(world, sphere, FlecsPosition3, {6, -2, -12});
+  ecs_set(world, sphere, FlecsRgba, {255, 220, 80});
+
   ecs_entity_t quad = ecs_new(world);
   ecs_set(world, quad, FlecsQuad, {2, 2});
   ecs_set(world, quad, FlecsPosition3, {-6, -3, -9});
@@ -220,9 +225,10 @@ int main(
   double i = 0;
   while (ecs_progress(world, 0)) {
     ecs_set(world, box, FlecsRotation3, {0, i, 0});
-    ecs_set(world, triangle_prism, FlecsRotation3, {0, i * 2, 0});
-    ecs_set(world, right_triangle_prism, FlecsRotation3, {0, i * 3, 0});
-    ecs_set(world, pyramid, FlecsRotation3, {0, i * 4, 0});
+    ecs_set(world, triangle_prism, FlecsRotation3, {0, i * 1.4, 0});
+    ecs_set(world, right_triangle_prism, FlecsRotation3, {0, i * 2.8, 0});
+    ecs_set(world, pyramid, FlecsRotation3, {0, i * 3.2, 0});
+    ecs_set(world, sphere, FlecsRotation3, {0, i * 4.6, 0});
     i += 0.01;
   }
 
