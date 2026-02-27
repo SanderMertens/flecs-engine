@@ -3,13 +3,6 @@
 #include "../../geometry3/geometry3.h"
 #include "flecs_engine.h"
 
-static const int32_t kLitIsaLogFrameLimit = 180;
-static int32_t g_lit_isa_log_frames = 0;
-
-static bool flecsEngineLitIsaLogEnabled(void) {
-    return g_lit_isa_log_frames < kLitIsaLogFrameLimit;
-}
-
 typedef struct {
     WGPUBuffer instance_transform;
     WGPUBuffer instance_color;
@@ -27,14 +20,6 @@ static void* flecsEngine_litColoredGeometry_onGroupCreate(
     (void)world;
     (void)ptr;
 
-    if (flecsEngineLitIsaLogEnabled()) {
-        char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-        ecs_dbg("[lit-isa] create group for asset=%s (%llu)",
-            group_name ? group_name : "<null>",
-            (unsigned long long)group_id);
-        ecs_os_free(group_name);
-    }
-
     return ecs_os_calloc_t(flecs_lit_colored_geometry_group_ctx_t);
 }
 
@@ -47,14 +32,6 @@ static void flecsEngine_litColoredGeometry_onGroupDelete(
     (void)ptr;
 
     flecs_lit_colored_geometry_group_ctx_t *ctx = group_ptr;
-    if (flecsEngineLitIsaLogEnabled()) {
-        char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-        ecs_dbg("[lit-isa] delete group asset=%s (%llu), last_count=%d, capacity=%d",
-            group_name ? group_name : "<null>",
-            (unsigned long long)group_id,
-            ctx->count, ctx->capacity);
-        ecs_os_free(group_name);
-    }
 
     if (ctx->instance_transform) {
         wgpuBufferRelease(ctx->instance_transform);
@@ -115,10 +92,6 @@ static void flecsEngine_litColoredGeometry_ensureCapacity(
     ctx->cpu_transforms = ecs_os_malloc_n(mat4, new_capacity);
     ctx->cpu_colors = ecs_os_malloc_n(flecs_rgba_t, new_capacity);
     ctx->capacity = new_capacity;
-
-    if (flecsEngineLitIsaLogEnabled()) {
-        ecs_dbg("[lit-isa] resize instance buffers: new_capacity=%d", new_capacity);
-    }
 }
 
 static flecs_rgba_t flecsEngine_litColoredGeometry_pickColor(
@@ -163,12 +136,6 @@ static void flecsEngine_litColoredGeometry_prepareInstances(
     }
 
     if (!ctx->count) {
-        if (flecsEngineLitIsaLogEnabled()) {
-            char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-            ecs_dbg("[lit-isa] group has zero instances asset=%s",
-                group_name ? group_name : "<null>");
-            ecs_os_free(group_name);
-        }
         return;
     }
 
@@ -216,16 +183,6 @@ static void flecsEngine_litColoredGeometry_renderGroup(
 
     const FlecsMesh3Impl *mesh = ecs_get(world, (ecs_entity_t)group_id, FlecsMesh3Impl);
     if (!mesh || !mesh->vertex_buffer || !mesh->index_buffer || !mesh->index_count) {
-        if (flecsEngineLitIsaLogEnabled()) {
-            char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-            ecs_dbg("[lit-isa] skip group asset=%s mesh_missing=%d vb=%p ib=%p index_count=%d",
-                group_name ? group_name : "<null>",
-                mesh == NULL,
-                mesh ? (void*)mesh->vertex_buffer : NULL,
-                mesh ? (void*)mesh->index_buffer : NULL,
-                mesh ? mesh->index_count : 0);
-            ecs_os_free(group_name);
-        }
         return;
     }
 
@@ -239,14 +196,6 @@ static void flecsEngine_litColoredGeometry_renderGroup(
     wgpuRenderPassEncoderSetVertexBuffer(pass, 2, ctx->instance_color, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetIndexBuffer(pass, mesh->index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderDrawIndexed(pass, (uint32_t)mesh->index_count, (uint32_t)ctx->count, 0, 0, 0);
-
-    if (flecsEngineLitIsaLogEnabled()) {
-        char *group_name = ecs_get_path(world, (ecs_entity_t)group_id);
-        ecs_dbg("[lit-isa] draw asset=%s instances=%d indices=%d",
-            group_name ? group_name : "<null>",
-            ctx->count, mesh->index_count);
-        ecs_os_free(group_name);
-    }
 }
 
 static void flecsEngine_litColoredGeometry_callback(
@@ -259,18 +208,11 @@ static void flecsEngine_litColoredGeometry_callback(
     ecs_assert(groups != NULL, ECS_INTERNAL_ERROR, NULL);
 
     int32_t group_count = ecs_map_count(groups);
-    if (flecsEngineLitIsaLogEnabled()) {
-        ecs_dbg("[lit-isa] frame groups=%d", group_count);
-    }
 
     ecs_map_iter_t git = ecs_map_iter(groups);
     while (ecs_map_next(&git)) {
         uint64_t group = ecs_map_key(&git);
         flecsEngine_litColoredGeometry_renderGroup(world, engine, pass, batch, group);
-    }
-
-    if (flecsEngineLitIsaLogEnabled()) {
-        g_lit_isa_log_frames ++;
     }
 }
 
