@@ -300,7 +300,8 @@ ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
         .vertex_type = ecs_id(FlecsLitVertex),
         .instance_types = {
             ecs_id(FlecsInstanceTransform),
-            ecs_id(FlecsInstanceColor)
+            ecs_id(FlecsInstanceColor),
+            ecs_id(FlecsInstanceSize)
         },
         .uniforms = {
             ecs_id(FlecsUniform)

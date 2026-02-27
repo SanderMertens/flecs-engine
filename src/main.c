@@ -169,8 +169,8 @@ int main(
   s->camera = camera;
   ecs_modified(world, view, FlecsRenderView);
 
-  for (int x = 0; x < 100; x ++) {
-    for (int y = 0; y < 50; y ++) {
+  for (int x = 0; x < 1000; x ++) {
+    for (int y = 0; y < 4000; y ++) {
       ecs_entity_t box = ecs_new(world);
       ecs_set(world, box, FlecsBox, {1.0f, y + 1, 1.0f});
       ecs_set(world, box, FlecsPosition3, {(x - 50) * 2, -2 + 0.5 * (y + 1), -10 - y * 2});

@@ -11,7 +11,8 @@ static const char *kShaderSource =
     "  @location(3) m1 : vec4<f32>,\n"
     "  @location(4) m2 : vec4<f32>,\n"
     "  @location(5) m3 : vec4<f32>,\n"
-    "  @location(6) color : vec4<f32>\n"
+    "  @location(6) color : vec4<f32>,\n"
+    "  @location(7) size : vec3<f32>\n"
     "};\n"
     "struct VertexOutput {\n"
     "  @builtin(position) pos : vec4<f32>,\n"
@@ -30,8 +31,11 @@ static const char *kShaderSource =
     "}\n"
     "@vertex fn vs_main(input : VertexInput) -> VertexOutput {\n"
     "  var out : VertexOutput;\n"
-    "  let model = mat4x4<f32>(input.m0, input.m1, input.m2, input.m3);\n"
-    "  let model3 = mat3x3<f32>(input.m0.xyz, input.m1.xyz, input.m2.xyz);\n"
+    "  let sm0 = input.m0 * input.size.x;\n"
+    "  let sm1 = input.m1 * input.size.y;\n"
+    "  let sm2 = input.m2 * input.size.z;\n"
+    "  let model = mat4x4<f32>(sm0, sm1, sm2, input.m3);\n"
+    "  let model3 = mat3x3<f32>(sm0.xyz, sm1.xyz, sm2.xyz);\n"
     "  let world_pos = model * vec4<f32>(input.pos, 1.0);\n"
     "  out.pos = uniforms.vp * world_pos;\n"
     "  out.normal = transform_normal(model3, input.nrm);\n"
@@ -47,7 +51,7 @@ static const char *kShaderSource =
 ecs_entity_t flecsEngineShader_litColored(
     ecs_world_t *world)
 {
-    return flecsEngineEnsureShader(world, "LitColoredShader",
+    return flecsEngineEnsureShader(world, "LitColoredhader",
         &(FlecsShader){
             .source = kShaderSource,
             .vertex_entry = "vs_main",

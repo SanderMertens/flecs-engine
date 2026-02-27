@@ -32,6 +32,12 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsInstanceColor);
 
 typedef struct {
+    flecs_vec3_t size;
+} FlecsInstanceSize;
+
+extern ECS_COMPONENT_DECLARE(FlecsInstanceSize);
+
+typedef struct {
     flecs_mat4_t mvp;
 } FlecsUniform;
 
