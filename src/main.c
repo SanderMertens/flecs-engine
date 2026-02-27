@@ -172,8 +172,8 @@ int main(
   for (int x = 0; x < 100; x ++) {
     for (int y = 0; y < 50; y ++) {
       ecs_entity_t box = ecs_new(world);
-      ecs_set(world, box, FlecsBox, {1.0f, 3 * (rand() / (float)RAND_MAX), 1.0f});
-      ecs_set(world, box, FlecsPosition3, {(x - 50) * 2, -2, -10 - y * 2});
+      ecs_set(world, box, FlecsBox, {1.0f, y + 1, 1.0f});
+      ecs_set(world, box, FlecsPosition3, {(x - 50) * 2, -2 + 0.5 * (y + 1), -10 - y * 2});
       ecs_set(world, box, FlecsRotation3, {0, 0, 0});
       ecs_set(world, box, FlecsRgba, {0, 64 * ((50 - y) / 50.0), 64, 255});
     }

@@ -84,7 +84,7 @@ static void flecsEngine_litColoredBoxes_prepareInstances(
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_transform,
-            ctx->count,
+            ctx->count * sizeof(mat4),
             wt,
             it.count * sizeof(mat4));
 
@@ -92,7 +92,7 @@ static void flecsEngine_litColoredBoxes_prepareInstances(
             wgpuQueueWriteBuffer(
                 engine->queue,
                 ctx->instance_color,
-                ctx->count,
+                ctx->count  * sizeof(flecs_rgba_t),
                 colors,
                 it.count * sizeof(flecs_rgba_t));
         }
