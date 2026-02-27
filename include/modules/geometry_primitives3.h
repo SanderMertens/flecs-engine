@@ -28,6 +28,23 @@ ECS_STRUCT(FlecsTriangle, {
     float y;
 });
 
+ECS_STRUCT(FlecsRightTriangle, {
+    float x;
+    float y;
+});
+
+ECS_STRUCT(FlecsTrianglePrism, {
+    float x;
+    float y;
+    float z;
+});
+
+ECS_STRUCT(FlecsRightTrianglePrism, {
+    float x;
+    float y;
+    float z;
+});
+
 ECS_STRUCT(FlecsSphere, {
     int32_t segments;
 });

@@ -9,6 +9,9 @@ ECS_COMPONENT_DECLARE(FlecsBox);
 ECS_COMPONENT_DECLARE(FlecsPyramid);
 ECS_COMPONENT_DECLARE(FlecsQuad);
 ECS_COMPONENT_DECLARE(FlecsTriangle);
+ECS_COMPONENT_DECLARE(FlecsRightTriangle);
+ECS_COMPONENT_DECLARE(FlecsTrianglePrism);
+ECS_COMPONENT_DECLARE(FlecsRightTrianglePrism);
 ECS_COMPONENT_DECLARE(FlecsSphere);
 ECS_COMPONENT_DECLARE(FlecsCylinder);
 ECS_COMPONENT_DECLARE(FlecsMesh3Impl);
@@ -56,6 +59,9 @@ ECS_CTOR(FlecsGeometry3Cache, ptr, {
     ptr->unit_pyramid_asset = 0;
     ptr->unit_quad_asset = 0;
     ptr->unit_triangle_asset = 0;
+    ptr->unit_right_triangle_asset = 0;
+    ptr->unit_triangle_prism_asset = 0;
+    ptr->unit_right_triangle_prism_asset = 0;
 })
 
 ECS_DTOR(FlecsGeometry3Cache, ptr, {
@@ -186,6 +192,9 @@ void FlecsEngineGeometry3Import(
     ECS_COMPONENT_DEFINE(world, FlecsPyramid);
     ECS_COMPONENT_DEFINE(world, FlecsQuad);
     ECS_COMPONENT_DEFINE(world, FlecsTriangle);
+    ECS_COMPONENT_DEFINE(world, FlecsRightTriangle);
+    ECS_COMPONENT_DEFINE(world, FlecsTrianglePrism);
+    ECS_COMPONENT_DEFINE(world, FlecsRightTrianglePrism);
     ECS_COMPONENT_DEFINE(world, FlecsSphere);
     ECS_COMPONENT_DEFINE(world, FlecsCylinder);
     ECS_COMPONENT_DEFINE(world, FlecsGeometry3Cache);
@@ -228,6 +237,32 @@ void FlecsEngineGeometry3Import(
         .members = {
             { .name = "x", .type = ecs_id(ecs_f32_t) },
             { .name = "y", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsRightTriangle),
+        .members = {
+            { .name = "x", .type = ecs_id(ecs_f32_t) },
+            { .name = "y", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsTrianglePrism),
+        .members = {
+            { .name = "x", .type = ecs_id(ecs_f32_t) },
+            { .name = "y", .type = ecs_id(ecs_f32_t) },
+            { .name = "z", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsRightTrianglePrism),
+        .members = {
+            { .name = "x", .type = ecs_id(ecs_f32_t) },
+            { .name = "y", .type = ecs_id(ecs_f32_t) },
+            { .name = "z", .type = ecs_id(ecs_f32_t) }
         }
     });
 

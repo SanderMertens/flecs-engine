@@ -3,7 +3,7 @@
 static void flecsGeometry3_generateTriangleMesh(
     FlecsMesh3 *mesh)
 {
-    const float half = 0.5f;
+    const float half_width = 0.5773503f; /* 1 / sqrt(3), height is 1 */
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, 3);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, 3);
@@ -13,14 +13,14 @@ static void flecsGeometry3_generateTriangleMesh(
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
     uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
 
-    v[0] = (flecs_vec3_t){-half, -half, 0.0f};
-    v[1] = (flecs_vec3_t){-half, half, 0.0f};
-    v[2] = (flecs_vec3_t){half, -half, 0.0f};
+    v[0] = (flecs_vec3_t){-half_width, -0.5f, 0.0f};
+    v[1] = (flecs_vec3_t){half_width, -0.5f, 0.0f};
+    v[2] = (flecs_vec3_t){0.0f, 0.5f, 0.0f};
     vn[0] = vn[1] = vn[2] = (flecs_vec3_t){0.0f, 0.0f, 1.0f};
 
     idx[0] = 0;
-    idx[1] = 1;
-    idx[2] = 2;
+    idx[1] = 2;
+    idx[2] = 1;
 }
 
 const FlecsMesh3Impl* flecsGeometry3_getTriangleAsset(

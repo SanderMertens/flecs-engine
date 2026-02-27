@@ -168,31 +168,63 @@ int main(
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_pyramids(world);
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);
+  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangles(world);
+  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangle_prisms(world);
+  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangle_prisms(world);
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_litColoredGeometry(world);
   s->camera = camera;
   ecs_modified(world, view, FlecsRenderView);
 
   ecs_entity_t box = ecs_new(world);
   ecs_set(world, box, FlecsBox, {2, 2, 2});
-  ecs_set(world, box, FlecsPosition3, {-6, -2, -10});
+  ecs_set(world, box, FlecsPosition3, {-6, -2, -12});
+  ecs_set(world, box, FlecsRotation3, {0, M_PI / 4, 0});
   ecs_set(world, box, FlecsRgba, {255, 0, 0});
+
+  ecs_entity_t triangle_prism = ecs_new(world);
+  ecs_set(world, triangle_prism, FlecsTrianglePrism, {2, 2, 2});
+  ecs_set(world, triangle_prism, FlecsPosition3, {-3, -2, -12});
+  ecs_set(world, triangle_prism, FlecsRotation3, {0, M_PI / 4, 0});
+  ecs_set(world, triangle_prism, FlecsRgba, {0, 128, 0});
+
+  ecs_entity_t right_triangle_prism = ecs_new(world);
+  ecs_set(world, right_triangle_prism, FlecsRightTrianglePrism, {2, 2, 2});
+  ecs_set(world, right_triangle_prism, FlecsPosition3, {0, -2, -12});
+  ecs_set(world, right_triangle_prism, FlecsRotation3, {0, M_PI / 4, 0});
+  ecs_set(world, right_triangle_prism, FlecsRgba, {0, 0, 128});
 
   ecs_entity_t pyramid = ecs_new(world);
   ecs_set(world, pyramid, FlecsPyramid, {2, 2, 2});
-  ecs_set(world, pyramid, FlecsPosition3, {-3, -2, -10});
-  ecs_set(world, pyramid, FlecsRgba, {255, 255, 0});
+  ecs_set(world, pyramid, FlecsPosition3, {3, -2, -12});
+  ecs_set(world, pyramid, FlecsRotation3, {0, M_PI / 4, 0});
+  ecs_set(world, pyramid, FlecsRgba, {128, 0, 128});
 
   ecs_entity_t quad = ecs_new(world);
   ecs_set(world, quad, FlecsQuad, {2, 2});
-  ecs_set(world, quad, FlecsPosition3, {0, -3, -10});
+  ecs_set(world, quad, FlecsPosition3, {-6, -3, -9});
   ecs_set(world, quad, FlecsRotation3, {-M_PI / 2, 0, 0});
-  ecs_set(world, quad, FlecsRgba, {0, 255, 0});
+  ecs_set(world, quad, FlecsRgba, {128, 0, 0});
 
   ecs_entity_t triangle = ecs_new(world);
   ecs_set(world, triangle, FlecsTriangle, {2, 2});
-  ecs_set(world, triangle, FlecsPosition3, {3, -3, -10});
+  ecs_set(world, triangle, FlecsPosition3, {-3, -3, -9});
   ecs_set(world, triangle, FlecsRotation3, {-M_PI / 2, 0, 0});
-  ecs_set(world, triangle, FlecsRgba, {0, 0, 255});
+  ecs_set(world, triangle, FlecsRgba, {0, 128, 0});
+
+  ecs_entity_t right_triangle = ecs_new(world);
+  ecs_set(world, right_triangle, FlecsRightTriangle, {2, 2});
+  ecs_set(world, right_triangle, FlecsPosition3, {0, -3, -9});
+  ecs_set(world, right_triangle, FlecsRotation3, {-M_PI / 2, 0, 0});
+  ecs_set(world, right_triangle, FlecsRgba, {0, 0, 128});
+
+  double i = 0;
+  while (ecs_progress(world, 0)) {
+    ecs_set(world, box, FlecsRotation3, {0, i, 0});
+    ecs_set(world, triangle_prism, FlecsRotation3, {0, i * 2, 0});
+    ecs_set(world, right_triangle_prism, FlecsRotation3, {0, i * 3, 0});
+    ecs_set(world, pyramid, FlecsRotation3, {0, i * 4, 0});
+    i += 0.01;
+  }
 
   return ecs_app_run(world, &(ecs_app_desc_t) {
     .enable_rest = !options.frame_output_mode,

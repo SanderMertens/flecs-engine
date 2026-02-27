@@ -10,6 +10,9 @@ typedef struct {
     ecs_entity_t unit_pyramid_asset;
     ecs_entity_t unit_quad_asset;
     ecs_entity_t unit_triangle_asset;
+    ecs_entity_t unit_right_triangle_asset;
+    ecs_entity_t unit_triangle_prism_asset;
+    ecs_entity_t unit_right_triangle_prism_asset;
 } FlecsGeometry3Cache;
 
 extern ECS_COMPONENT_DECLARE(FlecsGeometry3Cache);
@@ -29,6 +32,15 @@ const FlecsMesh3Impl* flecsGeometry3_getQuadAsset(
     ecs_world_t *world);
 
 const FlecsMesh3Impl* flecsGeometry3_getTriangleAsset(
+    ecs_world_t *world);
+
+const FlecsMesh3Impl* flecsGeometry3_getRightTriangleAsset(
+    ecs_world_t *world);
+
+const FlecsMesh3Impl* flecsGeometry3_getTrianglePrismAsset(
+    ecs_world_t *world);
+
+const FlecsMesh3Impl* flecsGeometry3_getRightTrianglePrismAsset(
     ecs_world_t *world);
 
 void FlecsEngineGeometry3Import(

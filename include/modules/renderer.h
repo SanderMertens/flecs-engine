@@ -71,6 +71,18 @@ ecs_entity_t flecsEngine_createBatch_quads(
 ecs_entity_t flecsEngine_createBatch_triangles(
     ecs_world_t *world);
 
+// Render scalable right triangle primitives without IsA grouping
+ecs_entity_t flecsEngine_createBatch_right_triangles(
+    ecs_world_t *world);
+
+// Render scalable triangle prism primitives without IsA grouping
+ecs_entity_t flecsEngine_createBatch_triangle_prisms(
+    ecs_world_t *world);
+
+// Render scalable right triangle prism primitives without IsA grouping
+ecs_entity_t flecsEngine_createBatch_right_triangle_prisms(
+    ecs_world_t *world);
+
 // Render a list of batches in order
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;
