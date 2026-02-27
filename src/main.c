@@ -171,15 +171,15 @@ int main(
   ecs_modified(world, view, FlecsRenderView);
 
   ecs_entity_t box = ecs_new(world);
-  ecs_set(world, box, FlecsBox, {1, 1, 1});
+  ecs_set(world, box, FlecsBox, {2, 2, 2});
   ecs_set(world, box, FlecsPosition3, {-6, -2, -10});
   ecs_set(world, box, FlecsRgba, {255, 0, 0});
 
   ecs_entity_t quad = ecs_new(world);
-  ecs_set(world, quad, FlecsQuad, {1, 1});
-  ecs_set(world, quad, FlecsPosition3, {-3, -2, -10});
+  ecs_set(world, quad, FlecsQuad, {2, 2});
+  ecs_set(world, quad, FlecsPosition3, {-3, -3, -10});
   ecs_set(world, quad, FlecsRotation3, {-M_PI / 2, 0, 0});
-  ecs_set(world, quad, FlecsRgba, {255, 0, 0});
+  ecs_set(world, quad, FlecsRgba, {0, 255, 0});
 
   return ecs_app_run(world, &(ecs_app_desc_t) {
     .enable_rest = !options.frame_output_mode,
