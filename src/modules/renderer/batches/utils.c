@@ -9,7 +9,11 @@ void flecsEngine_batchCtx_init(
     ctx->instance_size = NULL;
     ctx->count = 0;
     ctx->capacity = 0;
-    ctx->mesh = mesh;
+    if (mesh) {
+        ctx->mesh = *mesh;
+    } else {
+        ecs_os_zeromem(&ctx->mesh);
+    }
 }
 
 void flecsEngine_batchCtx_fini(
@@ -85,10 +89,14 @@ void flecsEngine_batchCtx_draw(
         return;
     }
 
-    wgpuRenderPassEncoderSetVertexBuffer(pass, 0, ctx->mesh->vertex_buffer, 0, WGPU_WHOLE_SIZE);
+    if (!ctx->mesh.vertex_buffer || !ctx->mesh.index_buffer || !ctx->mesh.index_count) {
+        return;
+    }
+
+    wgpuRenderPassEncoderSetVertexBuffer(pass, 0, ctx->mesh.vertex_buffer, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 1, ctx->instance_transform, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 2, ctx->instance_color, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 3, ctx->instance_size, 0, WGPU_WHOLE_SIZE);
-    wgpuRenderPassEncoderSetIndexBuffer(pass, ctx->mesh->index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
-    wgpuRenderPassEncoderDrawIndexed(pass, ctx->mesh->index_count, ctx->count, 0, 0, 0);
+    wgpuRenderPassEncoderSetIndexBuffer(pass, ctx->mesh.index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
+    wgpuRenderPassEncoderDrawIndexed(pass, ctx->mesh.index_count, ctx->count, 0, 0, 0);
 }

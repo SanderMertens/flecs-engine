@@ -7,6 +7,7 @@
 ECS_COMPONENT_DECLARE(FlecsMesh3);
 ECS_COMPONENT_DECLARE(FlecsBox);
 ECS_COMPONENT_DECLARE(FlecsQuad);
+ECS_COMPONENT_DECLARE(FlecsTriangle);
 ECS_COMPONENT_DECLARE(FlecsSphere);
 ECS_COMPONENT_DECLARE(FlecsCylinder);
 ECS_COMPONENT_DECLARE(FlecsMesh3Impl);
@@ -52,6 +53,7 @@ ECS_CTOR(FlecsGeometry3Cache, ptr, {
     ecs_map_init(&ptr->cylinder_cache, NULL);
     ptr->unit_box_asset = 0;
     ptr->unit_quad_asset = 0;
+    ptr->unit_triangle_asset = 0;
 })
 
 ECS_DTOR(FlecsGeometry3Cache, ptr, {
@@ -110,18 +112,42 @@ static void FlecsMesh3_on_set(
         ecs_os_free(verts);
 
         int32_t ind_size = ind_count * (int32_t)sizeof(uint16_t);
+        int32_t ind_upload_size = (ind_size + 3) & ~3;
         WGPUBufferDescriptor ind_desc = {
             .usage = WGPUBufferUsage_Index | WGPUBufferUsage_CopyDst,
-            .size = (uint64_t)ind_size
+            .size = (uint64_t)ind_upload_size
         };
 
         mesh_impl->index_buffer = wgpuDeviceCreateBuffer(impl->device, &ind_desc);
-        wgpuQueueWriteBuffer(
-            impl->queue,
-            mesh_impl->index_buffer,
-            0,
-            ecs_vec_first_t(&mesh[i].indices, uint16_t),
-            ind_size);
+        uint16_t *indices = ecs_vec_first_t(&mesh[i].indices, uint16_t);
+
+        if (ind_upload_size == ind_size) {
+            wgpuQueueWriteBuffer(
+                impl->queue,
+                mesh_impl->index_buffer,
+                0,
+                indices,
+                ind_size);
+        } else {
+            int32_t padded_count = ind_upload_size / (int32_t)sizeof(uint16_t);
+            uint16_t *padded_indices = ecs_os_malloc_n(uint16_t, padded_count);
+
+            for (int32_t p = 0; p < padded_count; p ++) {
+                padded_indices[p] = 0;
+            }
+            for (int32_t p = 0; p < ind_count; p ++) {
+                padded_indices[p] = indices[p];
+            }
+
+            wgpuQueueWriteBuffer(
+                impl->queue,
+                mesh_impl->index_buffer,
+                0,
+                padded_indices,
+                ind_upload_size);
+
+            ecs_os_free(padded_indices);
+        }
 
         mesh_impl->vertex_count = vert_count;
         mesh_impl->index_count = ind_count;
@@ -156,6 +182,7 @@ void FlecsEngineGeometry3Import(
     ECS_COMPONENT_DEFINE(world, FlecsMesh3Impl);
     ECS_COMPONENT_DEFINE(world, FlecsBox);
     ECS_COMPONENT_DEFINE(world, FlecsQuad);
+    ECS_COMPONENT_DEFINE(world, FlecsTriangle);
     ECS_COMPONENT_DEFINE(world, FlecsSphere);
     ECS_COMPONENT_DEFINE(world, FlecsCylinder);
     ECS_COMPONENT_DEFINE(world, FlecsGeometry3Cache);
@@ -178,6 +205,14 @@ void FlecsEngineGeometry3Import(
 
     ecs_struct(world, {
         .entity = ecs_id(FlecsQuad),
+        .members = {
+            { .name = "x", .type = ecs_id(ecs_f32_t) },
+            { .name = "y", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsTriangle),
         .members = {
             { .name = "x", .type = ecs_id(ecs_f32_t) },
             { .name = "y", .type = ecs_id(ecs_f32_t) }

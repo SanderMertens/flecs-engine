@@ -166,6 +166,7 @@ int main(
   FlecsRenderView *s = ecs_ensure(world, view, FlecsRenderView);
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
+  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);
   ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_litColoredGeometry(world);
   s->camera = camera;
   ecs_modified(world, view, FlecsRenderView);
@@ -180,6 +181,12 @@ int main(
   ecs_set(world, quad, FlecsPosition3, {-3, -3, -10});
   ecs_set(world, quad, FlecsRotation3, {-M_PI / 2, 0, 0});
   ecs_set(world, quad, FlecsRgba, {0, 255, 0});
+
+  ecs_entity_t triangle = ecs_new(world);
+  ecs_set(world, triangle, FlecsTriangle, {2, 2});
+  ecs_set(world, triangle, FlecsPosition3, {0, -3, -10});
+  ecs_set(world, triangle, FlecsRotation3, {-M_PI / 2, 0, 0});
+  ecs_set(world, triangle, FlecsRgba, {0, 0, 255});
 
   return ecs_app_run(world, &(ecs_app_desc_t) {
     .enable_rest = !options.frame_output_mode,

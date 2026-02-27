@@ -9,7 +9,7 @@ typedef struct {
     WGPUBuffer instance_size;
     int32_t count;
     int32_t capacity;
-    const FlecsMesh3Impl *mesh;
+    FlecsMesh3Impl mesh;
 } flecs_engine_batch_ctx_t;
 
 void flecsEngine_batchCtx_init(
