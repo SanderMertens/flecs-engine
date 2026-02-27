@@ -87,22 +87,6 @@ static void flecsEngine_litColoredBoxes_ensureCapacity(
     ctx->capacity = new_capacity;
 }
 
-static flecs_rgba_t flecsEngine_litColoredBoxes_pickColorSelfOnly(
-    const ecs_iter_t *it,
-    int32_t row,
-    int32_t field_index)
-{
-    const FlecsRgba *self_color = ecs_field(it, FlecsRgba, field_index);
-    if (self_color) {
-        if (ecs_field_is_self(it, field_index)) {
-            return self_color[row];
-        }
-        return self_color[0];
-    }
-
-    return (flecs_rgba_t){255, 255, 255, 255};
-}
-
 static void flecsEngine_litColoredBoxes_prepareInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
@@ -112,9 +96,9 @@ static void flecsEngine_litColoredBoxes_prepareInstances(
     ecs_query_t *q = batch->query;
     ctx->count = 0;
 
-    ecs_iter_t count_it = ecs_query_iter(world, q);
-    while (ecs_query_next(&count_it)) {
-        ctx->count += count_it.count;
+    ecs_iter_t it = ecs_query_iter(world, q);
+    while (ecs_query_next(&it)) {
+        ctx->count += it.count;
     }
 
     if (!ctx->count) {
@@ -124,20 +108,20 @@ static void flecsEngine_litColoredBoxes_prepareInstances(
     flecsEngine_litColoredBoxes_ensureCapacity(engine, ctx, ctx->count);
 
     int32_t offset = 0;
-    ecs_iter_t write_it = ecs_query_iter(world, q);
-    while (ecs_query_next(&write_it)) {
-        const FlecsWorldTransform3 *wt = ecs_field(
-            &write_it, FlecsWorldTransform3, kBoxField_WorldTransform);
-        const FlecsBox *boxes = ecs_field(&write_it, FlecsBox, kBoxField_Box);
+    it = ecs_query_iter(world, q);
+    while (ecs_query_next(&it)) {
+        const FlecsBox *boxes = ecs_field(&it, FlecsBox, 0);
+        const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
+        const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
 
-        for (int32_t i = 0; i < write_it.count; i ++) {
+        for (int32_t i = 0; i < it.count; i ++) {
             glm_mat4_copy((vec4*)wt[i].m, ctx->cpu_transforms[offset]);
 
             vec3 size = {boxes[i].x, boxes[i].y, boxes[i].z};
             glm_scale(ctx->cpu_transforms[offset], size);
 
-            ctx->cpu_colors[offset] =
-                flecsEngine_litColoredBoxes_pickColorSelfOnly(&write_it, i, kBoxField_Color);
+            ctx->cpu_colors[offset] = colors[i];
+
             offset ++;
         }
     }
