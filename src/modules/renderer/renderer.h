@@ -25,6 +25,8 @@ ECS_STRUCT(FlecsRenderBatch, {
     ecs_entity_t uniforms[FLECS_ENGINE_UNIFORMS_MAX];
 ECS_PRIVATE
     flecs_render_batch_callback callback;
+    void *ctx;
+    void (*free_ctx)(void *ctx);
 });
 
 void FlecsRenderBatch_on_set(

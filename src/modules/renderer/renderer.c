@@ -15,6 +15,12 @@ ECS_COMPONENT_DECLARE(FlecsUniform);
 ECS_COMPONENT_DECLARE(FlecsShader);
 ECS_COMPONENT_DECLARE(FlecsShaderImpl);
 
+ECS_DTOR(FlecsRenderBatch, ptr, {
+    if (ptr->ctx && ptr->free_ctx) {
+        ptr->free_ctx(ptr->ctx);
+    }
+})
+
 ECS_CTOR(FlecsRenderView, ptr, {
     ecs_vec_init_t(NULL, &ptr->batches, ecs_entity_t, 0);
     ptr->camera = 0;
@@ -104,6 +110,7 @@ void FlecsEngineRendererImport(
 
     ecs_set_hooks(world, FlecsRenderBatch, {
         .ctor = flecs_default_ctor,
+        .dtor = ecs_dtor(FlecsRenderBatch),
         .on_set = FlecsRenderBatch_on_set
     });
 
