@@ -132,8 +132,7 @@ int main(
   }
 
   ecs_world_t *world = ecs_init();
-  ecs_log_set_level(-1);
-
+  ECS_IMPORT(world, FlecsStats);
   ECS_IMPORT(world, FlecsEngine);
 
   if (options.frame_output_mode) {
@@ -178,85 +177,82 @@ int main(
   v->camera = camera;
   ecs_modified(world, view, FlecsRenderView);
 
+  int NumShapes = 7;
+
+  // First row: spheres
+  ecs_entity_t spheres[NumShapes];
+  for (int i = 0; i < NumShapes; i ++) {
+    spheres[i] = ecs_new(world);
+    ecs_set(world, spheres[i], FlecsSphere, { .segments = 3 + i, .smooth = i == (NumShapes - 1), .radius = 1 });
+    ecs_set(world, spheres[i], FlecsPosition3, {-9 + i * 3, 3, -14});
+    ecs_set(world, spheres[i], FlecsRgba, {255});
+  }
+
+  // Second row: icospheres
+  ecs_entity_t icospheres[NumShapes];
+  for (int i = 0; i < NumShapes; i ++) {
+    icospheres[i] = ecs_new(world);
+    ecs_set(world, icospheres[i], FlecsIcoSphere, { .segments = i, .smooth = i == (NumShapes - 1), .radius = 1 });
+    ecs_set(world, icospheres[i], FlecsPosition3, {-9 + i * 3, 0, -14});
+    ecs_set(world, icospheres[i], FlecsRgba, {128, 128});
+  }
+
+  // Third row: cylinders
+  ecs_entity_t cylinders[NumShapes];
+  for (int i = 0; i < NumShapes; i ++) {
+    cylinders[i] = ecs_new(world);
+    ecs_set(world, cylinders[i], FlecsCylinder, { .segments = 3 + i, .smooth = i == (NumShapes - 1), .length = 1 });
+    ecs_set(world, cylinders[i], FlecsPosition3, {-9 + i * 3, -3, -14});
+    ecs_set(world, cylinders[i], FlecsScale3, {2, 2, 2});
+    ecs_set(world, cylinders[i], FlecsRgba, {0, 255});
+  }
+
+  // Fourth row: pyramids
+  ecs_entity_t pyramids[NumShapes];
+  for (int i = 0; i < NumShapes; i ++) {
+    pyramids[i] = ecs_new(world);
+    ecs_set(world, pyramids[i], FlecsPyramid, { .sides = 3 + i, .smooth = i == (NumShapes - 1), .length = 1 });
+    ecs_set(world, pyramids[i], FlecsPosition3, {-9 + i * 3, -6, -14});
+    ecs_set(world, pyramids[i], FlecsScale3, {2, 2, 2});
+    ecs_set(world, pyramids[i], FlecsRgba, {0, 0, 255});
+  }
+
+  // Fourth row: 3D shapes
   ecs_entity_t box = ecs_new(world);
   ecs_set(world, box, FlecsBox, {2, 2, 2});
-  ecs_set(world, box, FlecsPosition3, {-6, -2, -12});
+  ecs_set(world, box, FlecsPosition3, {-9, 6, -14});
   ecs_set(world, box, FlecsRgba, {255, 0, 0});
 
   ecs_entity_t triangle_prism = ecs_new(world);
   ecs_set(world, triangle_prism, FlecsTrianglePrism, {2, 2, 2});
-  ecs_set(world, triangle_prism, FlecsPosition3, {-3, -2, -12});
+  ecs_set(world, triangle_prism, FlecsPosition3, {-6, 6, -14});
   ecs_set(world, triangle_prism, FlecsRgba, {128, 128, 0});
 
   ecs_entity_t right_triangle_prism = ecs_new(world);
   ecs_set(world, right_triangle_prism, FlecsRightTrianglePrism, {2, 2, 2});
-  ecs_set(world, right_triangle_prism, FlecsPosition3, {0, -2, -12});
+  ecs_set(world, right_triangle_prism, FlecsPosition3, {-3, 6, -14});
   ecs_set(world, right_triangle_prism, FlecsRgba, {0, 128, 0});
-
-  ecs_entity_t pyramid = ecs_new(world);
-  ecs_set(world, pyramid, FlecsPyramid, { .sides = 4 });
-  ecs_set(world, pyramid, FlecsPosition3, {3, -2, -12});
-  ecs_set(world, pyramid, FlecsScale3, {2, 2, 2});
-  ecs_set(world, pyramid, FlecsRgba, {0, 0, 128});
-
-  ecs_entity_t pyramid8 = ecs_new(world);
-  ecs_set(world, pyramid8, FlecsPyramid, { .sides = 8 });
-  ecs_set(world, pyramid8, FlecsPosition3, {6, -2, -12});
-  ecs_set(world, pyramid8, FlecsScale3, {2, 2, 2});
-  ecs_set(world, pyramid8, FlecsRgba, {128, 0, 128});
-
-  ecs_entity_t spheres[6];
-  for (int i = 0; i < 6; i ++) {
-    spheres[i] = ecs_new(world);
-    ecs_set(world, spheres[i], FlecsSphere, { .segments = 3 + i, .smooth = false, .radius = 1 });
-    ecs_set(world, spheres[i], FlecsPosition3, {-9 + i * 3, 2, -12});
-    ecs_set(world, spheres[i], FlecsRgba, {255, 64, 0});
-  }
-
-  ecs_entity_t sphere = ecs_new(world);
-  ecs_set(world, sphere, FlecsSphere, {.segments = 32, .smooth = true, .radius = 1});
-  ecs_set(world, sphere, FlecsPosition3, {9, 2, -12});
-  ecs_set(world, sphere, FlecsRgba, {255, 64, 0});
-
-  ecs_entity_t cylinders[6];
-  for (int i = 0; i < 6; i ++) {
-    cylinders[i] = ecs_new(world);
-    ecs_set(world, cylinders[i], FlecsCylinder, { .segments = 3 + i, .smooth = false, .length = 1 });
-    ecs_set(world, cylinders[i], FlecsPosition3, {-9 + i * 3, 5, -12});
-    ecs_set(world, cylinders[i], FlecsScale3, {2, 2, 2});
-    ecs_set(world, cylinders[i], FlecsRgba, {0, 128, 128});
-  }
-
-  ecs_entity_t cylinder = ecs_new(world);
-  ecs_set(world, cylinder, FlecsCylinder, { .segments = 32, .smooth = true, .length = 1 });
-  ecs_set(world, cylinder, FlecsPosition3, {9, 5, -12});
-  ecs_set(world, cylinder, FlecsScale3, {2, 2, 2});
-  ecs_set(world, cylinder, FlecsRgba, {0, 128, 128});
 
   ecs_entity_t quad = ecs_new(world);
   ecs_set(world, quad, FlecsQuad, {2, 2});
-  ecs_set(world, quad, FlecsPosition3, {-6, -3, -9});
-  ecs_set(world, quad, FlecsRotation3, {-M_PI / 2, 0, 0});
-  ecs_set(world, quad, FlecsRgba, {128, 0, 0});
+  ecs_set(world, quad, FlecsPosition3, {0, 6, -14});
+  ecs_set(world, quad, FlecsRgba, {255, 0, 0});
 
   ecs_entity_t triangle = ecs_new(world);
   ecs_set(world, triangle, FlecsTriangle, {2, 2});
-  ecs_set(world, triangle, FlecsPosition3, {-3, -3, -9});
-  ecs_set(world, triangle, FlecsRotation3, {-M_PI / 2, 0, 0});
-  ecs_set(world, triangle, FlecsRgba, {64, 64, 0});
+  ecs_set(world, triangle, FlecsPosition3, {3, 6, -14});
+  ecs_set(world, triangle, FlecsRgba, {128, 128, 0});
 
   ecs_entity_t right_triangle = ecs_new(world);
   ecs_set(world, right_triangle, FlecsRightTriangle, {2, 2});
-  ecs_set(world, right_triangle, FlecsPosition3, {0, -3, -9});
-  ecs_set(world, right_triangle, FlecsRotation3, {-M_PI / 2, 0, 0});
-  ecs_set(world, right_triangle, FlecsRgba, {0, 128, 0});
+  ecs_set(world, right_triangle, FlecsPosition3, {6, 6, -14});
+  ecs_set(world, right_triangle, FlecsRgba, {0, 255, 0});
 
   ecs_entity_t ngon = ecs_new(world);
   ecs_set(world, ngon, FlecsNGon, { .sides = 6 });
-  ecs_set(world, ngon, FlecsPosition3, {3, -3, -9});
-  ecs_set(world, ngon, FlecsRotation3, {-M_PI / 2, 0, 0});
+  ecs_set(world, ngon, FlecsPosition3, {9, 6, -14});
   ecs_set(world, ngon, FlecsScale3, {2, 2, 2});
-  ecs_set(world, ngon, FlecsRgba, {0, 0, 128});
+  ecs_set(world, ngon, FlecsRgba, {0, 0, 255});
 
   ecs_singleton_set(world, EcsRest, {0});
 
@@ -265,14 +261,12 @@ int main(
     ecs_set(world, box, FlecsRotation3, {0, i, 0});
     ecs_set(world, triangle_prism, FlecsRotation3, {0, i, 0});
     ecs_set(world, right_triangle_prism, FlecsRotation3, {0, i, 0});
-    ecs_set(world, pyramid, FlecsRotation3, {0, i, 0});
-    ecs_set(world, pyramid8, FlecsRotation3, {0, i, 0});
-    ecs_set(world, sphere, FlecsRotation3, {0, i, 0});
-    ecs_set(world, cylinder, FlecsRotation3, {0, i, 0});
 
-    for (int c = 0; c < 6; c ++) {
+    for (int c = 0; c < NumShapes; c ++) {
       ecs_set(world, spheres[c], FlecsRotation3, {0, i, 0});
+      ecs_set(world, icospheres[c], FlecsRotation3, {0, i, 0});
       ecs_set(world, cylinders[c], FlecsRotation3, {0, i, 0});
+      ecs_set(world, pyramids[c], FlecsRotation3, {0, i, 0});
     }
 
     i += 0.01;

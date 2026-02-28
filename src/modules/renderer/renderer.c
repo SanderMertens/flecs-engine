@@ -226,6 +226,7 @@ static void flecsEngineRenderViewsWithoutEffects(
     }
 
     wgpuRenderPassEncoderEnd(pass);
+    wgpuRenderPassEncoderRelease(pass);
 }
 
 static void flecsEngineRenderViewWithEffects(
@@ -247,6 +248,7 @@ static void flecsEngineRenderViewWithEffects(
 
         flecsEngineRenderView(world, impl, pass, view);
         wgpuRenderPassEncoderEnd(pass);
+        wgpuRenderPassEncoderRelease(pass);
         return;
     }
 
@@ -267,6 +269,7 @@ static void flecsEngineRenderViewWithEffects(
 
     flecsEngineRenderView(world, impl, batch_pass, view);
     wgpuRenderPassEncoderEnd(batch_pass);
+    wgpuRenderPassEncoderRelease(batch_pass);
 
     ecs_entity_t *effect_entities = ecs_vec_first(&view->effects);
     for (int32_t i = 0; i < effect_count; i ++) {
@@ -305,6 +308,7 @@ static void flecsEngineRenderViewWithEffects(
             input_view);
 
         wgpuRenderPassEncoderEnd(effect_pass);
+        wgpuRenderPassEncoderRelease(effect_pass);
     }
 
     for (int32_t i = 0; i < effect_count; i ++) {

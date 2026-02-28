@@ -5,6 +5,7 @@
 
 typedef struct {
     ecs_map_t sphere_cache;
+    ecs_map_t icosphere_cache;
     ecs_map_t pyramid_cache;
     ecs_map_t ngon_cache;
     ecs_map_t cylinder_cache;
@@ -48,6 +49,9 @@ void FlecsSphere_on_replace(
     ecs_iter_t *it);
 
 void FlecsSphere_on_set(
+    ecs_iter_t *it);
+
+void FlecsIcoSphere_on_replace(
     ecs_iter_t *it);
 
 void FlecsNGon_on_replace(

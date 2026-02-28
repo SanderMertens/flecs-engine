@@ -14,6 +14,8 @@ ECS_STRUCT(FlecsBox, {
 
 ECS_STRUCT(FlecsPyramid, {
     int32_t sides;
+    bool smooth;
+    float length;
 });
 
 ECS_STRUCT(FlecsQuad, {
@@ -44,6 +46,12 @@ ECS_STRUCT(FlecsRightTrianglePrism, {
 });
 
 ECS_STRUCT(FlecsSphere, {
+    int32_t segments;
+    bool smooth;
+    float radius;
+});
+
+ECS_STRUCT(FlecsIcoSphere, {
     int32_t segments;
     bool smooth;
     float radius;
