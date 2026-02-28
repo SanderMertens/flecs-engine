@@ -220,7 +220,9 @@ void FlecsEngineGeometry3Import(
     ecs_struct(world, {
         .entity = ecs_id(FlecsSphere),
         .members = {
-            { .name = "segments", .type = ecs_id(ecs_i32_t) }
+            { .name = "segments", .type = ecs_id(ecs_i32_t) },
+            { .name = "smooth", .type = ecs_id(ecs_bool_t) },
+            { .name = "radius", .type = ecs_id(ecs_f32_t) }
         }
     });
 

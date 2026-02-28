@@ -47,6 +47,8 @@ ECS_STRUCT(FlecsRightTrianglePrism, {
 
 ECS_STRUCT(FlecsSphere, {
     int32_t segments;
+    bool smooth;
+    float radius;
 });
 
 ECS_STRUCT(FlecsCylinder, {
