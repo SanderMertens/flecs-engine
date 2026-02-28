@@ -8,9 +8,17 @@ static const int32_t kCameraLogLimit = 60;
 static void FlecsCameraTransformMvp(ecs_iter_t *it) {
     FlecsCamera *cameras = ecs_field(it, FlecsCamera, 0);
     FlecsCameraImpl *impl = ecs_field(it, FlecsCameraImpl, 1);
+    const FlecsEngineImpl *engine = ecs_singleton_get(it->world, FlecsEngineImpl);
+    float window_aspect = 0.0f;
+    if (engine && engine->width > 0 && engine->height > 0) {
+        window_aspect = (float)engine->width / (float)engine->height;
+    }
 
     for (int32_t i = 0; i < it->count; i ++) {
         FlecsCamera *cam = &cameras[i];
+        if (window_aspect > 0.0f) {
+            cam->aspect_ratio = window_aspect;
+        }
 
         if (cam->orthographic) {
             glm_ortho_default(

@@ -163,16 +163,16 @@ int main(
   });
 
   ecs_entity_t view = ecs_new(world);
-  FlecsRenderView *s = ecs_ensure(world, view, FlecsRenderView);
-  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
-  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_pyramids(world);
-  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
-  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);
-  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangles(world);
-  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangle_prisms(world);
-  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangle_prisms(world);
-  ecs_vec_append_t(NULL, &s->batches, ecs_entity_t)[0] = flecsEngine_createBatch_litColoredGeometry(world);
-  s->camera = camera;
+  FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_pyramids(world);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangles(world);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangle_prisms(world);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangle_prisms(world);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_litColoredGeometry(world);
+  v->camera = camera;
   ecs_modified(world, view, FlecsRenderView);
 
   ecs_entity_t box = ecs_new(world);
