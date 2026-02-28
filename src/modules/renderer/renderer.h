@@ -94,6 +94,13 @@ void flecsEngineRenderViews(
 void flecsEngineReleaseEffectTargets(
     FlecsEngineImpl *impl);
 
+WGPUColor flecsEngineGetClearColor(
+    const FlecsEngineImpl *impl);
+
+void flecsEngineGetClearColorVec4(
+    const FlecsEngineImpl *impl,
+    float out[4]);
+
 void flecsEngineRenderViewsWithEffects(
     const ecs_world_t *world,
     FlecsEngineImpl *impl,

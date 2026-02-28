@@ -46,6 +46,7 @@ typedef struct FlecsEngineOutputDesc {
     const void *config;
     int32_t width;
     int32_t height;
+    flecs_rgba_t clear_color;
 } FlecsEngineOutputDesc;
 
 int flecsEngineInit(

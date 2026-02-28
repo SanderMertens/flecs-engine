@@ -2,7 +2,7 @@
 #include "../renderer.h"
 
 static const char *kShaderSource =
-    "struct Uniforms { vp : mat4x4<f32> }\n"
+    "struct Uniforms { vp : mat4x4<f32>, clear_color : vec4<f32> }\n"
     "@group(0) @binding(0) var<uniform> uniforms : Uniforms;\n"
     "struct VertexInput {\n"
     "  @location(0) pos : vec3<f32>,\n"
@@ -53,14 +53,14 @@ static const char *kShaderSource =
     "    discard;\n"
     "  }\n"
     "  let view_dist = 1.0 / max(input.pos.w, 1e-5);\n"
-    "  let fade = 1.0 - smoothstep(25.0, 90.0, view_dist);\n"
+    "  let fade = 1.0 - smoothstep(0.0, 50.0, view_dist);\n"
     "  if (fade < 0.001) {\n"
     "    discard;\n"
     "  }\n"
     "  var color = input.color.rgb * grid;\n"
     "  color = max(color, vec3<f32>(0.90, 0.25, 0.25) * axis_x);\n"
     "  color = max(color, vec3<f32>(0.25, 0.45, 0.95) * axis_z);\n"
-    "  let bg = vec3<f32>(0.03, 0.03, 0.05);\n"
+    "  let bg = uniforms.clear_color.rgb;\n"
     "  color = mix(bg, color, fade);\n"
     "  return vec4<f32>(color, 1.0);\n"
     "}\n";

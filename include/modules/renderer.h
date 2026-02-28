@@ -39,6 +39,7 @@ extern ECS_COMPONENT_DECLARE(FlecsInstanceSize);
 
 typedef struct {
     flecs_mat4_t mvp;
+    float clear_color[4];
 } FlecsUniform;
 
 extern ECS_COMPONENT_DECLARE(FlecsUniform);

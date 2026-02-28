@@ -10,6 +10,7 @@ ECS_STRUCT(FlecsWindow, {
     int32_t width;
     int32_t height;
     const char *title;
+    flecs_rgba_t clear_color;
 });
 
 #endif

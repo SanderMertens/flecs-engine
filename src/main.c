@@ -139,13 +139,15 @@ int main(
     ecs_singleton_set(world, FlecsFrameOutput, {
       .width = options.width,
       .height = options.height,
-      .path = options.frame_output_path
+      .path = options.frame_output_path,
+      .clear_color = {8, 8, 13}
     });
   } else {
     ecs_singleton_set(world, FlecsWindow, {
       .title = "Hello World",
       .width = options.width,
-      .height = options.height
+      .height = options.height,
+      .clear_color = {8, 8, 13}
     });
   }
 

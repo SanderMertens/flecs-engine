@@ -250,7 +250,8 @@ static void FlecsOnWindowCreate(
         .ops = &flecsEngineWindowOutputOps,
         .config = &output_cfg,
         .width = w,
-        .height = h
+        .height = h,
+        .clear_color = wnd->clear_color
     };
 
     if (flecsEngineInit(it->world, &output_desc)) {

@@ -50,6 +50,33 @@ ECS_DTOR(FlecsRenderView, ptr, {
     ecs_vec_fini_t(NULL, &ptr->effects, ecs_entity_t);
 })
 
+static float flecsEngineColorChannelToFloat(
+    uint8_t value)
+{
+    return (float)value / 255.0f;
+}
+
+WGPUColor flecsEngineGetClearColor(
+    const FlecsEngineImpl *impl)
+{
+    return (WGPUColor){
+        .r = (double)flecsEngineColorChannelToFloat(impl->clear_color.r),
+        .g = (double)flecsEngineColorChannelToFloat(impl->clear_color.g),
+        .b = (double)flecsEngineColorChannelToFloat(impl->clear_color.b),
+        .a = (double)flecsEngineColorChannelToFloat(impl->clear_color.a)
+    };
+}
+
+void flecsEngineGetClearColorVec4(
+    const FlecsEngineImpl *impl,
+    float out[4])
+{
+    out[0] = flecsEngineColorChannelToFloat(impl->clear_color.r);
+    out[1] = flecsEngineColorChannelToFloat(impl->clear_color.g);
+    out[2] = flecsEngineColorChannelToFloat(impl->clear_color.b);
+    out[3] = flecsEngineColorChannelToFloat(impl->clear_color.a);
+}
+
 static bool flecsEngineAnyViewHasEffects(
     const ecs_world_t *world,
     ecs_query_t *view_query)
@@ -74,13 +101,15 @@ static void flecsEngineRenderViewsWithoutEffects(
     WGPUTextureView view_texture,
     WGPUCommandEncoder encoder)
 {
+    WGPUColor clear_color = flecsEngineGetClearColor(impl);
+
     // Color attachment: clear to background and render into swapchain.
     WGPURenderPassColorAttachment color_attachment = {
         .view = view_texture,
         .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
         .loadOp = WGPULoadOp_Clear,
         .storeOp = WGPUStoreOp_Store,
-        .clearValue = (WGPUColor){ 0.02, 0.02, 0.05, 1.0 }
+        .clearValue = clear_color
     };
 
     // Depth attachment: clear depth each frame.
@@ -239,6 +268,7 @@ void FlecsEngineRendererImport(
         .entity = ecs_id(FlecsUniform),
         .members = {
             { .name = "vp", .type = ecs_id(flecs_mat4_t) },
+            { .name = "clear_color", .type = ecs_id(ecs_f32_t), .count = 4 },
         }
     });
 

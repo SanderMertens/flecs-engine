@@ -267,6 +267,7 @@ int flecsEngineInit(
         .width = width,
         .height = height,
         .surface_impl = output->ops,
+        .clear_color = output->clear_color,
         .output_done = false,
         .depth_texture_width = 0,
         .depth_texture_height = 0
@@ -472,6 +473,9 @@ void FlecsEngineImport(
         }
     });
 
+    ecs_set_alias(world, ecs_id(flecs_vec3_t), "flecs_vec3_t");
+    ecs_set_alias(world, ecs_id(flecs_rgba_t), "flecs_rgba_t");
+
     ecs_id(flecs_mat4_t) = ecs_component(world, {
         .entity = ecs_entity(world, { .name = "mat4" }),
         .type.size = ECS_SIZEOF(flecs_mat4_t),
@@ -484,6 +488,8 @@ void FlecsEngineImport(
             { .name = "v", .type = ecs_id(ecs_f32_t), .count = 16}
         }
     });
+
+    ecs_set_alias(world, ecs_id(flecs_mat4_t), "flecs_mat4_t");
 
     ECS_IMPORT(world, FlecsEngineWindow);
     ECS_IMPORT(world, FlecsEngineFrameCapture);

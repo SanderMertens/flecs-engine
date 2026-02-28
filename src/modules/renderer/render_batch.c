@@ -442,7 +442,9 @@ void FlecsRenderBatch_on_set(
 
         // Setup uniform bindings
         flecsSetupUniformBindings(world, engine, 
-            rb[i].uniforms, WGPUShaderStage_Vertex, &impl);
+            rb[i].uniforms,
+            WGPUShaderStage_Vertex | WGPUShaderStage_Fragment,
+            &impl);
 
         // Setup pipeline layout
         WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
@@ -532,7 +534,9 @@ void flecsEngineRenderBatch(
         return;
     }
 
-    mat4 mvp; glm_mat4_identity(mvp);
+    FlecsUniform uniforms = {0};
+    glm_mat4_identity(uniforms.mvp);
+
     if (view->camera) {
         const FlecsCameraImpl *cam_impl = ecs_get(
             world, view->camera, FlecsCameraImpl);
@@ -541,13 +545,15 @@ void flecsEngineRenderBatch(
             ecs_err("invalid camera '%s' in view", cam_name);
             ecs_os_free(cam_name);
         } else {
-            glm_mat4_copy((vec4*)cam_impl->mvp, mvp);
+            glm_mat4_copy((vec4*)cam_impl->mvp, uniforms.mvp);
         }
     }
 
+    flecsEngineGetClearColorVec4(engine, uniforms.clear_color);
+
     wgpuQueueWriteBuffer(
         engine->queue, 
-        impl->uniform_buffers[0], 0, mvp, sizeof(mat4));
+        impl->uniform_buffers[0], 0, &uniforms, sizeof(FlecsUniform));
 
     wgpuRenderPassEncoderSetPipeline(pass, impl->pipeline);
     wgpuRenderPassEncoderSetBindGroup(pass, 0, impl->bind_group, 0, NULL);

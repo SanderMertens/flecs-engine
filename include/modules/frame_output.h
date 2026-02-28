@@ -10,6 +10,7 @@ ECS_STRUCT(FlecsFrameOutput, {
     int32_t width;
     int32_t height;
     const char *path;
+    flecs_rgba_t clear_color;
 });
 
 #endif

@@ -16,6 +16,7 @@ typedef struct {
     const struct FlecsEngineSurfaceInterface *surface_impl;
     bool output_done;
     const char *frame_output_path;
+    flecs_rgba_t clear_color;
 
     WGPUInstance instance;
     WGPUSurface surface;

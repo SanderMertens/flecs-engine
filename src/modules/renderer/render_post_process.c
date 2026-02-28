@@ -115,12 +115,14 @@ static WGPURenderPassEncoder flecsEngineBeginBatchPass(
     WGPUTextureView color_view,
     WGPULoadOp color_load_op)
 {
+    WGPUColor clear_color = flecsEngineGetClearColor(impl);
+
     WGPURenderPassColorAttachment color_attachment = {
         .view = color_view,
         .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
         .loadOp = color_load_op,
         .storeOp = WGPUStoreOp_Store,
-        .clearValue = (WGPUColor){ 0.03, 0.03, 0.05, 1.0 }
+        .clearValue = clear_color
     };
 
     WGPURenderPassDepthStencilAttachment depth_attachment = {
@@ -145,16 +147,19 @@ static WGPURenderPassEncoder flecsEngineBeginBatchPass(
 }
 
 static WGPURenderPassEncoder flecsEngineBeginEffectPass(
+    const FlecsEngineImpl *impl,
     WGPUCommandEncoder encoder,
     WGPUTextureView color_view,
     WGPULoadOp color_load_op)
 {
+    WGPUColor clear_color = flecsEngineGetClearColor(impl);
+
     WGPURenderPassColorAttachment color_attachment = {
         .view = color_view,
         .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
         .loadOp = color_load_op,
         .storeOp = WGPUStoreOp_Store,
-        .clearValue = (WGPUColor){ 0.03, 0.03, 0.05, 1.0 }
+        .clearValue = clear_color
     };
 
     WGPURenderPassDescriptor pass_desc = {
@@ -225,6 +230,7 @@ static void flecsEngineRenderViewWithEffects(
         WGPUTextureView input_view = impl->effect_target_views[effect->input];
 
         WGPURenderPassEncoder effect_pass = flecsEngineBeginEffectPass(
+            impl,
             encoder,
             output_view,
             is_last && !clear_output

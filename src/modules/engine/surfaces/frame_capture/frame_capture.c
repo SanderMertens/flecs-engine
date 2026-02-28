@@ -375,7 +375,8 @@ static void FlecsFrameOutputOnSet(
             .ops = &flecsEngineFrameCaptureOutputOps,
             .config = &output_cfg,
             .width = outputs[i].width,
-            .height = outputs[i].height
+            .height = outputs[i].height,
+            .clear_color = outputs[i].clear_color
         };
 
         if (flecsEngineInit(it->world, &output_desc)) {
