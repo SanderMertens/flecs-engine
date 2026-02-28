@@ -64,6 +64,17 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsRenderBatchImpl);
 
 typedef struct {
+    WGPUBindGroupLayout bind_layout;
+    WGPURenderPipeline pipeline;
+    WGPUSampler input_sampler;
+    WGPUTexture tony_lut_texture;
+    WGPUTextureView tony_lut_texture_view;
+    WGPUSampler tony_lut_sampler;
+} FlecsRenderEffectImpl;
+
+extern ECS_COMPONENT_DECLARE(FlecsRenderEffectImpl);
+
+typedef struct {
     mat4 model;
     mat4 view;
     mat4 proj;

@@ -107,6 +107,16 @@ static void flecsMarkShaderUsersDirty(
             }
         }
     }
+
+    ecs_iter_t eit = ecs_each_id(world, ecs_id(FlecsRenderEffect));
+    while (ecs_each_next(&eit)) {
+        FlecsRenderEffect *effects = ecs_field(&eit, FlecsRenderEffect, 0);
+        for (int32_t i = 0; i < eit.count; i ++) {
+            if (effects[i].shader == shader_entity) {
+                ecs_modified(world, eit.entities[i], FlecsRenderEffect);
+            }
+        }
+    }
 }
 
 void FlecsShader_on_set(

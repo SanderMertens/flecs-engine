@@ -9,12 +9,29 @@
 #endif
 
 struct FlecsRenderBatch;
+struct FlecsRenderEffect;
 
 typedef void (*flecs_render_batch_callback)(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const struct FlecsRenderBatch *batch);
+
+typedef bool (*flecs_render_effect_setup_callback)(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const struct FlecsRenderEffect *effect,
+    FlecsRenderEffectImpl *effect_impl,
+    WGPUBindGroupLayoutEntry *layout_entries,
+    uint32_t *entry_count);
+
+typedef bool (*flecs_render_effect_bind_callback)(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const struct FlecsRenderEffect *effect,
+    const FlecsRenderEffectImpl *effect_impl,
+    WGPUBindGroupEntry *entries,
+    uint32_t *entry_count);
 
 // Render entities matching a query with specified shader
 ECS_STRUCT(FlecsRenderBatch, {
@@ -29,7 +46,20 @@ ECS_PRIVATE
     void (*free_ctx)(void *ctx);
 });
 
+// Fullscreen post-process effect. Input uses chain indexing:
+// 0 = batches framebuffer, k > 0 = output of effect[k - 1].
+ECS_STRUCT(FlecsRenderEffect, {
+    ecs_entity_t shader;
+    int32_t input;
+ECS_PRIVATE
+    flecs_render_effect_setup_callback setup_callback;
+    flecs_render_effect_bind_callback bind_callback;
+});
+
 void FlecsRenderBatch_on_set(
+    ecs_iter_t *it);
+
+void FlecsRenderEffect_on_set(
     ecs_iter_t *it);
 
 void FlecsShader_on_set(
@@ -41,6 +71,11 @@ void FlecsShaderImpl_dtor(
     const ecs_type_info_t *type_info);
 
 void FlecsRenderBatchImpl_dtor(
+    void *_ptr,
+    int32_t _count,
+    const ecs_type_info_t *type_info);
+
+void FlecsRenderEffectImpl_dtor(
     void *_ptr,
     int32_t _count,
     const ecs_type_info_t *type_info);
@@ -69,6 +104,14 @@ void flecsEngineRenderBatch(
     const FlecsRenderView *view,
     const FlecsRenderBatch *batch,
     const FlecsRenderBatchImpl *batch_impl);
+
+void flecsEngineRenderEffect(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *impl,
+    const WGPURenderPassEncoder pass,
+    const FlecsRenderEffect *effect,
+    const FlecsRenderEffectImpl *effect_impl,
+    WGPUTextureView input_view);
 
 void FlecsEngineRendererImport(
     ecs_world_t *world);

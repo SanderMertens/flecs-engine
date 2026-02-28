@@ -83,10 +83,21 @@ ecs_entity_t flecsEngine_createBatch_triangle_prisms(
 ecs_entity_t flecsEngine_createBatch_right_triangle_prisms(
     ecs_world_t *world);
 
+// Create Tony McMapface post-process effect that reads from chain input index
+ecs_entity_t flecsEngine_createEffect_tonyMcMapFace(
+    ecs_world_t *world,
+    int32_t input);
+
+// Create invert-color post-process effect that reads from chain input index
+ecs_entity_t flecsEngine_createEffect_invert(
+    ecs_world_t *world,
+    int32_t input);
+
 // Render a list of batches in order
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;
     ecs_vec_t batches;
+    ecs_vec_t effects;
 });
 
 #endif

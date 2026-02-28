@@ -172,6 +172,10 @@ int main(
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangle_prisms(world);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangle_prisms(world);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_litColoredGeometry(world);
+  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
+    flecsEngine_createEffect_tonyMcMapFace(world, 0 /* input */);
+  // ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
+  //   flecsEngine_createEffect_invert(world, 0 /* input */);
   v->camera = camera;
   ecs_modified(world, view, FlecsRenderView);
 
