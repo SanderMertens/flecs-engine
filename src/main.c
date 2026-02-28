@@ -199,31 +199,31 @@ int main(
   ecs_set(world, pyramid, FlecsPosition3, {3, -2, -12});
   ecs_set(world, pyramid, FlecsRgba, {0, 0, 128});
 
-  ecs_entity_t spheres[5];
-  for (int i = 0; i < 5; i ++) {
+  ecs_entity_t spheres[6];
+  for (int i = 0; i < 6; i ++) {
     spheres[i] = ecs_new(world);
     ecs_set(world, spheres[i], FlecsSphere, { .segments = 3 + i, .smooth = false, .radius = 1 });
-    ecs_set(world, spheres[i], FlecsPosition3, {-6 + i * 3, 2, -12});
+    ecs_set(world, spheres[i], FlecsPosition3, {-9 + i * 3, 2, -12});
     ecs_set(world, spheres[i], FlecsRgba, {255, 64, 0});
   }
 
   ecs_entity_t sphere = ecs_new(world);
   ecs_set(world, sphere, FlecsSphere, {.segments = 32, .smooth = true, .radius = 1});
-  ecs_set(world, sphere, FlecsPosition3, {6, -2, -12});
-  ecs_set(world, sphere, FlecsRgba, {128, 0, 128});
+  ecs_set(world, sphere, FlecsPosition3, {9, 2, -12});
+  ecs_set(world, sphere, FlecsRgba, {255, 64, 0});
 
-  ecs_entity_t cylinders[5];
-  for (int i = 0; i < 5; i ++) {
+  ecs_entity_t cylinders[6];
+  for (int i = 0; i < 6; i ++) {
     cylinders[i] = ecs_new(world);
     ecs_set(world, cylinders[i], FlecsCylinder, { .segments = 3 + i, .smooth = false, .length = 1 });
-    ecs_set(world, cylinders[i], FlecsPosition3, {-6 + i * 3, 5, -12});
+    ecs_set(world, cylinders[i], FlecsPosition3, {-9 + i * 3, 5, -12});
     ecs_set(world, cylinders[i], FlecsScale3, {2, 2, 2});
     ecs_set(world, cylinders[i], FlecsRgba, {0, 128, 128});
   }
 
   ecs_entity_t cylinder = ecs_new(world);
   ecs_set(world, cylinder, FlecsCylinder, { .segments = 32, .smooth = true, .length = 1 });
-  ecs_set(world, cylinder, FlecsPosition3, {9, -2, -12});
+  ecs_set(world, cylinder, FlecsPosition3, {9, 5, -12});
   ecs_set(world, cylinder, FlecsScale3, {2, 2, 2});
   ecs_set(world, cylinder, FlecsRgba, {0, 128, 128});
 
@@ -245,6 +245,13 @@ int main(
   ecs_set(world, right_triangle, FlecsRotation3, {-M_PI / 2, 0, 0});
   ecs_set(world, right_triangle, FlecsRgba, {0, 128, 0});
 
+  ecs_entity_t ngon = ecs_new(world);
+  ecs_set(world, ngon, FlecsNGon, { .sides = 6 });
+  ecs_set(world, ngon, FlecsPosition3, {3, -3, -9});
+  ecs_set(world, ngon, FlecsRotation3, {-M_PI / 2, 0, 0});
+  ecs_set(world, ngon, FlecsScale3, {2, 2, 2});
+  ecs_set(world, ngon, FlecsRgba, {0, 0, 128});
+
   ecs_singleton_set(world, EcsRest, {0});
 
   double i = 0;
@@ -256,7 +263,7 @@ int main(
     ecs_set(world, sphere, FlecsRotation3, {0, i, 0});
     ecs_set(world, cylinder, FlecsRotation3, {0, i, 0});
 
-    for (int c = 0; c < 5; c ++) {
+    for (int c = 0; c < 6; c ++) {
       ecs_set(world, spheres[c], FlecsRotation3, {0, i, 0});
       ecs_set(world, cylinders[c], FlecsRotation3, {0, i, 0});
     }

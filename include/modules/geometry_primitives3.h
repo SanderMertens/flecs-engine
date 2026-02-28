@@ -51,6 +51,10 @@ ECS_STRUCT(FlecsSphere, {
     float radius;
 });
 
+ECS_STRUCT(FlecsNGon, {
+    int32_t sides;
+});
+
 ECS_STRUCT(FlecsCylinder, {
     int32_t segments;
     bool smooth;
