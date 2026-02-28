@@ -52,7 +52,7 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsShader);
 
 // Render entities with FlecsMesh, FlecsWorldTransform with lighting
-ecs_entity_t flecsEngine_createBatch_litColoredGeometry(
+ecs_entity_t flecsEngine_createBatch_mesh(
     ecs_world_t *world);
 
 // Render scalable box primitives without IsA grouping
