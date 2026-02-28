@@ -51,6 +51,12 @@ ECS_STRUCT(FlecsSphere, {
     float radius;
 });
 
+ECS_STRUCT(FlecsHemiSphere, {
+    int32_t segments;
+    bool smooth;
+    float radius;
+});
+
 ECS_STRUCT(FlecsIcoSphere, {
     int32_t segments;
     bool smooth;

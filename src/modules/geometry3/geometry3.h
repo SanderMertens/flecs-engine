@@ -5,6 +5,7 @@
 
 typedef struct {
     ecs_map_t sphere_cache;
+    ecs_map_t hemisphere_cache;
     ecs_map_t icosphere_cache;
     ecs_map_t pyramid_cache;
     ecs_map_t ngon_cache;
@@ -46,6 +47,9 @@ const FlecsMesh3Impl* flecsGeometry3_getRightTrianglePrismAsset(
     ecs_world_t *world);
 
 void FlecsSphere_on_replace(
+    ecs_iter_t *it);
+
+void FlecsHemiSphere_on_replace(
     ecs_iter_t *it);
 
 void FlecsSphere_on_set(

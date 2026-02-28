@@ -13,6 +13,7 @@ ECS_COMPONENT_DECLARE(FlecsRightTriangle);
 ECS_COMPONENT_DECLARE(FlecsTrianglePrism);
 ECS_COMPONENT_DECLARE(FlecsRightTrianglePrism);
 ECS_COMPONENT_DECLARE(FlecsSphere);
+ECS_COMPONENT_DECLARE(FlecsHemiSphere);
 ECS_COMPONENT_DECLARE(FlecsIcoSphere);
 ECS_COMPONENT_DECLARE(FlecsNGon);
 ECS_COMPONENT_DECLARE(FlecsCylinder);
@@ -56,6 +57,7 @@ ECS_DTOR(FlecsMesh3, ptr, {
 
 ECS_CTOR(FlecsGeometry3Cache, ptr, {
     ecs_map_init(&ptr->sphere_cache, NULL);
+    ecs_map_init(&ptr->hemisphere_cache, NULL);
     ecs_map_init(&ptr->icosphere_cache, NULL);
     ecs_map_init(&ptr->pyramid_cache, NULL);
     ecs_map_init(&ptr->ngon_cache, NULL);
@@ -70,6 +72,7 @@ ECS_CTOR(FlecsGeometry3Cache, ptr, {
 
 ECS_DTOR(FlecsGeometry3Cache, ptr, {
     ecs_map_fini(&ptr->sphere_cache);
+    ecs_map_fini(&ptr->hemisphere_cache);
     ecs_map_fini(&ptr->icosphere_cache);
     ecs_map_fini(&ptr->pyramid_cache);
     ecs_map_fini(&ptr->ngon_cache);
@@ -203,6 +206,7 @@ void FlecsEngineGeometry3Import(
     ECS_COMPONENT_DEFINE(world, FlecsTrianglePrism);
     ECS_COMPONENT_DEFINE(world, FlecsRightTrianglePrism);
     ECS_COMPONENT_DEFINE(world, FlecsSphere);
+    ECS_COMPONENT_DEFINE(world, FlecsHemiSphere);
     ECS_COMPONENT_DEFINE(world, FlecsIcoSphere);
     ECS_COMPONENT_DEFINE(world, FlecsNGon);
     ECS_COMPONENT_DEFINE(world, FlecsCylinder);
@@ -228,6 +232,15 @@ void FlecsEngineGeometry3Import(
 
     ecs_struct(world, {
         .entity = ecs_id(FlecsSphere),
+        .members = {
+            { .name = "segments", .type = ecs_id(ecs_i32_t) },
+            { .name = "smooth", .type = ecs_id(ecs_bool_t) },
+            { .name = "radius", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsHemiSphere),
         .members = {
             { .name = "segments", .type = ecs_id(ecs_i32_t) },
             { .name = "smooth", .type = ecs_id(ecs_bool_t) },
@@ -316,6 +329,10 @@ void FlecsEngineGeometry3Import(
 
     ecs_set_hooks(world, FlecsSphere, {
         .on_replace = FlecsSphere_on_replace
+    });
+
+    ecs_set_hooks(world, FlecsHemiSphere, {
+        .on_replace = FlecsHemiSphere_on_replace
     });
 
     ecs_set_hooks(world, FlecsIcoSphere, {
