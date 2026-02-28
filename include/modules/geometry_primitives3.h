@@ -13,9 +13,7 @@ ECS_STRUCT(FlecsBox, {
 });
 
 ECS_STRUCT(FlecsPyramid, {
-    float x;
-    float y;
-    float z;
+    int32_t sides;
 });
 
 ECS_STRUCT(FlecsQuad, {

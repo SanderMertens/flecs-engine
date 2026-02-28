@@ -32,9 +32,9 @@ redo: {
         ctx->count = 0;
 
         while (ecs_query_next(&it)) {
-            const FlecsPyramid *pyramids = ecs_field(&it, FlecsPyramid, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
+            const FlecsScale3 *scales = ecs_field(&it, FlecsScale3, 3);
 
             if ((ctx->count + it.count) <= ctx->capacity) {
                 wgpuQueueWriteBuffer(
@@ -51,12 +51,33 @@ redo: {
                     colors,
                     it.count * sizeof(flecs_rgba_t));
 
+                FlecsInstanceSize *sizes =
+                    ecs_os_malloc_n(FlecsInstanceSize, it.count);
+                bool scales_is_self = scales && ecs_field_is_self(&it, 3);
+                for (int32_t i = 0; i < it.count; i ++) {
+                    FlecsInstanceSize size = {
+                        .size = {1.0f, 1.0f, 1.0f}
+                    };
+                    if (scales) {
+                        const FlecsScale3 *scale = scales_is_self
+                            ? &scales[i]
+                            : &scales[0];
+                        size.size = (flecs_vec3_t){
+                            scale->x,
+                            scale->y,
+                            scale->z
+                        };
+                    }
+                    sizes[i] = size;
+                }
+
                 wgpuQueueWriteBuffer(
                     engine->queue,
                     ctx->instance_size,
                     ctx->count * sizeof(FlecsInstanceSize),
-                    pyramids,
-                    it.count * sizeof(FlecsPyramid));
+                    sizes,
+                    it.count * sizeof(FlecsInstanceSize));
+                ecs_os_free(sizes);
             }
 
             ctx->count += it.count;
@@ -91,7 +112,9 @@ ecs_entity_t flecsEngine_createBatch_pyramids(
         .terms = {
             { .id = ecs_id(FlecsPyramid), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
-            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf }
+            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsScale3), .src.id = EcsSelf, .oper = EcsOptional },
+            { .id = ecs_id(FlecsMesh3Impl), .src.id = EcsUp, .trav = EcsIsA, .oper = EcsNot }
         },
         .cache_kind = EcsQueryCacheAuto
     });

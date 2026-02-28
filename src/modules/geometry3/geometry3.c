@@ -55,10 +55,10 @@ ECS_DTOR(FlecsMesh3, ptr, {
 
 ECS_CTOR(FlecsGeometry3Cache, ptr, {
     ecs_map_init(&ptr->sphere_cache, NULL);
+    ecs_map_init(&ptr->pyramid_cache, NULL);
     ecs_map_init(&ptr->ngon_cache, NULL);
     ecs_map_init(&ptr->cylinder_cache, NULL);
     ptr->unit_box_asset = 0;
-    ptr->unit_pyramid_asset = 0;
     ptr->unit_quad_asset = 0;
     ptr->unit_triangle_asset = 0;
     ptr->unit_right_triangle_asset = 0;
@@ -68,6 +68,7 @@ ECS_CTOR(FlecsGeometry3Cache, ptr, {
 
 ECS_DTOR(FlecsGeometry3Cache, ptr, {
     ecs_map_fini(&ptr->sphere_cache);
+    ecs_map_fini(&ptr->pyramid_cache);
     ecs_map_fini(&ptr->ngon_cache);
     ecs_map_fini(&ptr->cylinder_cache);
 })
@@ -215,9 +216,7 @@ void FlecsEngineGeometry3Import(
     ecs_struct(world, {
         .entity = ecs_id(FlecsPyramid),
         .members = {
-            { .name = "x", .type = ecs_id(ecs_f32_t) },
-            { .name = "y", .type = ecs_id(ecs_f32_t) },
-            { .name = "z", .type = ecs_id(ecs_f32_t) }
+            { .name = "sides", .type = ecs_id(ecs_i32_t) }
         }
     });
 
@@ -302,6 +301,10 @@ void FlecsEngineGeometry3Import(
 
     ecs_set_hooks(world, FlecsSphere, {
         .on_replace = FlecsSphere_on_replace
+    });
+
+    ecs_set_hooks(world, FlecsPyramid, {
+        .on_replace = FlecsPyramid_on_replace
     });
 
     ecs_set_hooks(world, FlecsNGon, {

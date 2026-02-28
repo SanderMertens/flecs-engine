@@ -64,6 +64,7 @@ static bool flecsEngineAnyViewHasEffects(
         FlecsRenderView *views = ecs_field(&it, FlecsRenderView, 0);
         for (int32_t i = 0; i < it.count; i ++) {
             if (ecs_vec_count(&views[i].effects)) {
+                ecs_iter_fini(&it);
                 return true;
             }
         }

@@ -11,10 +11,7 @@ typedef struct {
 } flecs_transform3_queries_t;
 
 static void flecsTransform3QueriesFree(void *ptr) {
-    flecs_transform3_queries_t *ctx = ptr;
-    ecs_query_fini(ctx->q_childof);
-    ecs_query_fini(ctx->q_parent);
-    ecs_os_free(ctx);
+    ecs_os_free(ptr);
 }
 
 static void flecsTransform3RotationAndScale(

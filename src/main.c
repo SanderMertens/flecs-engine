@@ -165,7 +165,6 @@ int main(
   ecs_entity_t view = ecs_new(world);
   FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_pyramids(world);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangles(world);
@@ -195,9 +194,16 @@ int main(
   ecs_set(world, right_triangle_prism, FlecsRgba, {0, 128, 0});
 
   ecs_entity_t pyramid = ecs_new(world);
-  ecs_set(world, pyramid, FlecsPyramid, {2, 2, 2});
+  ecs_set(world, pyramid, FlecsPyramid, { .sides = 4 });
   ecs_set(world, pyramid, FlecsPosition3, {3, -2, -12});
+  ecs_set(world, pyramid, FlecsScale3, {2, 2, 2});
   ecs_set(world, pyramid, FlecsRgba, {0, 0, 128});
+
+  ecs_entity_t pyramid8 = ecs_new(world);
+  ecs_set(world, pyramid8, FlecsPyramid, { .sides = 8 });
+  ecs_set(world, pyramid8, FlecsPosition3, {6, -2, -12});
+  ecs_set(world, pyramid8, FlecsScale3, {2, 2, 2});
+  ecs_set(world, pyramid8, FlecsRgba, {128, 0, 128});
 
   ecs_entity_t spheres[6];
   for (int i = 0; i < 6; i ++) {
@@ -257,9 +263,10 @@ int main(
   double i = 0;
   while (ecs_progress(world, 0)) {
     ecs_set(world, box, FlecsRotation3, {0, i, 0});
-    ecs_set(world, triangle_prism, FlecsRotation3, {0, i * 1.4, 0});
-    ecs_set(world, right_triangle_prism, FlecsRotation3, {0, i * 2.8, 0});
-    ecs_set(world, pyramid, FlecsRotation3, {0, i * 3.2, 0});
+    ecs_set(world, triangle_prism, FlecsRotation3, {0, i, 0});
+    ecs_set(world, right_triangle_prism, FlecsRotation3, {0, i, 0});
+    ecs_set(world, pyramid, FlecsRotation3, {0, i, 0});
+    ecs_set(world, pyramid8, FlecsRotation3, {0, i, 0});
     ecs_set(world, sphere, FlecsRotation3, {0, i, 0});
     ecs_set(world, cylinder, FlecsRotation3, {0, i, 0});
 
