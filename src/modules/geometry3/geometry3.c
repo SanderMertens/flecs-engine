@@ -271,7 +271,9 @@ void FlecsEngineGeometry3Import(
     ecs_struct(world, {
         .entity = ecs_id(FlecsCylinder),
         .members = {
-            { .name = "segments", .type = ecs_id(ecs_i32_t) }
+            { .name = "segments", .type = ecs_id(ecs_i32_t) },
+            { .name = "smooth", .type = ecs_id(ecs_bool_t) },
+            { .name = "length", .type = ecs_id(ecs_f32_t) }
         }
     });
 
@@ -289,6 +291,10 @@ void FlecsEngineGeometry3Import(
 
     ecs_set_hooks(world, FlecsSphere, {
         .on_replace = FlecsSphere_on_replace
+    });
+
+    ecs_set_hooks(world, FlecsCylinder, {
+        .on_replace = FlecsCylinder_on_replace
     });
 
     ecs_set_hooks(world, FlecsGeometry3Cache, {

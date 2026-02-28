@@ -49,6 +49,9 @@ void FlecsSphere_on_replace(
 void FlecsSphere_on_set(
     ecs_iter_t *it);
 
+void FlecsCylinder_on_replace(
+    ecs_iter_t *it);
+
 void FlecsEngineGeometry3Import(
     ecs_world_t *world);
 

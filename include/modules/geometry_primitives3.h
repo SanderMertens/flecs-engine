@@ -53,6 +53,8 @@ ECS_STRUCT(FlecsSphere, {
 
 ECS_STRUCT(FlecsCylinder, {
     int32_t segments;
+    bool smooth;
+    float length;
 });
 
 #endif
