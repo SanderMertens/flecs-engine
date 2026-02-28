@@ -204,6 +204,8 @@ static void flecsEngineCleanup(
         impl->surface_impl->cleanup(impl, terminate_runtime);
     }
 
+    flecsEngineReleaseEffectTargets(impl);
+
     if (impl->depth_texture_view) {
         wgpuTextureViewRelease(impl->depth_texture_view);
         impl->depth_texture_view = NULL;

@@ -33,6 +33,14 @@ typedef struct {
 
     WGPUSurfaceConfiguration surface_config;
 
+    /* Reusable intermediate color targets for post-processing passes. */
+    WGPUTexture *effect_target_textures;
+    WGPUTextureView *effect_target_views;
+    int32_t effect_target_count;
+    uint32_t effect_target_width;
+    uint32_t effect_target_height;
+    WGPUTextureFormat effect_target_format;
+
     ecs_query_t *view_query;
 } FlecsEngineImpl;
 

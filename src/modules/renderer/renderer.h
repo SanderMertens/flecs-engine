@@ -87,7 +87,16 @@ ecs_entity_t flecsEngineEnsureShader(
 
 void flecsEngineRenderViews(
     const ecs_world_t *world,
-    const FlecsEngineImpl *impl,
+    FlecsEngineImpl *impl,
+    WGPUTextureView view_texture,
+    WGPUCommandEncoder encoder);
+
+void flecsEngineReleaseEffectTargets(
+    FlecsEngineImpl *impl);
+
+void flecsEngineRenderViewsWithEffects(
+    const ecs_world_t *world,
+    FlecsEngineImpl *impl,
     WGPUTextureView view_texture,
     WGPUCommandEncoder encoder);
 
