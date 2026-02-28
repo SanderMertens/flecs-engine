@@ -161,8 +161,12 @@ int main(
       .aspect_ratio = options.width / (float)options.height
   });
 
+  ecs_set(world, camera, FlecsPosition3, {0, 10, 0});
+  ecs_set(world, camera, FlecsRotation3, {-0.5, 0, 0});
+
   ecs_entity_t view = ecs_new(world);
   FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
+  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_infinite_grid(world);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
   ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);

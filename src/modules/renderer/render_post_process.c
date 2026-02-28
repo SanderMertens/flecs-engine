@@ -120,7 +120,7 @@ static WGPURenderPassEncoder flecsEngineBeginBatchPass(
         .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
         .loadOp = color_load_op,
         .storeOp = WGPUStoreOp_Store,
-        .clearValue = (WGPUColor){ 0.05, 0.05, 0.08, 1.0 }
+        .clearValue = (WGPUColor){ 0.03, 0.03, 0.05, 1.0 }
     };
 
     WGPURenderPassDepthStencilAttachment depth_attachment = {
@@ -154,7 +154,7 @@ static WGPURenderPassEncoder flecsEngineBeginEffectPass(
         .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
         .loadOp = color_load_op,
         .storeOp = WGPUStoreOp_Store,
-        .clearValue = (WGPUColor){ 0.05, 0.05, 0.08, 1.0 }
+        .clearValue = (WGPUColor){ 0.03, 0.03, 0.05, 1.0 }
     };
 
     WGPURenderPassDescriptor pass_desc = {

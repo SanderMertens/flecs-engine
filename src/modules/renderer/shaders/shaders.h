@@ -6,4 +6,7 @@
 ecs_entity_t flecsEngineShader_litColored(
     ecs_world_t *world);
 
+ecs_entity_t flecsEngineShader_infiniteGrid(
+    ecs_world_t *world);
+
 #endif

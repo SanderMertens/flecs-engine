@@ -80,7 +80,7 @@ static void flecsEngineRenderViewsWithoutEffects(
         .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
         .loadOp = WGPULoadOp_Clear,
         .storeOp = WGPUStoreOp_Store,
-        .clearValue = (WGPUColor){ 0.05, 0.05, 0.08, 1.0 }
+        .clearValue = (WGPUColor){ 0.02, 0.02, 0.05, 1.0 }
     };
 
     // Depth attachment: clear depth each frame.

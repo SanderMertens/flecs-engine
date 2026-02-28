@@ -8,6 +8,7 @@ static const int32_t kCameraLogLimit = 60;
 static void FlecsCameraTransformMvp(ecs_iter_t *it) {
     FlecsCamera *cameras = ecs_field(it, FlecsCamera, 0);
     FlecsCameraImpl *impl = ecs_field(it, FlecsCameraImpl, 1);
+    const FlecsWorldTransform3 *wt = ecs_field(it, FlecsWorldTransform3, 2);
     const FlecsEngineImpl *engine = ecs_singleton_get(it->world, FlecsEngineImpl);
     float window_aspect = 0.0f;
     if (engine && engine->width > 0 && engine->height > 0) {
@@ -30,7 +31,20 @@ static void FlecsCameraTransformMvp(ecs_iter_t *it) {
                 impl[i].proj);
         }
 
-        glm_mat4_copy(impl[i].proj, impl[i].mvp);
+        if (wt) {
+            const FlecsWorldTransform3 *cam_wt = ecs_field_is_self(it, 2) ? &wt[i] : wt;
+            mat4 cam_world;
+            for (int32_t r = 0; r < 4; r ++) {
+                for (int32_t c = 0; c < 4; c ++) {
+                    cam_world[r][c] = cam_wt->m[r][c];
+                }
+            }
+            glm_mat4_inv(cam_world, impl[i].view);
+        } else {
+            glm_mat4_identity(impl[i].view);
+        }
+
+        glm_mat4_mul(impl[i].proj, impl[i].view, impl[i].mvp);
 
         if (g_camera_log_count < kCameraLogLimit) {
             ecs_log(0,
@@ -62,6 +76,6 @@ void FlecsEngineCameraImport(
         ecs_id(FlecsCamera), EcsWith, 
         ecs_id(FlecsCameraImpl));
 
-    ECS_SYSTEM(world, FlecsCameraTransformMvp, EcsPostLoad,
-        Camera, CameraImpl);
+    ECS_SYSTEM(world, FlecsCameraTransformMvp, EcsPreStore,
+        Camera, CameraImpl, ?flecs.engine.transform3.WorldTransform3);
 }
