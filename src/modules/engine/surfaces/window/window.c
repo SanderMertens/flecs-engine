@@ -85,8 +85,6 @@ static int flecsEngineWindowPrepareFrame(
         return 1;
     }
 
-    glfwPollEvents();
-
     int width = 0;
     int height = 0;
     glfwGetFramebufferSize(impl->window, &width, &height);

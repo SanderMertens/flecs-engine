@@ -8,6 +8,7 @@
 #include "../geometry3/geometry3.h"
 #include "../transform3/transform3.h"
 #include "../movement/movement.h"
+#include "../input/input.h"
 #include "../camera/camera.h"
 #include "../material/material.h"
 
@@ -498,6 +499,7 @@ void FlecsEngineImport(
     ECS_IMPORT(world, FlecsEngineGeometry3);
     ECS_IMPORT(world, FlecsEngineTransform3);
     ECS_IMPORT(world, FlecsEngineMovement);
+    ECS_IMPORT(world, FlecsEngineInput);
     ECS_IMPORT(world, FlecsEngineCamera);
     ECS_IMPORT(world, FlecsEngineMaterial);
 
