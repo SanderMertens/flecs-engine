@@ -20,6 +20,4 @@ ECS_STRUCT(FlecsCameraLookAt, {
     float z;
 });
 
-extern ECS_COMPONENT_DECLARE(FlecsCameraLookAt);
-
 #endif
