@@ -2,12 +2,15 @@
 #include "camera.h"
 
 ECS_COMPONENT_DECLARE(FlecsCameraImpl);
+ECS_COMPONENT_DECLARE(FlecsCameraLookAt);
 
 static void FlecsCameraTransformMvp(ecs_iter_t *it) {
     FlecsCamera *cameras = ecs_field(it, FlecsCamera, 0);
-    FlecsCameraImpl *impl = ecs_field(it, FlecsCameraImpl, 1);
-    const FlecsWorldTransform3 *wt = ecs_field(it, FlecsWorldTransform3, 2);
+    const FlecsCameraLookAt *lookat = ecs_field(it, FlecsCameraLookAt, 1);
+    FlecsCameraImpl *impl = ecs_field(it, FlecsCameraImpl, 2);
+    const FlecsWorldTransform3 *wt = ecs_field(it, FlecsWorldTransform3, 3);
     const FlecsEngineImpl *engine = ecs_singleton_get(it->world, FlecsEngineImpl);
+
     float window_aspect = 0.0f;
     if (engine && engine->width > 0 && engine->height > 0) {
         window_aspect = (float)engine->width / (float)engine->height;
@@ -29,19 +32,22 @@ static void FlecsCameraTransformMvp(ecs_iter_t *it) {
                 impl[i].proj);
         }
 
+        vec3 eye = {0.0f, 0.0f, 0.0f};
         if (wt) {
             const FlecsWorldTransform3 *cam_wt = ecs_field_is_self(it, 2) ? &wt[i] : wt;
-            mat4 cam_world;
-            for (int32_t r = 0; r < 4; r ++) {
-                for (int32_t c = 0; c < 4; c ++) {
-                    cam_world[r][c] = cam_wt->m[r][c];
-                }
-            }
-            glm_mat4_inv(cam_world, impl[i].view);
-        } else {
-            glm_mat4_identity(impl[i].view);
+            eye[0] = cam_wt->m[3][0];
+            eye[1] = cam_wt->m[3][1];
+            eye[2] = cam_wt->m[3][2];
         }
 
+        vec3 center = {lookat->x, lookat->y, lookat->z};
+        vec3 up = {0.0f, 1.0f, 0.0f};
+
+        if (eye[0] == center[0] && eye[1] == center[1] && eye[2] == center[2]) {
+            center[2] -= 1.0f;
+        }
+
+        glm_lookat(eye, center, up, impl[i].view);
         glm_mat4_mul(impl[i].proj, impl[i].view, impl[i].mvp);
     }
 }
@@ -54,12 +60,20 @@ void FlecsEngineCameraImport(
     ecs_set_name_prefix(world, "Flecs");
     
     ECS_COMPONENT_DEFINE(world, FlecsCameraImpl);
+    ECS_COMPONENT_DEFINE(world, FlecsCameraLookAt);
     ECS_META_COMPONENT(world, FlecsCamera);
 
     ecs_add_pair(world, 
         ecs_id(FlecsCamera), EcsWith, 
         ecs_id(FlecsCameraImpl));
 
+    ecs_add_pair(world,
+        ecs_id(FlecsCamera), EcsWith,
+        ecs_id(FlecsCameraLookAt));
+
     ECS_SYSTEM(world, FlecsCameraTransformMvp, EcsPreStore,
-        Camera, CameraImpl, ?flecs.engine.transform3.WorldTransform3);
+        [in] Camera, 
+        [in] CameraLookAt, 
+        [out] CameraImpl, 
+        [out] flecs.engine.transform3.WorldTransform3);
 }

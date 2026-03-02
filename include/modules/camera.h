@@ -14,4 +14,12 @@ ECS_STRUCT(FlecsCamera, {
     bool orthographic;
 });
 
+ECS_STRUCT(FlecsCameraLookAt, {
+    float x;
+    float y;
+    float z;
+});
+
+extern ECS_COMPONENT_DECLARE(FlecsCameraLookAt);
+
 #endif

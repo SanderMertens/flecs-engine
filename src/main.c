@@ -164,7 +164,7 @@ int main(
   });
 
   ecs_set(world, camera, FlecsPosition3, {0, 10, 0});
-  ecs_set(world, camera, FlecsRotation3, {-0.5f, 0.0f, 0.0f});
+  ecs_set(world, camera, FlecsCameraLookAt, {0, 0, -16});
 
   ecs_entity_t view = ecs_new(world);
   FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
