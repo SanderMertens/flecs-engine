@@ -165,7 +165,7 @@ int main(
 
   ecs_entity_t light = ecs_new(world);
   ecs_set(world, light, FlecsPosition3, {0, 0, 5});
-  ecs_set(world, light, FlecsDirectionalLight, { .intensity = 1.0f });
+  ecs_set(world, light, FlecsDirectionalLight, { .intensity = 10.0f });
   ecs_set(world, light, FlecsLookAt, { 0, 0, 0 });
   ecs_set(world, light, FlecsRgba, {255, 255, 255, 255});
 
@@ -179,6 +179,7 @@ int main(
   v->light = light;
   FlecsBloomSettings bloom_settings = flecsEngine_bloomSettingsDefault();
   ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] = flecsEngine_createEffect_bloom(world, 0, &bloom_settings);
+  // ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] = flecsEngine_createEffect_passthrough(world, 1);
   ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] = flecsEngine_createEffect_tonyMcMapFace(world, 1);
 
   int numShapes = 7;

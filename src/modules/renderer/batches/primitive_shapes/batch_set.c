@@ -11,8 +11,6 @@ ecs_entity_t flecsEngine_createBatchSet_primitiveShapes(
     ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] =
         flecsEngine_createBatch_boxes(world);
     ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] =
-        flecsEngine_createBatch_cones(world);
-    ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] =
         flecsEngine_createBatch_quads(world);
     ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] =
         flecsEngine_createBatch_triangles(world);

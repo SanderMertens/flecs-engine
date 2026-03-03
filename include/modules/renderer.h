@@ -81,74 +81,59 @@ typedef struct {
     float scale_y;
 } FlecsBloomSettings;
 
-// Render entities with FlecsMesh, FlecsWorldTransform with lighting
 ecs_entity_t flecsEngine_createBatch_mesh(
     ecs_world_t *world);
 
-// Render scalable box primitives without IsA grouping
 ecs_entity_t flecsEngine_createBatch_boxes(
     ecs_world_t *world);
 
-// Render scalable cone primitives without IsA grouping
-ecs_entity_t flecsEngine_createBatch_cones(
-    ecs_world_t *world);
-
-// Render scalable quad primitives without IsA grouping
 ecs_entity_t flecsEngine_createBatch_quads(
     ecs_world_t *world);
 
-// Render scalable triangle primitives without IsA grouping
 ecs_entity_t flecsEngine_createBatch_triangles(
     ecs_world_t *world);
 
-// Render scalable right triangle primitives without IsA grouping
 ecs_entity_t flecsEngine_createBatch_right_triangles(
     ecs_world_t *world);
 
-// Render scalable triangle prism primitives without IsA grouping
 ecs_entity_t flecsEngine_createBatch_triangle_prisms(
     ecs_world_t *world);
 
-// Render scalable right triangle prism primitives without IsA grouping
 ecs_entity_t flecsEngine_createBatch_right_triangle_prisms(
     ecs_world_t *world);
 
-// Render an infinite-style world grid on the XZ plane through the origin
 ecs_entity_t flecsEngine_createBatch_infiniteGrid(
     ecs_world_t *world);
 
-// Render all primitive 3D shapes through a nested batch set
 ecs_entity_t flecsEngine_createBatchSet_primitiveShapes(
     ecs_world_t *world);
 
-// Create Tony McMapface post-process effect that reads from chain input index
 ecs_entity_t flecsEngine_createEffect_tonyMcMapFace(
     ecs_world_t *world,
     int32_t input);
 
-// Bloom presets
 FlecsBloomSettings flecsEngine_bloomSettingsDefault(void);
 FlecsBloomSettings flecsEngine_bloomSettingsAnamorphic(void);
 FlecsBloomSettings flecsEngine_bloomSettingsOldSchool(void);
 FlecsBloomSettings flecsEngine_bloomSettingsScreenBlur(void);
 
-// Create bloom post-process effect that reads from chain input index
 ecs_entity_t flecsEngine_createEffect_bloom(
     ecs_world_t *world,
     int32_t input,
     const FlecsBloomSettings *settings);
 
-// Create invert-color post-process effect that reads from chain input index
 ecs_entity_t flecsEngine_createEffect_invert(
     ecs_world_t *world,
     int32_t input);
 
-// Render a list of batches and/or nested batch sets in order
+ecs_entity_t flecsEngine_createEffect_passthrough(
+    ecs_world_t *world,
+    int32_t input);
+
 ECS_STRUCT(FlecsRenderBatchSet, {
     ecs_vec_t batches;
 });
 
-// Render settings for a single camera/light view
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;
     ecs_entity_t light;
