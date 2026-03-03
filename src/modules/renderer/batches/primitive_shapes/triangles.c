@@ -1,44 +1,42 @@
-#include "../renderer.h"
-#include "../shaders/shaders.h"
-#include "../../geometry3/geometry3.h"
-#include "batches.h"
+#include "../../renderer.h"
+#include "../../shaders/shaders.h"
+#include "../../../geometry3/geometry3.h"
+#include "../batches.h"
 #include "flecs_engine.h"
 
 typedef struct {
     flecs_engine_batch_ctx_t batch;
-} flecs_engine_triangle_prisms_ctx_t;
+} flecs_engine_triangles_ctx_t;
 
-static flecs_engine_triangle_prisms_ctx_t* flecsEngine_triangle_prisms_createCtx(
+static flecs_engine_triangles_ctx_t* flecsEngine_triangles_createCtx(
     ecs_world_t *world)
 {
-    flecs_engine_triangle_prisms_ctx_t *result =
-        ecs_os_calloc_t(flecs_engine_triangle_prisms_ctx_t);
-    flecsEngine_batchCtx_init(
-        &result->batch, flecsGeometry3_getTrianglePrismAsset(world));
+    flecs_engine_triangles_ctx_t *result =
+        ecs_os_calloc_t(flecs_engine_triangles_ctx_t);
+    flecsEngine_batchCtx_init(&result->batch, flecsGeometry3_getTriangleAsset(world));
     return result;
 }
 
-static void flecsEngine_triangle_prisms_deleteCtx(
+static void flecsEngine_triangles_deleteCtx(
     void *arg)
 {
-    flecs_engine_triangle_prisms_ctx_t *ctx = arg;
+    flecs_engine_triangles_ctx_t *ctx = arg;
     flecsEngine_batchCtx_fini(&ctx->batch);
     ecs_os_free(ctx);
 }
 
-static void flecsEngine_triangle_prisms_prepareInstances(
+static void flecsEngine_triangles_prepareInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,
-    flecs_engine_triangle_prisms_ctx_t *ctx)
+    flecs_engine_triangles_ctx_t *ctx)
 {
 redo: {
         ecs_iter_t it = ecs_query_iter(world, batch->query);
         ctx->batch.count = 0;
 
         while (ecs_query_next(&it)) {
-            const FlecsTrianglePrism *triangle_prisms =
-                ecs_field(&it, FlecsTrianglePrism, 0);
+            const FlecsTriangle *triangles = ecs_field(&it, FlecsTriangle, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
             const FlecsPbrMaterial *materials =
@@ -50,9 +48,9 @@ redo: {
                     flecsEngine_packInstanceTransform(
                         &ctx->batch.cpu_transforms[index],
                         &wt[i],
-                        triangle_prisms[i].x,
-                        triangle_prisms[i].y,
-                        triangle_prisms[i].z);
+                        triangles[i].x,
+                        triangles[i].y,
+                        1.0f);
 
                 }
 
@@ -90,18 +88,18 @@ redo: {
     }
 }
 
-static void flecsEngine_triangle_prisms_callback(
+static void flecsEngine_triangles_callback(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
-    flecs_engine_triangle_prisms_ctx_t *ctx = batch->ctx;
-    flecsEngine_triangle_prisms_prepareInstances(world, engine, batch, ctx);
+    flecs_engine_triangles_ctx_t *ctx = batch->ctx;
+    flecsEngine_triangles_prepareInstances(world, engine, batch, ctx);
     flecsEngine_batchCtx_draw(pass, &ctx->batch);
 }
 
-ecs_entity_t flecsEngine_createBatch_triangle_prisms(
+ecs_entity_t flecsEngine_createBatch_triangles(
     ecs_world_t *world)
 {
     ecs_entity_t batch = ecs_new(world);
@@ -109,7 +107,7 @@ ecs_entity_t flecsEngine_createBatch_triangle_prisms(
 
     ecs_query_t *q = ecs_query(world, {
         .terms = {
-            { .id = ecs_id(FlecsTrianglePrism), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsTriangle), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
             { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf }
@@ -129,9 +127,9 @@ ecs_entity_t flecsEngine_createBatch_triangle_prisms(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_triangle_prisms_callback,
-        .ctx = flecsEngine_triangle_prisms_createCtx((ecs_world_t*)world),
-        .free_ctx = flecsEngine_triangle_prisms_deleteCtx
+        .callback = flecsEngine_triangles_callback,
+        .ctx = flecsEngine_triangles_createCtx((ecs_world_t*)world),
+        .free_ctx = flecsEngine_triangles_deleteCtx
     });
 
     return batch;

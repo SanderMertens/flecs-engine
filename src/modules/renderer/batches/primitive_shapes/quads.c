@@ -1,42 +1,42 @@
-#include "../renderer.h"
-#include "../shaders/shaders.h"
-#include "../../geometry3/geometry3.h"
-#include "batches.h"
+#include "../../renderer.h"
+#include "../../shaders/shaders.h"
+#include "../../../geometry3/geometry3.h"
+#include "../batches.h"
 #include "flecs_engine.h"
 
 typedef struct {
     flecs_engine_batch_ctx_t batch;
-} flecs_engine_triangles_ctx_t;
+} flecs_engine_quads_ctx_t;
 
-static flecs_engine_triangles_ctx_t* flecsEngine_triangles_createCtx(
+static flecs_engine_quads_ctx_t* flecsEngine_quads_createCtx(
     ecs_world_t *world)
 {
-    flecs_engine_triangles_ctx_t *result =
-        ecs_os_calloc_t(flecs_engine_triangles_ctx_t);
-    flecsEngine_batchCtx_init(&result->batch, flecsGeometry3_getTriangleAsset(world));
+    flecs_engine_quads_ctx_t *result =
+        ecs_os_calloc_t(flecs_engine_quads_ctx_t);
+    flecsEngine_batchCtx_init(&result->batch, flecsGeometry3_getQuadAsset(world));
     return result;
 }
 
-static void flecsEngine_triangles_deleteCtx(
+static void flecsEngine_quads_deleteCtx(
     void *arg)
 {
-    flecs_engine_triangles_ctx_t *ctx = arg;
+    flecs_engine_quads_ctx_t *ctx = arg;
     flecsEngine_batchCtx_fini(&ctx->batch);
     ecs_os_free(ctx);
 }
 
-static void flecsEngine_triangles_prepareInstances(
+static void flecsEngine_quads_prepareInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,
-    flecs_engine_triangles_ctx_t *ctx)
+    flecs_engine_quads_ctx_t *ctx)
 {
 redo: {
         ecs_iter_t it = ecs_query_iter(world, batch->query);
         ctx->batch.count = 0;
 
         while (ecs_query_next(&it)) {
-            const FlecsTriangle *triangles = ecs_field(&it, FlecsTriangle, 0);
+            const FlecsQuad *quads = ecs_field(&it, FlecsQuad, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
             const FlecsPbrMaterial *materials =
@@ -48,8 +48,8 @@ redo: {
                     flecsEngine_packInstanceTransform(
                         &ctx->batch.cpu_transforms[index],
                         &wt[i],
-                        triangles[i].x,
-                        triangles[i].y,
+                        quads[i].x,
+                        quads[i].y,
                         1.0f);
 
                 }
@@ -88,18 +88,18 @@ redo: {
     }
 }
 
-static void flecsEngine_triangles_callback(
+static void flecsEngine_quads_callback(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
-    flecs_engine_triangles_ctx_t *ctx = batch->ctx;
-    flecsEngine_triangles_prepareInstances(world, engine, batch, ctx);
+    flecs_engine_quads_ctx_t *ctx = batch->ctx;
+    flecsEngine_quads_prepareInstances(world, engine, batch, ctx);
     flecsEngine_batchCtx_draw(pass, &ctx->batch);
 }
 
-ecs_entity_t flecsEngine_createBatch_triangles(
+ecs_entity_t flecsEngine_createBatch_quads(
     ecs_world_t *world)
 {
     ecs_entity_t batch = ecs_new(world);
@@ -107,7 +107,7 @@ ecs_entity_t flecsEngine_createBatch_triangles(
 
     ecs_query_t *q = ecs_query(world, {
         .terms = {
-            { .id = ecs_id(FlecsTriangle), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsQuad), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
             { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf }
@@ -127,9 +127,9 @@ ecs_entity_t flecsEngine_createBatch_triangles(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_triangles_callback,
-        .ctx = flecsEngine_triangles_createCtx((ecs_world_t*)world),
-        .free_ctx = flecsEngine_triangles_deleteCtx
+        .callback = flecsEngine_quads_callback,
+        .ctx = flecsEngine_quads_createCtx((ecs_world_t*)world),
+        .free_ctx = flecsEngine_quads_deleteCtx
     });
 
     return batch;

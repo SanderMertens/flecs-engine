@@ -1,7 +1,7 @@
-#include "../renderer.h"
-#include "../shaders/shaders.h"
-#include "../../geometry3/geometry3.h"
-#include "batches.h"
+#include "../../renderer.h"
+#include "../../shaders/shaders.h"
+#include "../../../geometry3/geometry3.h"
+#include "../batches.h"
 #include "flecs_engine.h"
 
 typedef struct {
