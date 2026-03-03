@@ -228,6 +228,12 @@ static int32_t flecsVertexAttrFromType(
             attrs[attr].offset = members[i].offset;
             attr ++;
 
+        } else if (members[i].type == ecs_id(ecs_f32_t)) {
+            attrs[attr].format = WGPUVertexFormat_Float32;
+            attrs[attr].shaderLocation = location_offset + attr;
+            attrs[attr].offset = members[i].offset;
+            attr ++;
+
         } else if (members[i].type == ecs_id(flecs_rgba_t)) {
             attrs[attr].format = WGPUVertexFormat_Unorm8x4;
             attrs[attr].shaderLocation = location_offset + attr;
@@ -574,6 +580,11 @@ void flecsEngineRenderBatch_setupCamera(
     FlecsUniform *uniforms,
     ecs_entity_t entity)
 {
+    uniforms->camera_pos[0] = 0.0f;
+    uniforms->camera_pos[1] = 0.0f;
+    uniforms->camera_pos[2] = 0.0f;
+    uniforms->camera_pos[3] = 1.0f;
+
     glm_mat4_identity(uniforms->mvp);
     const FlecsCameraImpl *camera = ecs_get(
         world, entity, FlecsCameraImpl);
@@ -585,6 +596,14 @@ void flecsEngineRenderBatch_setupCamera(
     }
 
     glm_mat4_copy((vec4*)camera->mvp, uniforms->mvp);
+
+    const FlecsWorldTransform3 *camera_transform = ecs_get(
+        world, entity, FlecsWorldTransform3);
+    if (camera_transform) {
+        uniforms->camera_pos[0] = camera_transform->m[3][0];
+        uniforms->camera_pos[1] = camera_transform->m[3][1];
+        uniforms->camera_pos[2] = camera_transform->m[3][2];
+    }
 }
 
 void flecsEngineRenderBatch_setupLight(
@@ -665,6 +684,7 @@ void flecsEngineRenderBatch(
     }
 
     FlecsUniform uniforms = {0};
+    uniforms.camera_pos[3] = 1.0f;
 
     if (view->camera) {
         flecsEngineRenderBatch_setupCamera(world, &uniforms, view->camera);

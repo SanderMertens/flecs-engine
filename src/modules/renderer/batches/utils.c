@@ -1,12 +1,28 @@
 #include "batches.h"
 
+static float flecsEngine_clampf(
+    float value,
+    float min_value,
+    float max_value)
+{
+    if (value < min_value) {
+        return min_value;
+    }
+    if (value > max_value) {
+        return max_value;
+    }
+    return value;
+}
+
 void flecsEngine_batchCtx_init(
     flecs_engine_batch_ctx_t *ctx,
     const FlecsMesh3Impl *mesh)
 {
     ctx->instance_transform = NULL;
     ctx->instance_color = NULL;
+    ctx->instance_pbr = NULL;
     ctx->cpu_transforms = NULL;
+    ctx->cpu_pbr = NULL;
     ctx->count = 0;
     ctx->capacity = 0;
     if (mesh) {
@@ -27,9 +43,17 @@ void flecsEngine_batchCtx_fini(
         wgpuBufferRelease(ctx->instance_color);
         ctx->instance_color = NULL;
     }
+    if (ctx->instance_pbr) {
+        wgpuBufferRelease(ctx->instance_pbr);
+        ctx->instance_pbr = NULL;
+    }
     if (ctx->cpu_transforms) {
         ecs_os_free(ctx->cpu_transforms);
         ctx->cpu_transforms = NULL;
+    }
+    if (ctx->cpu_pbr) {
+        ecs_os_free(ctx->cpu_pbr);
+        ctx->cpu_pbr = NULL;
     }
 
     ctx->count = 0;
@@ -56,8 +80,14 @@ void flecsEngine_batchCtx_ensureCapacity(
     if (ctx->instance_color) {
         wgpuBufferRelease(ctx->instance_color);
     }
+    if (ctx->instance_pbr) {
+        wgpuBufferRelease(ctx->instance_pbr);
+    }
     if (ctx->cpu_transforms) {
         ecs_os_free(ctx->cpu_transforms);
+    }
+    if (ctx->cpu_pbr) {
+        ecs_os_free(ctx->cpu_pbr);
     }
 
     ctx->instance_transform = wgpuDeviceCreateBuffer(engine->device,
@@ -72,8 +102,16 @@ void flecsEngine_batchCtx_ensureCapacity(
             .size = (uint64_t)new_capacity * sizeof(flecs_rgba_t)
         });
 
+    ctx->instance_pbr = wgpuDeviceCreateBuffer(engine->device,
+        &(WGPUBufferDescriptor){
+            .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
+            .size = (uint64_t)new_capacity * sizeof(FlecsInstancePbrMaterial)
+        });
+
     ctx->cpu_transforms =
         ecs_os_malloc_n(FlecsInstanceTransform, new_capacity);
+    ctx->cpu_pbr =
+        ecs_os_malloc_n(FlecsInstancePbrMaterial, new_capacity);
 
     ctx->capacity = new_capacity;
 }
@@ -103,6 +141,10 @@ void flecsEngine_batchCtx_draw(
     wgpuRenderPassEncoderSetVertexBuffer(pass, 0, ctx->mesh.vertex_buffer, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 1, ctx->instance_transform, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderSetVertexBuffer(pass, 2, ctx->instance_color, 0, WGPU_WHOLE_SIZE);
+    if (ctx->instance_pbr) {
+        wgpuRenderPassEncoderSetVertexBuffer(
+            pass, 3, ctx->instance_pbr, 0, WGPU_WHOLE_SIZE);
+    }
     wgpuRenderPassEncoderSetIndexBuffer(pass, ctx->mesh.index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderDrawIndexed(pass, ctx->mesh.index_count, ctx->count, 0, 0, 0);
 }

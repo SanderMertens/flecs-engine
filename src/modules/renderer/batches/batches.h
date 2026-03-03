@@ -6,7 +6,9 @@
 typedef struct {
     WGPUBuffer instance_transform;
     WGPUBuffer instance_color;
+    WGPUBuffer instance_pbr;
     FlecsInstanceTransform *cpu_transforms;
+    FlecsInstancePbrMaterial *cpu_pbr;
     int32_t count;
     int32_t capacity;
     FlecsMesh3Impl mesh;

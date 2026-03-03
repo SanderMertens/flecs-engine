@@ -34,10 +34,12 @@ redo: {
         while (ecs_query_next(&it)) {
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
-            const FlecsScale3 *scales = ecs_field(&it, FlecsScale3, 3);
+            const FlecsPbrMaterial *materials =
+                ecs_field(&it, FlecsPbrMaterial, 3);
+            const FlecsScale3 *scales = ecs_field(&it, FlecsScale3, 4);
 
             if ((ctx->count + it.count) <= ctx->capacity) {
-                bool scales_is_self = scales && ecs_field_is_self(&it, 3);
+                bool scales_is_self = scales && ecs_field_is_self(&it, 4);
                 for (int32_t i = 0; i < it.count; i ++) {
                     float scale_x = 1.0f;
                     float scale_y = 1.0f;
@@ -57,6 +59,7 @@ redo: {
                         scale_x,
                         scale_y,
                         scale_z);
+
                 }
 
                 wgpuQueueWriteBuffer(
@@ -72,6 +75,13 @@ redo: {
                     ctx->count * sizeof(flecs_rgba_t),
                     colors,
                     it.count * sizeof(flecs_rgba_t));
+
+                wgpuQueueWriteBuffer(
+                    engine->queue,
+                    ctx->instance_pbr,
+                    (uint64_t)ctx->count * sizeof(FlecsInstancePbrMaterial),
+                    materials,
+                    (uint64_t)it.count * sizeof(FlecsInstancePbrMaterial));
             }
 
             ctx->count += it.count;
@@ -100,13 +110,14 @@ ecs_entity_t flecsEngine_createBatch_cones(
     ecs_world_t *world)
 {
     ecs_entity_t batch = ecs_new(world);
-    ecs_entity_t shader = flecsEngineShader_litColored(world);
+    ecs_entity_t shader = flecsEngineShader_pbrColored(world);
 
     ecs_query_t *q = ecs_query(world, {
         .terms = {
             { .id = ecs_id(FlecsCone), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf },
             { .id = ecs_id(FlecsScale3), .src.id = EcsSelf, .oper = EcsOptional },
             { .id = ecs_id(FlecsMesh3Impl), .src.id = EcsUp, .trav = EcsIsA, .oper = EcsNot }
         },
@@ -119,7 +130,8 @@ ecs_entity_t flecsEngine_createBatch_cones(
         .vertex_type = ecs_id(FlecsLitVertex),
         .instance_types = {
             ecs_id(FlecsInstanceTransform),
-            ecs_id(FlecsInstanceColor)
+            ecs_id(FlecsInstanceColor),
+            ecs_id(FlecsInstancePbrMaterial)
         },
         .uniforms = {
             ecs_id(FlecsUniform)

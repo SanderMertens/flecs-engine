@@ -15,6 +15,7 @@ ECS_COMPONENT_DECLARE(FlecsVertex);
 ECS_COMPONENT_DECLARE(FlecsLitVertex);
 ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
 ECS_COMPONENT_DECLARE(FlecsInstanceColor);
+ECS_COMPONENT_DECLARE(FlecsInstancePbrMaterial);
 ECS_COMPONENT_DECLARE(FlecsUniform);
 ECS_COMPONENT_DECLARE(FlecsShader);
 ECS_COMPONENT_DECLARE(FlecsShaderImpl);
@@ -201,6 +202,7 @@ void FlecsEngineRendererImport(
     ECS_COMPONENT_DEFINE(world, FlecsLitVertex);
     ECS_COMPONENT_DEFINE(world, FlecsInstanceTransform);
     ECS_COMPONENT_DEFINE(world, FlecsInstanceColor);
+    ECS_COMPONENT_DEFINE(world, FlecsInstancePbrMaterial);
     ECS_COMPONENT_DEFINE(world, FlecsUniform);
     ECS_COMPONENT_DEFINE(world, FlecsShader);
     ECS_COMPONENT_DEFINE(world, FlecsShaderImpl);
@@ -287,12 +289,21 @@ void FlecsEngineRendererImport(
     });
 
     ecs_struct(world, {
+        .entity = ecs_id(FlecsInstancePbrMaterial),
+        .members = {
+            { .name = "metallic", .type = ecs_id(ecs_f32_t) },
+            { .name = "roughness", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
         .entity = ecs_id(FlecsUniform),
         .members = {
             { .name = "vp", .type = ecs_id(flecs_mat4_t) },
             { .name = "clear_color", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "light_ray_dir", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "light_color", .type = ecs_id(ecs_f32_t), .count = 4 },
+            { .name = "camera_pos", .type = ecs_id(ecs_f32_t), .count = 4 },
         }
     });
 

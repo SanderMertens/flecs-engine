@@ -3,7 +3,7 @@
 
 #include "../../../types.h"
 
-ecs_entity_t flecsEngineShader_litColored(
+ecs_entity_t flecsEngineShader_pbrColored(
     ecs_world_t *world);
 
 ecs_entity_t flecsEngineShader_infiniteGrid(

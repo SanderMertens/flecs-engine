@@ -140,14 +140,14 @@ int main(
       .width = options.width,
       .height = options.height,
       .path = options.frame_output_path,
-      .clear_color = {1, 1, 1}
+      .clear_color = {5, 5, 5}
     });
   } else {
     ecs_singleton_set(world, FlecsWindow, {
       .title = "Hello World",
       .width = options.width,
       .height = options.height,
-      .clear_color = {1, 1, 1}
+      .clear_color = {5, 5, 5}
     });
   }
 
@@ -164,12 +164,12 @@ int main(
   });
   
   ecs_add(world, camera, FlecsCameraController);
-  ecs_set(world, camera, FlecsPosition3, {0, 10, 16});
+  ecs_set(world, camera, FlecsPosition3, {0, 10, 24});
   ecs_set(world, camera, FlecsLookAt, {0, 8, 0});
 
   ecs_entity_t light = ecs_new(world);
   ecs_set(world, light, FlecsPosition3, {0, 0, 5});
-  ecs_set(world, light, FlecsDirectionalLight, { .intensity = 50.0f });
+  ecs_set(world, light, FlecsDirectionalLight, { .intensity = 1.0f });
   ecs_set(world, light, FlecsLookAt, { 0, 0, 0 });
   ecs_set(world, light, FlecsRgba, {255, 255, 255, 255});
 
@@ -290,6 +290,31 @@ int main(
     ecs_set(world, hemispheres[i], FlecsRgba, {128, 0, 128});
     ecs_set(world, hemispheres[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
   }
+
+  // PBR sphere grid (roughness: X axis, metallic: Z axis)
+  for (int x = 0; x < numShapes; x ++) {
+    for (int y = 0; y < numShapes; y ++) {
+      float metallic = ((float)x / (float)(numShapes - 1));
+      float roughness = ((float)y / (float)(numShapes - 1));
+      ecs_entity_t sphere = ecs_new(world);
+      ecs_set(world, sphere, FlecsSphere, {
+        .segments = 24,
+        .smooth = true,
+        .radius = 1
+      });
+      ecs_set(world, sphere, FlecsPosition3, {
+        -9 + x * 3,
+        -9 + y * 3 + (numShapes * 3) / 2,
+        0
+      });
+      ecs_set(world, sphere, FlecsRgba, {230, 230, 230, 255});
+      ecs_set(world, sphere, FlecsPbrMaterial, {
+        .metallic = metallic,
+        .roughness = roughness
+      });
+    }
+  }
+
 
   ecs_singleton_set(world, EcsRest, {0});
 

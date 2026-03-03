@@ -41,6 +41,8 @@ redo: {
                 ecs_field(&it, FlecsTrianglePrism, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
+            const FlecsPbrMaterial *materials =
+                ecs_field(&it, FlecsPbrMaterial, 3);
 
             if ((ctx->batch.count + it.count) <= ctx->batch.capacity) {
                 for (int32_t i = 0; i < it.count; i ++) {
@@ -51,6 +53,7 @@ redo: {
                         triangle_prisms[i].x,
                         triangle_prisms[i].y,
                         triangle_prisms[i].z);
+
                 }
 
                 wgpuQueueWriteBuffer(
@@ -66,6 +69,13 @@ redo: {
                     ctx->batch.count * sizeof(flecs_rgba_t),
                     colors,
                     it.count * sizeof(flecs_rgba_t));
+
+                wgpuQueueWriteBuffer(
+                    engine->queue,
+                    ctx->batch.instance_pbr,
+                    (uint64_t)ctx->batch.count * sizeof(FlecsInstancePbrMaterial),
+                    materials,
+                    (uint64_t)it.count * sizeof(FlecsInstancePbrMaterial));
             }
 
             ctx->batch.count += it.count;
@@ -95,13 +105,14 @@ ecs_entity_t flecsEngine_createBatch_triangle_prisms(
     ecs_world_t *world)
 {
     ecs_entity_t batch = ecs_new(world);
-    ecs_entity_t shader = flecsEngineShader_litColored(world);
+    ecs_entity_t shader = flecsEngineShader_pbrColored(world);
 
     ecs_query_t *q = ecs_query(world, {
         .terms = {
             { .id = ecs_id(FlecsTrianglePrism), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
-            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf }
+            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf }
         },
         .cache_kind = EcsQueryCacheAuto
     });
@@ -112,7 +123,8 @@ ecs_entity_t flecsEngine_createBatch_triangle_prisms(
         .vertex_type = ecs_id(FlecsLitVertex),
         .instance_types = {
             ecs_id(FlecsInstanceTransform),
-            ecs_id(FlecsInstanceColor)
+            ecs_id(FlecsInstanceColor),
+            ecs_id(FlecsInstancePbrMaterial)
         },
         .uniforms = {
             ecs_id(FlecsUniform)

@@ -35,6 +35,8 @@ redo: {
             const FlecsBox *boxes = ecs_field(&it, FlecsBox, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
+            const FlecsPbrMaterial *materials =
+                ecs_field(&it, FlecsPbrMaterial, 3);
 
             if ((ctx->count + it.count) <= ctx->capacity) {
                 for (int32_t i = 0; i < it.count; i ++) {
@@ -45,6 +47,7 @@ redo: {
                         boxes[i].x,
                         boxes[i].y,
                         boxes[i].z);
+
                 }
 
                 wgpuQueueWriteBuffer(
@@ -60,6 +63,13 @@ redo: {
                     ctx->count * sizeof(flecs_rgba_t),
                     colors,
                     it.count * sizeof(flecs_rgba_t));
+
+                wgpuQueueWriteBuffer(
+                    engine->queue,
+                    ctx->instance_pbr,
+                    (uint64_t)ctx->count * sizeof(FlecsInstancePbrMaterial),
+                    materials,
+                    (uint64_t)it.count * sizeof(FlecsInstancePbrMaterial));
             }
 
             ctx->count += it.count;
@@ -88,13 +98,14 @@ ecs_entity_t flecsEngine_createBatch_boxes(
     ecs_world_t *world)
 {
     ecs_entity_t batch = ecs_new(world);
-    ecs_entity_t shader = flecsEngineShader_litColored(world);
+    ecs_entity_t shader = flecsEngineShader_pbrColored(world);
 
     ecs_query_t *q = ecs_query(world, {
         .terms = {
             { .id = ecs_id(FlecsBox), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
-            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf }
+            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf }
         },
         .cache_kind = EcsQueryCacheAuto
     });
@@ -105,7 +116,8 @@ ecs_entity_t flecsEngine_createBatch_boxes(
         .vertex_type = ecs_id(FlecsLitVertex),
         .instance_types = {
             ecs_id(FlecsInstanceTransform),
-            ecs_id(FlecsInstanceColor)
+            ecs_id(FlecsInstanceColor),
+            ecs_id(FlecsInstancePbrMaterial)
         },
         .uniforms = {
             ecs_id(FlecsUniform)

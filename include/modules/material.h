@@ -10,4 +10,11 @@ typedef flecs_rgba_t FlecsRgba;
 
 extern ECS_COMPONENT_DECLARE(FlecsRgba);
 
+ECS_STRUCT(FlecsPbrMaterial, {
+    float metallic;
+    float roughness;
+});
+
+extern ECS_COMPONENT_DECLARE(FlecsPbrMaterial);
+
 #endif
