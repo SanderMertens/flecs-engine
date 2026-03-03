@@ -220,8 +220,7 @@ static void flecsEngineRenderViewWithEffects(
             impl,
             pass,
             view_entity,
-            view,
-            impl->surface_config.format);
+            view);
         wgpuRenderPassEncoderEnd(pass);
         wgpuRenderPassEncoderRelease(pass);
         return;
@@ -243,8 +242,7 @@ static void flecsEngineRenderViewWithEffects(
         impl,
         batch_pass,
         view_entity,
-        view,
-        impl->effect_target_format);
+        view);
     wgpuRenderPassEncoderEnd(batch_pass);
     wgpuRenderPassEncoderRelease(batch_pass);
 

@@ -114,7 +114,11 @@ ecs_entity_t flecsEngine_createBatch_right_triangle_prisms(
     ecs_world_t *world);
 
 // Render an infinite-style world grid on the XZ plane through the origin
-ecs_entity_t flecsEngine_createBatch_infinite_grid(
+ecs_entity_t flecsEngine_createBatch_infiniteGrid(
+    ecs_world_t *world);
+
+// Render all primitive 3D shapes through a nested batch set
+ecs_entity_t flecsEngine_createBatchSet_primitiveShapes(
     ecs_world_t *world);
 
 // Create Tony McMapface post-process effect that reads from chain input index

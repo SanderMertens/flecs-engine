@@ -674,8 +674,7 @@ void flecsEngineRenderBatch(
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderView *view,
-    ecs_entity_t batch_entity,
-    WGPUTextureFormat color_format)
+    ecs_entity_t batch_entity)
 {
     const FlecsRenderBatch *batch = ecs_get(
         world, batch_entity, FlecsRenderBatch);
@@ -699,9 +698,7 @@ void flecsEngineRenderBatch(
         engine->queue, 
         impl->uniform_buffers[0], 0, &uniforms, sizeof(FlecsUniform));
 
-    WGPURenderPipeline pipeline = color_format == engine->surface_config.format
-        ? impl->pipeline_surface
-        : impl->pipeline_hdr;
+    WGPURenderPipeline pipeline = impl->pipeline_hdr;
     ecs_assert(pipeline != NULL, ECS_INTERNAL_ERROR, NULL);
 
     wgpuRenderPassEncoderSetPipeline(pass, pipeline);

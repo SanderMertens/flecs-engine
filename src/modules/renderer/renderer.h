@@ -147,16 +147,14 @@ void flecsEngineRenderView(
     const FlecsEngineImpl *impl,
     const WGPURenderPassEncoder pass,
     ecs_entity_t view_entity,
-    const FlecsRenderView *view,
-    WGPUTextureFormat color_format);
+    const FlecsRenderView *view);
 
 void flecsEngineRenderBatch(
     const ecs_world_t *world,
     const FlecsEngineImpl *impl,
     const WGPURenderPassEncoder pass,
     const FlecsRenderView *view,
-    ecs_entity_t batch_entity,
-    WGPUTextureFormat color_format);
+    ecs_entity_t batch_entity);
 
 void flecsEngineRenderEffect(
     const ecs_world_t *world,

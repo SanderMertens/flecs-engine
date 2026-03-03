@@ -171,8 +171,7 @@ static void flecsEngineRenderViewsWithoutEffects(
                 impl,
                 pass,
                 view_entity,
-                &views[i],
-                impl->surface_config.format);
+                &views[i]);
         }
     }
 

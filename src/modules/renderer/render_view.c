@@ -6,8 +6,7 @@ static void flecsEngineRenderBatchSet(
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderView *view,
-    const FlecsRenderBatchSet *batch_set,
-    WGPUTextureFormat color_format)
+    const FlecsRenderBatchSet *batch_set)
 {
     int32_t i, count = ecs_vec_count(&batch_set->batches);
     ecs_entity_t *batches = ecs_vec_first(&batch_set->batches);
@@ -26,13 +25,11 @@ static void flecsEngineRenderBatchSet(
                 engine,
                 pass,
                 view,
-                nested_batch_set,
-                color_format);
+                nested_batch_set);
             continue;
         }
 
-        flecsEngineRenderBatch(
-            world, engine, pass, view, batch_entity, color_format);
+        flecsEngineRenderBatch(world, engine, pass, view, batch_entity);
     }
 }
 
@@ -41,8 +38,7 @@ void flecsEngineRenderView(
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     ecs_entity_t view_entity,
-    const FlecsRenderView *view,
-    WGPUTextureFormat color_format)
+    const FlecsRenderView *view)
 {
     const FlecsRenderBatchSet *batch_set = ecs_get(
         world, view_entity, FlecsRenderBatchSet);
@@ -55,6 +51,5 @@ void flecsEngineRenderView(
         engine,
         pass,
         view,
-        batch_set,
-        color_format);
+        batch_set);
 }

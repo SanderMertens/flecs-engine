@@ -151,10 +151,6 @@ int main(
     });
   }
 
-  if (ecs_should_quit(world)) {
-    return 1;
-  }
-
   ecs_entity_t camera = ecs_new(world);
   ecs_set(world, camera, FlecsCamera, {
       .fov = glm_rad(60.0f),
@@ -174,29 +170,16 @@ int main(
   ecs_set(world, light, FlecsRgba, {255, 255, 255, 255});
 
   ecs_entity_t view = ecs_new(world);
-  ecs_ensure(world, view, FlecsRenderView);
-  ecs_ensure(world, view, FlecsRenderBatchSet);
-  FlecsRenderView *v = ecs_get_mut(world, view, FlecsRenderView);
-  FlecsRenderBatchSet *batch_set = ecs_get_mut(world, view, FlecsRenderBatchSet);
+  FlecsRenderBatchSet *batch_set = ecs_ensure(world, view, FlecsRenderBatchSet);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_infiniteGrid(world);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatchSet_primitiveShapes(world);
 
-  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] =
-    flecsEngine_createBatch_infinite_grid(world);
-  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
-  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
-  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);
-  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangles(world);
-  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangle_prisms(world);
-  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangle_prisms(world);
-  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_mesh(world);
-  FlecsBloomSettings bloom_settings = flecsEngine_bloomSettingsDefault();
-  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
-    flecsEngine_createEffect_bloom(world, 0 /* input */, &bloom_settings);
-  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
-    flecsEngine_createEffect_tonyMcMapFace(world, 1 /* input */);
+  FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
   v->camera = camera;
   v->light = light;
-  ecs_modified(world, view, FlecsRenderBatchSet);
-  ecs_modified(world, view, FlecsRenderView);
+  FlecsBloomSettings bloom_settings = flecsEngine_bloomSettingsDefault();
+  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] = flecsEngine_createEffect_bloom(world, 0, &bloom_settings);
+  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] = flecsEngine_createEffect_tonyMcMapFace(world, 1);
 
   int numShapes = 7;
   int shapeY = 15;
@@ -311,6 +294,7 @@ int main(
         -9 + y * 3 + (numShapes * 3) / 2,
         0
       });
+
       ecs_set(world, sphere, FlecsRgba, {230, 230, 230, 255});
       ecs_set(world, sphere, FlecsPbrMaterial, {
         .metallic = metallic,
@@ -319,6 +303,33 @@ int main(
     }
   }
 
+  // PBR sphere grid (roughness: X axis, metallic: Z axis)
+  for (int x = 0; x < numShapes; x ++) {
+    for (int y = 0; y < numShapes; y ++) {
+      float metallic = ((float)x / (float)(numShapes - 1));
+      float roughness = ((float)y / (float)(numShapes - 1));
+      ecs_entity_t sphere = ecs_new(world);
+      ecs_set(world, sphere, FlecsSphere, {
+        .segments = 24,
+        .smooth = true,
+        .radius = 1
+      });
+      ecs_set(world, sphere, FlecsPosition3, {
+        -9 + x * 3 + (numShapes * 3) + 3,
+        -9 + y * 3 + (numShapes * 3) / 2,
+        0
+      });
+
+      ecs_entity_t material = ecs_new(world);
+      ecs_set(world, material, FlecsRgba, {230, 230, 230, 255});
+      ecs_set(world, material, FlecsPbrMaterial, {
+        .metallic = metallic,
+        .roughness = roughness
+      });
+
+      ecs_add_pair(world, sphere, EcsIsA, material);
+    }
+  }
 
   ecs_singleton_set(world, EcsRest, {0});
 

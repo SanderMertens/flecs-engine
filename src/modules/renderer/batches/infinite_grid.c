@@ -79,7 +79,7 @@ static void flecsEngine_infinite_grid_callback(
     flecsEngine_batchCtx_draw(pass, &ctx->batch);
 }
 
-ecs_entity_t flecsEngine_createBatch_infinite_grid(
+ecs_entity_t flecsEngine_createBatch_infiniteGrid(
     ecs_world_t *world)
 {
     ecs_entity_t batch = ecs_new(world);
