@@ -196,6 +196,7 @@ void FlecsEngineTransform3Import(
     ecs_add_pair(world, ecs_id(FlecsPosition3), EcsWith, ecs_id(FlecsWorldTransform3));
     ecs_add_pair(world, ecs_id(FlecsRotation3), EcsWith, ecs_id(FlecsWorldTransform3));
     ecs_add_pair(world, ecs_id(FlecsScale3),    EcsWith, ecs_id(FlecsWorldTransform3));
+    ecs_add_pair(world, ecs_id(FlecsLookAt),    EcsWith, ecs_id(FlecsRotation3));
 
     ecs_query_desc_t q_childof = {
         .entity = ecs_entity(world, { .name = "Transform3ChildOf" }),

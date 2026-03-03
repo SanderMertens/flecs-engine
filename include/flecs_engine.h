@@ -31,6 +31,7 @@ extern ECS_COMPONENT_DECLARE(flecs_rgba_t);
 #include "modules/movement.h"
 #include "modules/input.h"
 #include "modules/camera.h"
+#include "modules/light.h"
 #include "modules/geometry_mesh.h"
 #include "modules/geometry_primitives3.h"
 #include "modules/material.h"

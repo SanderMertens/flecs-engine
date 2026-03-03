@@ -164,8 +164,13 @@ int main(
   });
   
   ecs_add(world, camera, FlecsCameraController);
-  ecs_set(world, camera, FlecsPosition3, {0, 10, 0});
-  ecs_set(world, camera, FlecsLookAt, {0, 0, -16});
+  ecs_set(world, camera, FlecsPosition3, {0, 10, 16});
+  ecs_set(world, camera, FlecsLookAt, {0, 0, 0});
+
+  ecs_entity_t light = ecs_new(world);
+  ecs_set(world, light, FlecsDirectionalLight, { .intensity = 1.0f });
+  ecs_set(world, light, FlecsLookAt, { 0, 0, 0 });
+  ecs_set(world, light, FlecsRgba, {255, 255, 255, 255});
 
   ecs_entity_t view = ecs_new(world);
   FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
@@ -180,11 +185,12 @@ int main(
   ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
     flecsEngine_createEffect_tonyMcMapFace(world, 0 /* input */);
   v->camera = camera;
+  v->light = light;
   ecs_modified(world, view, FlecsRenderView);
 
   int numShapes = 7;
   int shapeY = 7;
-  int shapeZ = -16;
+  int shapeZ = 0;
   const float spinSpeed = 1.0f;
 
   // 3D shapes
@@ -277,6 +283,8 @@ int main(
     ecs_set(world, hemispheres[i], FlecsPosition3, {-9 + i * 3, shapeY - 15, shapeZ});
     ecs_set(world, hemispheres[i], FlecsRgba, {128, 0, 128});
     ecs_set(world, hemispheres[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
+
+    ecs_set(world, light, FlecsPosition3, {sin(i) * 5, 0, cos(i) * 5});
   }
 
   ecs_singleton_set(world, EcsRest, {0});

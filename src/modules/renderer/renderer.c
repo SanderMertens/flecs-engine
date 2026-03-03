@@ -28,6 +28,7 @@ ECS_CTOR(FlecsRenderView, ptr, {
     ecs_vec_init_t(NULL, &ptr->batches, ecs_entity_t, 0);
     ecs_vec_init_t(NULL, &ptr->effects, ecs_entity_t, 0);
     ptr->camera = 0;
+    ptr->light = 0;
 })
 
 ECS_MOVE(FlecsRenderView, dst, src, {
@@ -41,6 +42,7 @@ ECS_COPY(FlecsRenderView, dst, src, {
     ecs_vec_fini_t(NULL, &dst->batches, ecs_entity_t);
     ecs_vec_fini_t(NULL, &dst->effects, ecs_entity_t);
     dst->camera = src->camera;
+    dst->light = src->light;
     dst->batches = ecs_vec_copy_t(NULL, &src->batches, ecs_entity_t);
     dst->effects = ecs_vec_copy_t(NULL, &src->effects, ecs_entity_t);
 })
@@ -269,6 +271,8 @@ void FlecsEngineRendererImport(
         .members = {
             { .name = "vp", .type = ecs_id(flecs_mat4_t) },
             { .name = "clear_color", .type = ecs_id(ecs_f32_t), .count = 4 },
+            { .name = "light_ray_dir", .type = ecs_id(ecs_f32_t), .count = 4 },
+            { .name = "light_color", .type = ecs_id(ecs_f32_t), .count = 4 },
         }
     });
 

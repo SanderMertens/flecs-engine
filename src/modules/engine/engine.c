@@ -10,6 +10,7 @@
 #include "../movement/movement.h"
 #include "../input/input.h"
 #include "../camera/camera.h"
+#include "../light/light.h"
 #include "../material/material.h"
 
 ECS_COMPONENT_DECLARE(flecs_vec3_t);
@@ -501,6 +502,7 @@ void FlecsEngineImport(
     ECS_IMPORT(world, FlecsEngineMovement);
     ECS_IMPORT(world, FlecsEngineInput);
     ECS_IMPORT(world, FlecsEngineCamera);
+    ECS_IMPORT(world, FlecsEngineLight);
     ECS_IMPORT(world, FlecsEngineMaterial);
 
     ecs_set_name_prefix(world, "Flecs");

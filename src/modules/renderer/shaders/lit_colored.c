@@ -2,7 +2,12 @@
 #include "../renderer.h"
 
 static const char *kShaderSource =
-    "struct Uniforms { vp : mat4x4<f32> }\n"
+    "struct Uniforms {\n"
+    "  vp : mat4x4<f32>,\n"
+    "  clear_color : vec4<f32>,\n"
+    "  light_ray_dir : vec4<f32>,\n"
+    "  light_color : vec4<f32>\n"
+    "}\n"
     "@group(0) @binding(0) var<uniform> uniforms : Uniforms;\n"
     "struct VertexInput {\n"
     "  @location(0) pos : vec3<f32>,\n"
@@ -41,9 +46,10 @@ static const char *kShaderSource =
     "  return out;\n"
     "}\n"
     "@fragment fn fs_main(input : VertexOutput) -> @location(0) vec4<f32> {\n"
-    "  let light = normalize(vec3<f32>(0.4, 0.8, 0.2));\n"
-    "  let diffuse = max(dot(normalize(input.normal), light), 0.0);\n"
-    "  return vec4<f32>(input.color.rgb * diffuse, input.color.a);\n"
+    "  let toward_light = -uniforms.light_ray_dir.xyz;\n"
+    "  let diffuse = max(dot(normalize(input.normal), toward_light), 0.0);\n"
+    "  let lit_color = input.color.rgb * uniforms.light_color.rgb * diffuse;\n"
+    "  return vec4<f32>(lit_color, input.color.a);\n"
     "}\n";
 
 ecs_entity_t flecsEngineShader_litColored(

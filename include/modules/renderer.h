@@ -40,6 +40,8 @@ extern ECS_COMPONENT_DECLARE(FlecsInstanceSize);
 typedef struct {
     flecs_mat4_t mvp;
     float clear_color[4];
+    float light_ray_dir[4];
+    float light_color[4];
 } FlecsUniform;
 
 extern ECS_COMPONENT_DECLARE(FlecsUniform);
@@ -101,6 +103,7 @@ ecs_entity_t flecsEngine_createEffect_invert(
 // Render a list of batches in order
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;
+    ecs_entity_t light;
     ecs_vec_t batches;
     ecs_vec_t effects;
 });

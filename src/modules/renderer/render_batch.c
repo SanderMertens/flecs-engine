@@ -1,5 +1,13 @@
+#include <math.h>
+
 #include "renderer.h"
 #include "flecs_engine.h"
+
+static float flecsEngineColorChannelToFloat(
+    uint8_t value)
+{
+    return (float)value / 255.0f;
+}
 
 static void flecsShaderImplRelease(
     FlecsShaderImpl *ptr)
@@ -521,6 +529,87 @@ void FlecsRenderBatch_on_set(
     }
 }
 
+void flecsEngineRenderBatch_setupCamera(
+    const ecs_world_t *world,
+    FlecsUniform *uniforms,
+    ecs_entity_t entity)
+{
+    glm_mat4_identity(uniforms->mvp);
+    const FlecsCameraImpl *camera = ecs_get(
+        world, entity, FlecsCameraImpl);
+    if (!camera) {
+        char *cam_name = ecs_get_path(world, entity);
+        ecs_err("invalid camera '%s' in view", cam_name);
+        ecs_os_free(cam_name);
+        return;
+    }
+
+    glm_mat4_copy((vec4*)camera->mvp, uniforms->mvp);
+}
+
+void flecsEngineRenderBatch_setupLight(
+    const ecs_world_t *world,
+    FlecsUniform *uniforms,
+    ecs_entity_t entity)
+{
+    uniforms->light_color[0] = 1.0f;
+    uniforms->light_color[1] = 1.0f;
+    uniforms->light_color[2] = 1.0f;
+    uniforms->light_color[3] = 1.0f;
+
+    const FlecsDirectionalLight *light = ecs_get(
+        world, entity, FlecsDirectionalLight);
+    if (!light) {
+        char *light_name = ecs_get_path(world, entity);
+        ecs_err("invalid directional light '%s'", light_name);
+        ecs_os_free(light_name);
+        return;
+    }
+
+    const FlecsRotation3 *rotation = ecs_get(world, entity, FlecsRotation3);
+    if (!rotation) {
+        char *light_name = ecs_get_path(world, entity);
+        ecs_err("directional light '%s' is missing Rotation3", light_name);
+        ecs_os_free(light_name);
+        return;
+    }
+
+    float pitch = rotation->x;
+    float yaw = rotation->y;
+    vec3 ray_dir = {
+        sinf(yaw) * cosf(pitch),
+        sinf(pitch),
+        cosf(yaw) * cosf(pitch)
+    };
+
+    float ray_len = glm_vec3_norm(ray_dir);
+    if (ray_len <= 1e-6f) {
+        char *light_name = ecs_get_path(world, entity);
+        ecs_err(
+            "directional light '%s' has invalid Rotation3", light_name);
+        ecs_os_free(light_name);
+        return;
+    }
+
+    glm_vec3_scale(ray_dir, 1.0f / ray_len, ray_dir);
+    uniforms->light_ray_dir[0] = ray_dir[0];
+    uniforms->light_ray_dir[1] = ray_dir[1];
+    uniforms->light_ray_dir[2] = ray_dir[2];
+
+    FlecsRgba rgb = {255, 255, 255, 255};
+    const FlecsRgba *light_rgb = ecs_get(world, entity, FlecsRgba);
+    if (light_rgb) {
+        rgb = *light_rgb;
+    }
+
+    uniforms->light_color[0] =
+        flecsEngineColorChannelToFloat(rgb.r) * light->intensity;
+    uniforms->light_color[1] =
+        flecsEngineColorChannelToFloat(rgb.g) * light->intensity;
+    uniforms->light_color[2] =
+        flecsEngineColorChannelToFloat(rgb.b) * light->intensity;
+}
+
 void flecsEngineRenderBatch(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
@@ -535,18 +624,13 @@ void flecsEngineRenderBatch(
     }
 
     FlecsUniform uniforms = {0};
-    glm_mat4_identity(uniforms.mvp);
 
     if (view->camera) {
-        const FlecsCameraImpl *cam_impl = ecs_get(
-            world, view->camera, FlecsCameraImpl);
-        if (!cam_impl) {
-            char *cam_name = ecs_get_path(world, view->camera);
-            ecs_err("invalid camera '%s' in view", cam_name);
-            ecs_os_free(cam_name);
-        } else {
-            glm_mat4_copy((vec4*)cam_impl->mvp, uniforms.mvp);
-        }
+        flecsEngineRenderBatch_setupCamera(world, &uniforms, view->camera);
+    }
+
+    if (view->light) {
+        flecsEngineRenderBatch_setupLight(world, &uniforms, view->light);
     }
 
     flecsEngineGetClearColorVec4(engine, uniforms.clear_color);
