@@ -139,7 +139,7 @@ ecs_entity_t flecsEngine_createEffect_invert(
     ecs_world_t *world,
     int32_t input);
 
-// Render a list of batches in order
+// Render a list of batches and/or nested batch sets in order
 ECS_STRUCT(FlecsRenderBatchSet, {
     ecs_vec_t batches;
 });
