@@ -10,6 +10,13 @@
 struct FlecsEngineSurfaceInterface;
 
 typedef struct {
+    flecs_rgba_t color;
+    float metallic;
+    float roughness;
+    float _pad;
+} FlecsGpuMaterial;
+
+typedef struct {
     GLFWwindow *window;
     int32_t width;
     int32_t height;
@@ -42,8 +49,14 @@ typedef struct {
     uint32_t effect_target_width;
     uint32_t effect_target_height;
     WGPUTextureFormat effect_target_format;
+    WGPUBuffer material_buffer;
+    FlecsGpuMaterial *cpu_materials;
+    uint32_t material_buffer_capacity;
+    uint32_t material_count;
 
     ecs_query_t *view_query;
+    ecs_query_t *material_query;
+    uint16_t last_material_id;
 } FlecsEngineImpl;
 
 extern ECS_COMPONENT_DECLARE(FlecsEngineImpl);

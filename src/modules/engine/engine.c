@@ -203,6 +203,8 @@ static void flecsEngineCleanup(
         impl->view_query = NULL;
     }
 
+    flecsEngineReleaseMaterialBuffer(impl);
+
     if (impl->surface_impl) {
         impl->surface_impl->cleanup(impl, terminate_runtime);
     }
@@ -273,7 +275,8 @@ int flecsEngineInit(
         .clear_color = output->clear_color,
         .output_done = false,
         .depth_texture_width = 0,
-        .depth_texture_height = 0
+        .depth_texture_height = 0,
+        .last_material_id = 0
     };
 
     WGPUInstanceDescriptor instance_desc = {0};
@@ -356,6 +359,19 @@ int flecsEngineInit(
         ecs_err("Failed to create render view query\n");
         goto error;
     }
+
+    impl.material_query = ecs_query(world, {
+        .entity = ecs_entity(world, {
+            .parent = ecs_lookup(world, "flecs.engine")
+        }),
+        .terms = {
+            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsMaterialId), .src.id = EcsSelf },
+            { .id = EcsPrefab, .src.id = EcsSelf }
+        },
+        .cache_kind = EcsQueryCacheAuto
+    });
 
     ecs_singleton_set_ptr(world, FlecsEngineImpl, &impl);
     return 0;

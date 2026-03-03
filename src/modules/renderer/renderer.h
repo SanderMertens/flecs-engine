@@ -119,6 +119,13 @@ void flecsEngineRenderViews(
     WGPUTextureView view_texture,
     WGPUCommandEncoder encoder);
 
+void flecsEngineUploadMaterialBuffer(
+    const ecs_world_t *world,
+    FlecsEngineImpl *impl);
+
+void flecsEngineReleaseMaterialBuffer(
+    FlecsEngineImpl *impl);
+
 void flecsEngineReleaseEffectTargets(
     FlecsEngineImpl *impl);
 

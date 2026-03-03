@@ -168,6 +168,8 @@ void flecsEngineRenderViews(
     WGPUTextureView view_texture,
     WGPUCommandEncoder encoder)
 {
+    flecsEngineUploadMaterialBuffer(world, impl);
+
     if (!flecsEngineAnyViewHasEffects(world, impl->view_query)) {
         flecsEngineRenderViewsWithoutEffects(
             world,
