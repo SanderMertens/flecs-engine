@@ -140,10 +140,14 @@ ecs_entity_t flecsEngine_createEffect_invert(
     int32_t input);
 
 // Render a list of batches in order
+ECS_STRUCT(FlecsRenderBatchSet, {
+    ecs_vec_t batches;
+});
+
+// Render settings for a single camera/light view
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;
     ecs_entity_t light;
-    ecs_vec_t batches;
     ecs_vec_t effects;
 });
 

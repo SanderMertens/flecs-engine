@@ -174,17 +174,20 @@ int main(
   ecs_set(world, light, FlecsRgba, {255, 255, 255, 255});
 
   ecs_entity_t view = ecs_new(world);
-  FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
+  ecs_ensure(world, view, FlecsRenderView);
+  ecs_ensure(world, view, FlecsRenderBatchSet);
+  FlecsRenderView *v = ecs_get_mut(world, view, FlecsRenderView);
+  FlecsRenderBatchSet *batch_set = ecs_get_mut(world, view, FlecsRenderBatchSet);
 
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] =
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] =
     flecsEngine_createBatch_infinite_grid(world);
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangles(world);
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangle_prisms(world);
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangle_prisms(world);
-  ecs_vec_append_t(NULL, &v->batches, ecs_entity_t)[0] = flecsEngine_createBatch_mesh(world);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_boxes(world);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_quads(world);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangles(world);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangles(world);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_triangle_prisms(world);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_right_triangle_prisms(world);
+  ecs_vec_append_t(NULL, &batch_set->batches, ecs_entity_t)[0] = flecsEngine_createBatch_mesh(world);
   FlecsBloomSettings bloom_settings = flecsEngine_bloomSettingsDefault();
   ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
     flecsEngine_createEffect_bloom(world, 0 /* input */, &bloom_settings);
@@ -192,6 +195,7 @@ int main(
     flecsEngine_createEffect_tonyMcMapFace(world, 1 /* input */);
   v->camera = camera;
   v->light = light;
+  ecs_modified(world, view, FlecsRenderBatchSet);
   ecs_modified(world, view, FlecsRenderView);
 
   int numShapes = 7;

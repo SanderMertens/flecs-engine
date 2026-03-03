@@ -10,6 +10,7 @@ ECS_COMPONENT_DECLARE(FlecsTonyImpl);
 ECS_COMPONENT_DECLARE(FlecsBloomImpl);
 ECS_COMPONENT_DECLARE(FlecsRenderBatch);
 ECS_COMPONENT_DECLARE(FlecsRenderEffect);
+ECS_COMPONENT_DECLARE(FlecsRenderBatchSet);
 ECS_COMPONENT_DECLARE(FlecsRenderView);
 ECS_COMPONENT_DECLARE(FlecsVertex);
 ECS_COMPONENT_DECLARE(FlecsLitVertex);
@@ -32,31 +33,45 @@ ECS_DTOR(FlecsRenderEffect, ptr, {
     }
 })
 
-ECS_CTOR(FlecsRenderView, ptr, {
+ECS_CTOR(FlecsRenderBatchSet, ptr, {
     ecs_vec_init_t(NULL, &ptr->batches, ecs_entity_t, 0);
+})
+
+ECS_MOVE(FlecsRenderBatchSet, dst, src, {
+    ecs_vec_fini_t(NULL, &dst->batches, ecs_entity_t);
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
+ECS_COPY(FlecsRenderBatchSet, dst, src, {
+    ecs_vec_fini_t(NULL, &dst->batches, ecs_entity_t);
+    dst->batches = ecs_vec_copy_t(NULL, &src->batches, ecs_entity_t);
+})
+
+ECS_DTOR(FlecsRenderBatchSet, ptr, {
+    ecs_vec_fini_t(NULL, &ptr->batches, ecs_entity_t);
+})
+
+ECS_CTOR(FlecsRenderView, ptr, {
     ecs_vec_init_t(NULL, &ptr->effects, ecs_entity_t, 0);
     ptr->camera = 0;
     ptr->light = 0;
 })
 
 ECS_MOVE(FlecsRenderView, dst, src, {
-    ecs_vec_fini_t(NULL, &dst->batches, ecs_entity_t);
     ecs_vec_fini_t(NULL, &dst->effects, ecs_entity_t);
     *dst = *src;
     ecs_os_zeromem(src);
 })
 
 ECS_COPY(FlecsRenderView, dst, src, {
-    ecs_vec_fini_t(NULL, &dst->batches, ecs_entity_t);
     ecs_vec_fini_t(NULL, &dst->effects, ecs_entity_t);
     dst->camera = src->camera;
     dst->light = src->light;
-    dst->batches = ecs_vec_copy_t(NULL, &src->batches, ecs_entity_t);
     dst->effects = ecs_vec_copy_t(NULL, &src->effects, ecs_entity_t);
 })
 
 ECS_DTOR(FlecsRenderView, ptr, {
-    ecs_vec_fini_t(NULL, &ptr->batches, ecs_entity_t);
     ecs_vec_fini_t(NULL, &ptr->effects, ecs_entity_t);
 })
 
@@ -147,12 +162,15 @@ static void flecsEngineRenderViewsWithoutEffects(
 
     ecs_iter_t it = ecs_query_iter(world, impl->view_query);
     while (ecs_query_next(&it)) {
+        ecs_entity_t view_src = ecs_field_src(&it, 0);
         FlecsRenderView *views = ecs_field(&it, FlecsRenderView, 0);
         for (int32_t i = 0; i < it.count; i ++) {
+            ecs_entity_t view_entity = view_src ? view_src : it.entities[i];
             flecsEngineRenderView(
                 world,
                 impl,
                 pass,
+                view_entity,
                 &views[i],
                 impl->surface_config.format);
         }
@@ -199,6 +217,7 @@ void FlecsEngineRendererImport(
     ECS_COMPONENT_DEFINE(world, FlecsRenderEffectImpl);
     ECS_COMPONENT_DEFINE(world, FlecsTonyImpl);
     ECS_COMPONENT_DEFINE(world, FlecsBloomImpl);
+    ECS_COMPONENT_DEFINE(world, FlecsRenderBatchSet);
     ECS_COMPONENT_DEFINE(world, FlecsRenderView);
     ECS_COMPONENT_DEFINE(world, FlecsVertex);
     ECS_COMPONENT_DEFINE(world, FlecsLitVertex);
@@ -249,6 +268,13 @@ void FlecsEngineRendererImport(
     ecs_set_hooks(world, FlecsShaderImpl, {
         .ctor = flecs_default_ctor,
         .dtor = ecs_dtor(FlecsShaderImpl)
+    });
+
+    ecs_set_hooks(world, FlecsRenderBatchSet, {
+        .ctor = ecs_ctor(FlecsRenderBatchSet),
+        .move = ecs_move(FlecsRenderBatchSet),
+        .copy = ecs_copy(FlecsRenderBatchSet),
+        .dtor = ecs_dtor(FlecsRenderBatchSet)
     });
 
     ecs_set_hooks(world, FlecsRenderView, {
@@ -314,11 +340,17 @@ void FlecsEngineRendererImport(
     });
 
     ecs_struct(world, {
+        .entity = ecs_id(FlecsRenderBatchSet),
+        .members = {
+            { .name = "batches", .type = entity_vector_t }
+        }
+    });
+
+    ecs_struct(world, {
         .entity = ecs_id(FlecsRenderView),
         .members = {
             { .name = "camera", .type = ecs_id(ecs_entity_t) },
             { .name = "light", .type = ecs_id(ecs_entity_t) },
-            { .name = "batches", .type = entity_vector_t },
             { .name = "effects", .type = entity_vector_t }
         }
     });

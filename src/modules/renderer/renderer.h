@@ -146,6 +146,7 @@ void flecsEngineRenderView(
     const ecs_world_t *world,
     const FlecsEngineImpl *impl,
     const WGPURenderPassEncoder pass,
+    ecs_entity_t view_entity,
     const FlecsRenderView *view,
     WGPUTextureFormat color_format);
 

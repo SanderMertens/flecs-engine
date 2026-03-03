@@ -200,6 +200,7 @@ static WGPURenderPassEncoder flecsEngineBeginEffectPass(
 static void flecsEngineRenderViewWithEffects(
     const ecs_world_t *world,
     FlecsEngineImpl *impl,
+    ecs_entity_t view_entity,
     const FlecsRenderView *view,
     WGPUTextureView view_texture,
     WGPUCommandEncoder encoder,
@@ -218,6 +219,7 @@ static void flecsEngineRenderViewWithEffects(
             world,
             impl,
             pass,
+            view_entity,
             view,
             impl->surface_config.format);
         wgpuRenderPassEncoderEnd(pass);
@@ -240,6 +242,7 @@ static void flecsEngineRenderViewWithEffects(
         world,
         impl,
         batch_pass,
+        view_entity,
         view,
         impl->effect_target_format);
     wgpuRenderPassEncoderEnd(batch_pass);
@@ -323,11 +326,14 @@ void flecsEngineRenderViewsWithEffects(
 
     ecs_iter_t it = ecs_query_iter(world, impl->view_query);
     while (ecs_query_next(&it)) {
+        ecs_entity_t view_src = ecs_field_src(&it, 0);
         FlecsRenderView *views = ecs_field(&it, FlecsRenderView, 0);
         for (int32_t i = 0; i < it.count; i ++) {
+            ecs_entity_t view_entity = view_src ? view_src : it.entities[i];
             flecsEngineRenderViewWithEffects(
                 world,
                 impl,
+                view_entity,
                 &views[i],
                 view_texture,
                 encoder,
