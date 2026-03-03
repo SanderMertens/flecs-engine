@@ -149,6 +149,40 @@ void flecsEngine_batchCtx_draw(
     wgpuRenderPassEncoderDrawIndexed(pass, ctx->mesh.index_count, ctx->count, 0, 0, 0);
 }
 
+void flecsEngine_batchCtx_uploadInstances(
+    const FlecsEngineImpl *engine,
+    const flecs_engine_batch_ctx_t *ctx,
+    int32_t offset,
+    const FlecsRgba *colors,
+    const FlecsPbrMaterial *materials,
+    int32_t count)
+{
+    if (!count) {
+        return;
+    }
+
+    wgpuQueueWriteBuffer(
+        engine->queue,
+        ctx->instance_transform,
+        (uint64_t)offset * sizeof(FlecsInstanceTransform),
+        &ctx->cpu_transforms[offset],
+        (uint64_t)count * sizeof(FlecsInstanceTransform));
+
+    wgpuQueueWriteBuffer(
+        engine->queue,
+        ctx->instance_color,
+        (uint64_t)offset * sizeof(flecs_rgba_t),
+        colors,
+        (uint64_t)count * sizeof(flecs_rgba_t));
+
+    wgpuQueueWriteBuffer(
+        engine->queue,
+        ctx->instance_pbr,
+        (uint64_t)offset * sizeof(FlecsInstancePbrMaterial),
+        materials,
+        (uint64_t)count * sizeof(FlecsInstancePbrMaterial));
+}
+
 void flecsEngine_packInstanceTransform(
     FlecsInstanceTransform *out,
     const FlecsWorldTransform3 *wt,

@@ -62,26 +62,13 @@ redo: {
 
                 }
 
-                wgpuQueueWriteBuffer(
-                    engine->queue,
-                    ctx->instance_transform,
-                    (uint64_t)ctx->count * sizeof(FlecsInstanceTransform),
-                    &ctx->cpu_transforms[ctx->count],
-                    (uint64_t)it.count * sizeof(FlecsInstanceTransform));
-
-                wgpuQueueWriteBuffer(
-                    engine->queue,
-                    ctx->instance_color,
-                    ctx->count * sizeof(flecs_rgba_t),
+                flecsEngine_batchCtx_uploadInstances(
+                    engine,
+                    ctx,
+                    ctx->count,
                     colors,
-                    it.count * sizeof(flecs_rgba_t));
-
-                wgpuQueueWriteBuffer(
-                    engine->queue,
-                    ctx->instance_pbr,
-                    (uint64_t)ctx->count * sizeof(FlecsInstancePbrMaterial),
                     materials,
-                    (uint64_t)it.count * sizeof(FlecsInstancePbrMaterial));
+                    it.count);
             }
 
             ctx->count += it.count;

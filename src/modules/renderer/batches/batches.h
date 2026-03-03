@@ -30,6 +30,14 @@ void flecsEngine_batchCtx_draw(
     const WGPURenderPassEncoder pass,
     const flecs_engine_batch_ctx_t *ctx);
 
+void flecsEngine_batchCtx_uploadInstances(
+    const FlecsEngineImpl *engine,
+    const flecs_engine_batch_ctx_t *ctx,
+    int32_t offset,
+    const FlecsRgba *colors,
+    const FlecsPbrMaterial *materials,
+    int32_t count);
+
 void flecsEngine_packInstanceTransform(
     FlecsInstanceTransform *out,
     const FlecsWorldTransform3 *wt,
