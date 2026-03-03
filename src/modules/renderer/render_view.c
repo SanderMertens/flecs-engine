@@ -12,13 +12,7 @@ void flecsEngineRenderView(
     ecs_entity_t *batches = ecs_vec_first(&view->batches);
     
     for (i = 0; i < count; i ++) {
-        const FlecsRenderBatch *batch = ecs_get(
-            world, batches[i], FlecsRenderBatch);
-        const FlecsRenderBatchImpl *batch_impl = ecs_get(
-            world, batches[i], FlecsRenderBatchImpl);
-        if (batch) {
-            flecsEngineRenderBatch(
-                world, engine, pass, view, batch, batch_impl, color_format);
-        }
+        flecsEngineRenderBatch(
+            world, engine, pass, view, batches[i], color_format);
     }
 }

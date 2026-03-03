@@ -674,14 +674,13 @@ void flecsEngineRenderBatch(
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderView *view,
-    const FlecsRenderBatch *batch,
-    const FlecsRenderBatchImpl *impl,
+    ecs_entity_t batch_entity,
     WGPUTextureFormat color_format)
 {
-    if (!impl) {
-        ecs_err("missing batch impl for render call");
-        return;
-    }
+    const FlecsRenderBatch *batch = ecs_get(
+        world, batch_entity, FlecsRenderBatch);
+    const FlecsRenderBatchImpl *impl = ecs_get(
+        world, batch_entity, FlecsRenderBatchImpl);
 
     FlecsUniform uniforms = {0};
     uniforms.camera_pos[3] = 1.0f;

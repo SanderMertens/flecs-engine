@@ -154,8 +154,7 @@ void flecsEngineRenderBatch(
     const FlecsEngineImpl *impl,
     const WGPURenderPassEncoder pass,
     const FlecsRenderView *view,
-    const FlecsRenderBatch *batch,
-    const FlecsRenderBatchImpl *batch_impl,
+    ecs_entity_t batch_entity,
     WGPUTextureFormat color_format);
 
 void flecsEngineRenderEffect(
