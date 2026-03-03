@@ -168,6 +168,7 @@ int main(
   ecs_set(world, camera, FlecsLookAt, {0, 0, 0});
 
   ecs_entity_t light = ecs_new(world);
+  ecs_set(world, light, FlecsPosition3, {0, 0, 0});
   ecs_set(world, light, FlecsDirectionalLight, { .intensity = 1.0f });
   ecs_set(world, light, FlecsLookAt, { 0, 0, 0 });
   ecs_set(world, light, FlecsRgba, {255, 255, 255, 255});
@@ -283,13 +284,15 @@ int main(
     ecs_set(world, hemispheres[i], FlecsPosition3, {-9 + i * 3, shapeY - 15, shapeZ});
     ecs_set(world, hemispheres[i], FlecsRgba, {128, 0, 128});
     ecs_set(world, hemispheres[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
-
-    ecs_set(world, light, FlecsPosition3, {sin(i) * 5, 0, cos(i) * 5});
   }
 
   ecs_singleton_set(world, EcsRest, {0});
 
-  while (ecs_progress(world, 0)) { }
+  double i = 0;
+  while (ecs_progress(world, 0)) {
+    ecs_set(world, light, FlecsPosition3, {sin(i) * 5, 0, cos(i) * 5});
+    i -= 0.005;
+  }
 
   return ecs_fini(world);
 }

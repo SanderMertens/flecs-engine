@@ -13,6 +13,21 @@ typedef struct {
     ecs_query_t *q_parent;
 } flecs_transform3_queries_t;
 
+static
+void flecsTransform3RegisterVec3Type(
+    ecs_world_t *world,
+    ecs_entity_t component)
+{
+    ecs_struct(world, {
+        .entity = component,
+        .members = {
+            { .name = "x", .type = ecs_id(ecs_f32_t) },
+            { .name = "y", .type = ecs_id(ecs_f32_t) },
+            { .name = "z", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+}
+
 static void flecsTransform3QueriesFree(void *ptr) {
     ecs_os_free(ptr);
 }
@@ -192,6 +207,11 @@ void FlecsEngineTransform3Import(
     ECS_COMPONENT_DEFINE(world, FlecsScale3);
     ECS_COMPONENT_DEFINE(world, FlecsLookAt);
     ECS_META_COMPONENT(world, FlecsWorldTransform3);
+
+    flecsTransform3RegisterVec3Type(world, ecs_id(FlecsPosition3));
+    flecsTransform3RegisterVec3Type(world, ecs_id(FlecsRotation3));
+    flecsTransform3RegisterVec3Type(world, ecs_id(FlecsScale3));
+    flecsTransform3RegisterVec3Type(world, ecs_id(FlecsLookAt));
 
     ecs_add_pair(world, ecs_id(FlecsPosition3), EcsWith, ecs_id(FlecsWorldTransform3));
     ecs_add_pair(world, ecs_id(FlecsRotation3), EcsWith, ecs_id(FlecsWorldTransform3));
