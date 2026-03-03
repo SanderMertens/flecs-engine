@@ -1,6 +1,6 @@
 #include <math.h>
 
-#include "../renderer.h"
+#include "../../renderer.h"
 #include "flecs_engine.h"
 
 #define FLECS_ENGINE_BLOOM_PREFERRED_TEXTURE_FORMAT (WGPUTextureFormat_RG11B10Ufloat)

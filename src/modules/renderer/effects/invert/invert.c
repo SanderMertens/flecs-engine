@@ -1,4 +1,4 @@
-#include "../renderer.h"
+#include "../../renderer.h"
 #include "flecs_engine.h"
 
 static const char *kShaderSource =
