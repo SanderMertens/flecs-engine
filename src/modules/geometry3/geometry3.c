@@ -212,6 +212,22 @@ void FlecsEngineGeometry3Import(
     ECS_COMPONENT_DEFINE(world, FlecsCylinder);
     ECS_COMPONENT_DEFINE(world, FlecsGeometry3Cache);
 
+    ecs_entity_t vec3_vector_t = ecs_vector(world, {
+        .type = ecs_id(flecs_vec3_t)
+    });
+    ecs_entity_t u16_vector_t = ecs_vector(world, {
+        .type = ecs_id(ecs_u16_t)
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsMesh3),
+        .members = {
+            { .name = "vertices", .type = vec3_vector_t },
+            { .name = "normals", .type = vec3_vector_t },
+            { .name = "indices", .type = u16_vector_t }
+        }
+    });
+
     ecs_struct(world, {
         .entity = ecs_id(FlecsBox),
         .members = {

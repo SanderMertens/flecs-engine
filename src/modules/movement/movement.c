@@ -4,6 +4,21 @@
 ECS_COMPONENT_DECLARE(FlecsVelocity3);
 ECS_COMPONENT_DECLARE(FlecsAngularVelocity3);
 
+static
+void flecsMovementRegisterVec3Type(
+    ecs_world_t *world,
+    ecs_entity_t component)
+{
+    ecs_struct(world, {
+        .entity = component,
+        .members = {
+            { .name = "x", .type = ecs_id(ecs_f32_t) },
+            { .name = "y", .type = ecs_id(ecs_f32_t) },
+            { .name = "z", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+}
+
 static void FlecsMove3(ecs_iter_t *it) {
     FlecsPosition3 *position = ecs_field(it, FlecsPosition3, 0);
     const FlecsVelocity3 *velocity = ecs_field(it, FlecsVelocity3, 1);
@@ -38,6 +53,9 @@ void FlecsEngineMovementImport(
 
     ECS_COMPONENT_DEFINE(world, FlecsVelocity3);
     ECS_COMPONENT_DEFINE(world, FlecsAngularVelocity3);
+
+    flecsMovementRegisterVec3Type(world, ecs_id(FlecsVelocity3));
+    flecsMovementRegisterVec3Type(world, ecs_id(FlecsAngularVelocity3));
 
     ecs_add_pair(world,
         ecs_id(FlecsVelocity3), EcsWith,

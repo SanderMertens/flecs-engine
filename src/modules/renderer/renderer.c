@@ -256,6 +256,10 @@ void FlecsEngineRendererImport(
         .dtor = ecs_dtor(FlecsRenderView)
     });
 
+    ecs_entity_t entity_vector_t = ecs_vector(world, {
+        .type = ecs_id(ecs_entity_t)
+    });
+
     ecs_struct(world, {
         .entity = ecs_id(FlecsVertex),
         .members = {
@@ -284,7 +288,7 @@ void FlecsEngineRendererImport(
     ecs_struct(world, {
         .entity = ecs_id(FlecsInstanceColor),
         .members = {
-            { .name = "c", .type = ecs_id(flecs_rgba_t) }
+            { .name = "color", .type = ecs_id(flecs_rgba_t) }
         }
     });
 
@@ -299,11 +303,21 @@ void FlecsEngineRendererImport(
     ecs_struct(world, {
         .entity = ecs_id(FlecsUniform),
         .members = {
-            { .name = "vp", .type = ecs_id(flecs_mat4_t) },
+            { .name = "mvp", .type = ecs_id(flecs_mat4_t) },
             { .name = "clear_color", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "light_ray_dir", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "light_color", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "camera_pos", .type = ecs_id(ecs_f32_t), .count = 4 },
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsRenderView),
+        .members = {
+            { .name = "camera", .type = ecs_id(ecs_entity_t) },
+            { .name = "light", .type = ecs_id(ecs_entity_t) },
+            { .name = "batches", .type = entity_vector_t },
+            { .name = "effects", .type = entity_vector_t }
         }
     });
 
