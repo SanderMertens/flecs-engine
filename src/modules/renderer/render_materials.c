@@ -94,6 +94,8 @@ redo: {
                 ecs_field(&it, FlecsPbrMaterial, 1);
             const FlecsMaterialId *material_ids =
                 ecs_field(&it, FlecsMaterialId, 2);
+            const FlecsEmissive *emissives =
+                ecs_field(&it, FlecsEmissive, 3);
 
             for (int32_t i = 0; i < it.count; i ++) {
                 uint32_t index = material_ids[i].value;
@@ -105,11 +107,18 @@ redo: {
                     continue;
                 }
 
+                FlecsEmissive emissive = {0};
+                if (emissives) {
+                    emissive = emissives[i];
+                }
+
                 impl->cpu_materials[index] = (FlecsGpuMaterial){
                     .color = colors[i],
                     .metallic = materials[i].metallic,
                     .roughness = materials[i].roughness,
-                    ._pad = 0.0f
+                    .emissive_color = emissive.color,
+                    .emissive_strength = emissive.strength,
+                    ._pad = {0.0f, 0.0f, 0.0f}
                 };
             }
         }

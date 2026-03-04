@@ -17,6 +17,15 @@ ECS_STRUCT(FlecsPbrMaterial, {
 
 extern ECS_COMPONENT_DECLARE(FlecsPbrMaterial);
 
+ECS_STRUCT(FlecsEmissive, {
+    flecs_rgba_t color;
+    float strength;
+});
+
+typedef FlecsEmissive EcsEmissive;
+
+extern ECS_COMPONENT_DECLARE(FlecsEmissive);
+
 ECS_STRUCT(FlecsMaterialId, {
     uint32_t value;
 });

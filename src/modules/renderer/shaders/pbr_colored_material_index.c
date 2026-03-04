@@ -19,7 +19,11 @@ static const char *kShaderSource =
     "  color : u32,\n"
     "  metallic : f32,\n"
     "  roughness : f32,\n"
-    "  _pad : f32\n"
+    "  emissive_color : u32,\n"
+    "  emissive_strength : f32,\n"
+    "  _pad0 : f32,\n"
+    "  _pad1 : f32,\n"
+    "  _pad2 : f32\n"
     "};\n"
     "@group(0) @binding(1) var<storage, read> materials : array<GpuMaterial>;\n"
     "struct VertexInput {\n"
@@ -78,7 +82,8 @@ static const char *kShaderSource =
     "  let prefiltered_color = textureSampleLevel(ibl_prefiltered_env, ibl_sampler, r, lod).rgb;\n"
     "  let brdf = textureSample(ibl_brdf_lut, ibl_sampler, vec2<f32>(ndotv, roughness)).rg;\n"
     "  let specular_ibl = prefiltered_color * computeSplitSumSpecularTerm(f0, brdf);\n"
-    "  let lit_color = ambient + direct + specular_ibl;\n"
+    "  let emissive = unpack4x8unorm(material.emissive_color).rgb * max(material.emissive_strength, 0.0);\n"
+    "  let lit_color = ambient + direct + specular_ibl + emissive;\n"
     "  return vec4<f32>(lit_color, color.a);\n"
     "}\n";
 

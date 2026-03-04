@@ -13,7 +13,9 @@ typedef struct {
     flecs_rgba_t color;
     float metallic;
     float roughness;
-    float _pad;
+    flecs_rgba_t emissive_color;
+    float emissive_strength;
+    float _pad[3];
 } FlecsGpuMaterial;
 
 typedef struct {

@@ -184,8 +184,8 @@ int main(
   FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
   v->camera = camera;
   v->light = light;
-  // v->hdri = flecsEngine_createHdri(
-  //   world, view, "hdri", "industrial_sunset_puresky_4k.exr");
+  v->hdri = flecsEngine_createHdri(
+    world, view, "hdri", "industrial_sunset_puresky_4k.exr");
   FlecsBloom bloom_settings = flecsEngine_bloomSettingsDefault();
   ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
     flecsEngine_createEffect_bloom(
@@ -267,6 +267,7 @@ int main(
     ecs_set(world, spheres[i], FlecsPosition3, {-9 + i * 3, shapeY - 3, shapeZ});
     ecs_set(world, spheres[i], FlecsRgba, {255});
     ecs_set(world, spheres[i], FlecsPbrMaterial, {0, 0.2});
+    ecs_set(world, spheres[i], FlecsEmissive, {{255, 0, 0}, 100.0});
     ecs_set(world, spheres[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
   }
 

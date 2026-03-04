@@ -42,6 +42,13 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsInstancePbrMaterial);
 
 typedef struct {
+    flecs_rgba_t color;
+    float strength;
+} FlecsInstanceEmissive;
+
+extern ECS_COMPONENT_DECLARE(FlecsInstanceEmissive);
+
+typedef struct {
     uint32_t value;
 } FlecsInstanceMaterialId;
 

@@ -374,6 +374,7 @@ int flecsEngineInit(
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
             { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf },
             { .id = ecs_id(FlecsMaterialId), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsEmissive), .src.id = EcsSelf, .oper = EcsOptional },
             { .id = EcsPrefab, .src.id = EcsSelf }
         },
         .cache_kind = EcsQueryCacheAuto

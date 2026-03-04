@@ -7,9 +7,11 @@ typedef struct {
     WGPUBuffer instance_transform;
     WGPUBuffer instance_color;
     WGPUBuffer instance_pbr;
+    WGPUBuffer instance_emissive;
     WGPUBuffer instance_material_id;
     FlecsInstanceTransform *cpu_transforms;
     FlecsInstancePbrMaterial *cpu_pbr;
+    FlecsInstanceEmissive *default_emissive;
     int32_t count;
     int32_t capacity;
     FlecsMesh3Impl mesh;
@@ -37,10 +39,11 @@ void flecsEngine_batchCtx_drawMaterialIndex(
 
 void flecsEngine_batchCtx_uploadInstances(
     const FlecsEngineImpl *engine,
-    const flecs_engine_batch_ctx_t *ctx,
+    flecs_engine_batch_ctx_t *ctx,
     int32_t offset,
     const FlecsRgba *colors,
     const FlecsPbrMaterial *materials,
+    const FlecsEmissive *emissives,
     int32_t count);
 
 void flecsEngine_batchCtx_uploadMaterialIds(

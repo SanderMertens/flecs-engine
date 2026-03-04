@@ -37,6 +37,8 @@ redo: {
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
             const FlecsPbrMaterial *materials =
                 ecs_field(&it, FlecsPbrMaterial, 3);
+            const FlecsEmissive *emissives =
+                ecs_field(&it, FlecsEmissive, 4);
 
             if ((ctx->count + it.count) <= ctx->capacity) {
                 for (int32_t i = 0; i < it.count; i ++) {
@@ -56,6 +58,7 @@ redo: {
                     ctx->count,
                     colors,
                     materials,
+                    emissives,
                     it.count);
             }
 
@@ -95,7 +98,8 @@ ecs_entity_t flecsEngine_createBatch_boxes(
             { .id = ecs_id(FlecsBox), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
-            { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf }
+            { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsEmissive), .src.id = EcsSelf, .oper = EcsOptional }
         },
         .cache_kind = EcsQueryCacheAuto
     });
@@ -107,7 +111,8 @@ ecs_entity_t flecsEngine_createBatch_boxes(
         .instance_types = {
             ecs_id(FlecsInstanceTransform),
             ecs_id(FlecsInstanceColor),
-            ecs_id(FlecsInstancePbrMaterial)
+            ecs_id(FlecsInstancePbrMaterial),
+            ecs_id(FlecsInstanceEmissive)
         },
         .uniforms = {
             ecs_id(FlecsUniform)
