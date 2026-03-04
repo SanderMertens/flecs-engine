@@ -42,7 +42,7 @@ typedef struct {
     WGPUSurfaceConfiguration surface_config;
     WGPUTextureFormat hdr_color_format;
 
-    ecs_entity_t fallback_ibl;
+    ecs_entity_t fallback_hdri;
     WGPUBindGroupLayout ibl_bind_layout;
 
     /* Reusable intermediate color targets for post-processing passes. */
@@ -76,9 +76,9 @@ typedef struct {
     WGPUSampler ibl_sampler;
     WGPUBindGroup ibl_bind_group;
     uint32_t ibl_prefilter_mip_count;
-} FlecsIblImpl;
+} FlecHdriImpl;
 
-extern ECS_COMPONENT_DECLARE(FlecsIblImpl);
+extern ECS_COMPONENT_DECLARE(FlecHdriImpl);
 
 typedef struct {
     WGPUBuffer vertex_buffer; /* vec<FlecsLitVertex> */

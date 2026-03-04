@@ -769,7 +769,12 @@ void flecsEngineRenderBatch(
     wgpuRenderPassEncoderSetBindGroup(pass, 0, bind_group, 0, NULL);
 
     if (impl->uses_ibl) {
-        const FlecsIblImpl *ibl = ecs_get(world, view->hdri, FlecsIblImpl);
+        ecs_entity_t hdri = view->hdri;
+        if (!hdri) {
+            hdri = engine->fallback_hdri;
+        }
+
+        const FlecHdriImpl *ibl = ecs_get(world, hdri, FlecHdriImpl);
         ecs_assert(ibl != NULL, ECS_INTERNAL_ERROR, NULL);
         wgpuRenderPassEncoderSetBindGroup(pass, 1, ibl->ibl_bind_group, 0, NULL);
     }

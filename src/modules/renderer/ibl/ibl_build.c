@@ -432,7 +432,7 @@ static WGPUTextureView flecsIblCreateTexture2DView(
 
 static bool flecsIblCreateEquirectTexture(
     const FlecsEngineImpl *engine,
-    FlecsIblImpl *ibl,
+    FlecHdriImpl *ibl,
     const FlecsHdriImage *image)
 {
     WGPUTextureDescriptor desc = {
@@ -538,7 +538,7 @@ static bool flecsIblCreateCubeTexture(
 
 static bool flecsIblCreateBrdfLutTexture(
     const FlecsEngineImpl *engine,
-    FlecsIblImpl *ibl)
+    FlecHdriImpl *ibl)
 {
     WGPUTextureDescriptor desc = {
         .usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment,
@@ -570,7 +570,7 @@ static bool flecsIblCreateBrdfLutTexture(
 
 static bool flecsIblCreateSampler(
     const FlecsEngineImpl *engine,
-    FlecsIblImpl *ibl)
+    FlecHdriImpl *ibl)
 {
     WGPUSamplerDescriptor sampler_desc = {
         .addressModeU = WGPUAddressMode_ClampToEdge,
@@ -654,7 +654,7 @@ static bool flecsIblSubmitFullscreenPass(
 
 static bool flecsIblRunPreprocessPasses(
     const FlecsEngineImpl *engine,
-    FlecsIblImpl *ibl)
+    FlecHdriImpl *ibl)
 {
     bool result = false;
     WGPUShaderModule prefilter_shader = NULL;
@@ -845,7 +845,7 @@ cleanup:
 
 bool flecsEngineInitIblResources(
     FlecsEngineImpl *engine,
-    FlecsIblImpl *ibl,
+    FlecHdriImpl *ibl,
     const char *hdri_path)
 {
     flecsIblReleaseRuntimeResources(ibl);
@@ -866,8 +866,6 @@ bool flecsEngineInitIblResources(
         } else {
             flecsIblLogImageStats(&image, hdri_path);
         }
-    } else {
-        ecs_warn("no HDRI path configured, falling back to black IBL");
     }
 
     if (!image.pixels_rgba32f) {

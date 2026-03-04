@@ -5,9 +5,9 @@
 
 bool flecsIblCreateRuntimeBindGroup(
     const FlecsEngineImpl *engine,
-    FlecsIblImpl *ibl);
+    FlecHdriImpl *ibl);
 
 void flecsIblReleaseRuntimeResources(
-    FlecsIblImpl *ibl);
+    FlecHdriImpl *ibl);
 
 #endif

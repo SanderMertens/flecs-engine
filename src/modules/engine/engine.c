@@ -204,7 +204,7 @@ static void flecsEngineCleanup(
         impl->view_query = NULL;
     }
 
-    impl->fallback_ibl = 0;
+    impl->fallback_hdri = 0;
 
     flecsEngineReleaseMaterialBuffer(impl);
 
@@ -271,6 +271,7 @@ int flecsEngineInit(
         height = 800;
     }
 
+    FlecsEngineImpl *ptr = ecs_singleton_ensure(world, FlecsEngineImpl);
     FlecsEngineImpl impl = {
         .width = width,
         .height = height,
@@ -351,9 +352,11 @@ int flecsEngineInit(
         goto error;
     }
 
+    ecs_entity_t engine_parent = ecs_lookup(world, "flecs.engine");
+
     impl.view_query = ecs_query(world, {
         .entity = ecs_entity(world, {
-            .parent = ecs_lookup(world, "flecs.engine")
+            .parent = engine_parent
         }),
         .terms = {{ ecs_id(FlecsRenderView) }},
         .cache_kind = EcsQueryCacheAuto
@@ -365,7 +368,7 @@ int flecsEngineInit(
 
     impl.material_query = ecs_query(world, {
         .entity = ecs_entity(world, {
-            .parent = ecs_lookup(world, "flecs.engine")
+            .parent = engine_parent
         }),
         .terms = {
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
@@ -376,14 +379,11 @@ int flecsEngineInit(
         .cache_kind = EcsQueryCacheAuto
     });
 
-    impl.fallback_ibl = ecs_entity(world, {
-        .parent = ecs_lookup(world, "flecs.engine.renderer")
-    });
-    ecs_set(world, impl.fallback_ibl, FlecsIbl, {
-        .file = NULL
-    });
+    *ptr = impl;
 
-    ecs_singleton_set_ptr(world, FlecsEngineImpl, &impl);
+    ptr->fallback_hdri = flecsEngine_createHdri(
+        world, engine_parent, "hdri", NULL);
+
     return 0;
 
 error:

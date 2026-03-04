@@ -87,11 +87,11 @@ ECS_STRUCT(FlecsRenderBatchSet, {
     ecs_vec_t batches;
 });
 
-ECS_STRUCT(FlecsIbl, {
+ECS_STRUCT(FlecsHdri, {
     const char *file;
 });
 
-extern ECS_COMPONENT_DECLARE(FlecsIbl);
+extern ECS_COMPONENT_DECLARE(FlecsHdri);
 
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;

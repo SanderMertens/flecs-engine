@@ -2,14 +2,14 @@
 #include "ibl_internal.h"
 #include "flecs_engine.h"
 
-ECS_COMPONENT_DECLARE(FlecsIbl);
-ECS_COMPONENT_DECLARE(FlecsIblImpl);
+ECS_COMPONENT_DECLARE(FlecsHdri);
+ECS_COMPONENT_DECLARE(FlecHdriImpl);
 
-ECS_CTOR(FlecsIbl, ptr, {
+ECS_CTOR(FlecsHdri, ptr, {
     ptr->file = NULL;
 })
 
-ECS_MOVE(FlecsIbl, dst, src, {
+ECS_MOVE(FlecsHdri, dst, src, {
     if (dst->file) {
         ecs_os_free((char*)dst->file);
     }
@@ -18,7 +18,7 @@ ECS_MOVE(FlecsIbl, dst, src, {
     src->file = NULL;
 })
 
-ECS_COPY(FlecsIbl, dst, src, {
+ECS_COPY(FlecsHdri, dst, src, {
     if (dst->file) {
         ecs_os_free((char*)dst->file);
     }
@@ -26,18 +26,18 @@ ECS_COPY(FlecsIbl, dst, src, {
     dst->file = src->file ? ecs_os_strdup(src->file) : NULL;
 })
 
-ECS_DTOR(FlecsIbl, ptr, {
+ECS_DTOR(FlecsHdri, ptr, {
     if (ptr->file) {
         ecs_os_free((char*)ptr->file);
         ptr->file = NULL;
     }
 })
 
-ECS_DTOR(FlecsIblImpl, ptr, {
+ECS_DTOR(FlecHdriImpl, ptr, {
     flecsIblReleaseRuntimeResources(ptr);
 })
 
-ECS_MOVE(FlecsIblImpl, dst, src, {
+ECS_MOVE(FlecHdriImpl, dst, src, {
     flecsIblReleaseRuntimeResources(dst);
     *dst = *src;
     ecs_os_zeromem(src);
@@ -90,7 +90,7 @@ WGPUBindGroupLayout flecsEngineEnsureIblBindLayout(
 
 bool flecsIblCreateRuntimeBindGroup(
     const FlecsEngineImpl *engine,
-    FlecsIblImpl *ibl)
+    FlecHdriImpl *ibl)
 {
     if (ibl->ibl_bind_group) {
         wgpuBindGroupRelease(ibl->ibl_bind_group);
@@ -127,7 +127,7 @@ bool flecsIblCreateRuntimeBindGroup(
 }
 
 void flecsIblReleaseRuntimeResources(
-    FlecsIblImpl *ibl)
+    FlecHdriImpl *ibl)
 {
     if (!ibl) {
         return;
@@ -191,6 +191,7 @@ static void FlecsIbl_on_set(
     FlecsEngineImpl *engine = ecs_singleton_get_mut(
         it->world, FlecsEngineImpl);
     if (!engine) {
+        ecs_err("failed to create IBL: engine not initialized");
         return;
     }
 
@@ -199,10 +200,10 @@ static void FlecsIbl_on_set(
         return;
     }
 
-    FlecsIbl *hdri = ecs_field(it, FlecsIbl, 0);
+    FlecsHdri *hdri = ecs_field(it, FlecsHdri, 0);
     for (int32_t i = 0; i < it->count; i ++) {
-        FlecsIblImpl *ibl_impl = ecs_ensure(
-            it->world, it->entities[i], FlecsIblImpl);
+        FlecHdriImpl *ibl_impl = ecs_ensure(
+            it->world, it->entities[i], FlecHdriImpl);
         flecsIblReleaseRuntimeResources(ibl_impl);
 
         if (!flecsEngineInitIblResources(engine, ibl_impl, hdri[i].file)) {
@@ -210,7 +211,7 @@ static void FlecsIbl_on_set(
             continue;
         }
 
-        ecs_modified(it->world, it->entities[i], FlecsIblImpl);
+        ecs_modified(it->world, it->entities[i], FlecHdriImpl);
     }
 }
 
@@ -220,17 +221,12 @@ ecs_entity_t flecsEngine_createHdri(
     const char *name,
     const char *file)
 {
-    if (!file || !file[0]) {
-        ecs_err("cannot create hdri entity: missing file path");
-        return 0;
-    }
-
     ecs_entity_t hdri = ecs_entity(world, {
         .parent = parent,
         .name = name
     });
 
-    ecs_set(world, hdri, FlecsIbl, {
+    ecs_set(world, hdri, FlecsHdri, {
         .file = file
     });
 
@@ -240,25 +236,25 @@ ecs_entity_t flecsEngine_createHdri(
 void flecsEngine_ibl_register(
     ecs_world_t *world)
 {
-    ECS_COMPONENT_DEFINE(world, FlecsIbl);
-    ECS_COMPONENT_DEFINE(world, FlecsIblImpl);
+    ECS_COMPONENT_DEFINE(world, FlecsHdri);
+    ECS_COMPONENT_DEFINE(world, FlecHdriImpl);
 
-    ecs_set_hooks(world, FlecsIbl, {
-        .ctor = ecs_ctor(FlecsIbl),
-        .move = ecs_move(FlecsIbl),
-        .copy = ecs_copy(FlecsIbl),
-        .dtor = ecs_dtor(FlecsIbl),
+    ecs_set_hooks(world, FlecsHdri, {
+        .ctor = ecs_ctor(FlecsHdri),
+        .move = ecs_move(FlecsHdri),
+        .copy = ecs_copy(FlecsHdri),
+        .dtor = ecs_dtor(FlecsHdri),
         .on_set = FlecsIbl_on_set
     });
 
-    ecs_set_hooks(world, FlecsIblImpl, {
+    ecs_set_hooks(world, FlecHdriImpl, {
         .ctor = flecs_default_ctor,
-        .move = ecs_move(FlecsIblImpl),
-        .dtor = ecs_dtor(FlecsIblImpl)
+        .move = ecs_move(FlecHdriImpl),
+        .dtor = ecs_dtor(FlecHdriImpl)
     });
 
     ecs_struct(world, {
-        .entity = ecs_id(FlecsIbl),
+        .entity = ecs_id(FlecsHdri),
         .members = {
             { .name = "file", .type = ecs_id(ecs_string_t) }
         }

@@ -118,7 +118,7 @@ void flecsEngineReleaseMaterialBuffer(
 
 bool flecsEngineInitIblResources(
     FlecsEngineImpl *engine,
-    FlecsIblImpl *ibl,
+    FlecHdriImpl *ibl,
     const char *hdri_path);
 
 WGPUBindGroupLayout flecsEngineEnsureIblBindLayout(
