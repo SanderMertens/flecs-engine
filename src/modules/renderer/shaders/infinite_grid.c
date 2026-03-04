@@ -69,7 +69,7 @@ static const char *kShaderSource =
 ecs_entity_t flecsEngineShader_infiniteGrid(
     ecs_world_t *world)
 {
-    return flecsEngineEnsureShader(world, "InfiniteGridShader",
+    return flecsEngine_shader_ensure(world, "InfiniteGridShader",
         &(FlecsShader){
             .source = kShaderSource,
             .vertex_entry = "vs_main",

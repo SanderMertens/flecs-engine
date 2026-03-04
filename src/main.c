@@ -155,7 +155,7 @@ int main(
   ecs_set(world, camera, FlecsCamera, {
       .fov = glm_rad(60.0f),
       .near_ = 0.1f,
-      .far_ = 100.0f,
+      .far_ = 1000.0f,
       .aspect_ratio = options.width / (float)options.height
   });
   
@@ -171,8 +171,8 @@ int main(
 
   ecs_entity_t view =  ecs_entity(world, { .name = "view" });
   FlecsRenderBatchSet batch_set = *ecs_ensure(world, view, FlecsRenderBatchSet);
-  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
-    flecsEngine_createBatch_infiniteGrid(world, view, "infiniteGridBatch");
+  // ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
+  //   flecsEngine_createBatch_infiniteGrid(world, view, "infiniteGridBatch");
   ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
     flecsEngine_createBatchSet_primitiveShapes(
       world, view, "primitiveBatch");
@@ -202,8 +202,17 @@ int main(
   int shapeZ = 0;
   const float spinSpeed = 1.0f;
 
-  // 3D shapes
   ecs_entity_t shapes =  ecs_entity(world, { .name = "shapes" });
+
+  // Ground plane
+  ecs_entity_t ground = ecs_new_w_pair(world, EcsChildOf, shapes);
+  ecs_set(world, ground, FlecsQuad, {2000, 2000});
+  ecs_set(world, ground, FlecsPosition3, {0, 0, 0});
+  ecs_set(world, ground, FlecsPbrMaterial, {0, 1});
+  ecs_set(world, ground, FlecsRgba, {200, 200, 200});
+  ecs_set(world, ground, FlecsRotation3, {-M_PI / 2, 0, 0});
+
+  // 3D shapes
   ecs_entity_t box = ecs_new_w_pair(world, EcsChildOf, shapes);
   ecs_set(world, box, FlecsBox, {2, 2, 2});
   ecs_set(world, box, FlecsPosition3, {-9, shapeY, shapeZ});
@@ -257,7 +266,7 @@ int main(
     ecs_set(world, spheres[i], FlecsSphere, { .segments = 3 + i, .smooth = i == (numShapes - 1), .radius = 1 });
     ecs_set(world, spheres[i], FlecsPosition3, {-9 + i * 3, shapeY - 3, shapeZ});
     ecs_set(world, spheres[i], FlecsRgba, {255});
-    ecs_set(world, spheres[i], FlecsPbrMaterial, {0, 1});
+    ecs_set(world, spheres[i], FlecsPbrMaterial, {0, 0});
     ecs_set(world, spheres[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
   }
 
@@ -268,7 +277,7 @@ int main(
     ecs_set(world, icospheres[i], FlecsIcoSphere, { .segments = i, .smooth = i == (numShapes - 1), .radius = 1 });
     ecs_set(world, icospheres[i], FlecsPosition3, {-9 + i * 3, shapeY - 6, shapeZ});
     ecs_set(world, icospheres[i], FlecsRgba, {128, 128});
-    ecs_set(world, icospheres[i], FlecsPbrMaterial, {0, 1});
+    ecs_set(world, icospheres[i], FlecsPbrMaterial, {1, 0});
     ecs_set(world, icospheres[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
   }
 
@@ -280,7 +289,7 @@ int main(
     ecs_set(world, cylinders[i], FlecsPosition3, {-9 + i * 3, shapeY - 9, shapeZ});
     ecs_set(world, cylinders[i], FlecsScale3, {2, 2, 2});
     ecs_set(world, cylinders[i], FlecsRgba, {0, 255});
-    ecs_set(world, cylinders[i], FlecsPbrMaterial, {0, 1});
+    ecs_set(world, cylinders[i], FlecsPbrMaterial, {0, 0});
     ecs_set(world, cylinders[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
   }
 
@@ -292,7 +301,7 @@ int main(
     ecs_set(world, cones[i], FlecsPosition3, {-9 + i * 3, shapeY - 12, shapeZ});
     ecs_set(world, cones[i], FlecsScale3, {2, 2, 2});
     ecs_set(world, cones[i], FlecsRgba, {0, 0, 255});
-    ecs_set(world, cones[i], FlecsPbrMaterial, {0, 1});
+    ecs_set(world, cones[i], FlecsPbrMaterial, {0, 0});
     ecs_set(world, cones[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
   }
 
@@ -303,7 +312,7 @@ int main(
     ecs_set(world, hemispheres[i], FlecsHemiSphere, { .segments = 3 + i, .smooth = i == (numShapes - 1), .radius = 1 });
     ecs_set(world, hemispheres[i], FlecsPosition3, {-9 + i * 3, shapeY - 15, shapeZ});
     ecs_set(world, hemispheres[i], FlecsRgba, {128, 0, 128});
-    ecs_set(world, hemispheres[i], FlecsPbrMaterial, {0, 1});
+    ecs_set(world, hemispheres[i], FlecsPbrMaterial, {0, 0});
     ecs_set(world, hemispheres[i], FlecsAngularVelocity3, {0.0f, spinSpeed, 0.0f});
   }
 
@@ -362,6 +371,32 @@ int main(
       ecs_add_pair(world, sphere, EcsIsA, material);
     }
   }
+
+  // numShapes = 100;
+  // ecs_entity_t material = ecs_new_w_id(world, EcsPrefab);
+  // ecs_add_pair(world, material, EcsChildOf, shapes);
+  // ecs_set(world, material, FlecsRgba, {200, 200, 200, 255});
+  // ecs_set(world, material, FlecsPbrMaterial, {
+  //   .metallic = 0,
+  //   .roughness = 0
+  // });
+  // for (int x = 0; x < numShapes; x ++) {
+  //   for (int y = 0; y < numShapes; y ++) {
+  //     ecs_entity_t sphere = ecs_new_w_pair(world, EcsChildOf, shapes);
+  //     ecs_set(world, sphere, FlecsIcoSphere, {
+  //       .segments = 3,
+  //       .smooth = true,
+  //       .radius = 1
+  //     });
+  //     ecs_set(world, sphere, FlecsPosition3, {
+  //       -12 + x * 2 - (numShapes * 1) - 2,
+  //       0,
+  //       y * 2 + 2
+  //     });
+  //     ecs_add_pair(world, sphere, EcsIsA, material);
+  //   }
+  // }
+
 
   ecs_singleton_set(world, EcsRest, {0});
 

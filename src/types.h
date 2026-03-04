@@ -42,20 +42,8 @@ typedef struct {
     WGPUSurfaceConfiguration surface_config;
     WGPUTextureFormat hdr_color_format;
 
-    WGPUTexture ibl_equirect_texture;
-    WGPUTextureView ibl_equirect_texture_view;
-    WGPUTexture ibl_environment_cubemap;
-    WGPUTextureView ibl_environment_cubemap_view;
-    WGPUTexture ibl_prefiltered_cubemap;
-    WGPUTextureView ibl_prefiltered_cubemap_view;
-    WGPUTexture ibl_brdf_lut_texture;
-    WGPUTextureView ibl_brdf_lut_texture_view;
-    WGPUSampler ibl_sampler;
+    ecs_entity_t fallback_ibl;
     WGPUBindGroupLayout ibl_bind_layout;
-    WGPUBindGroup ibl_bind_group;
-    uint32_t ibl_prefilter_mip_count;
-    ecs_entity_t ibl_hdri_entity;
-    char *ibl_hdri_path;
 
     /* Reusable intermediate color targets for post-processing passes. */
     WGPUTexture *effect_target_textures;
@@ -79,6 +67,20 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsEngineImpl);
 
 typedef struct {
+    WGPUTexture ibl_equirect_texture;
+    WGPUTextureView ibl_equirect_texture_view;
+    WGPUTexture ibl_prefiltered_cubemap;
+    WGPUTextureView ibl_prefiltered_cubemap_view;
+    WGPUTexture ibl_brdf_lut_texture;
+    WGPUTextureView ibl_brdf_lut_texture_view;
+    WGPUSampler ibl_sampler;
+    WGPUBindGroup ibl_bind_group;
+    uint32_t ibl_prefilter_mip_count;
+} FlecsIblImpl;
+
+extern ECS_COMPONENT_DECLARE(FlecsIblImpl);
+
+typedef struct {
     WGPUBuffer vertex_buffer; /* vec<FlecsLitVertex> */
     WGPUBuffer index_buffer;  /* vec<uint16_t> */
     int32_t vertex_count;
@@ -96,9 +98,12 @@ extern ECS_COMPONENT_DECLARE(FlecsShaderImpl);
 typedef struct {
     WGPUBindGroupLayout bind_layout;
     WGPUBindGroup bind_group;
+    WGPUBindGroup bind_group_materials;
     WGPURenderPipeline pipeline_hdr;
     WGPUBuffer uniform_buffers[FLECS_ENGINE_UNIFORMS_MAX];
+    uint64_t material_buffer_size;
     uint8_t uniform_count;
+    bool uses_material;
     bool uses_ibl;
 } FlecsRenderBatchImpl;
 

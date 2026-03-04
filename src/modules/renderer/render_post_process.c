@@ -315,9 +315,6 @@ void flecsEngineRenderViewsWithEffects(
         FlecsRenderView *views = ecs_field(&it, FlecsRenderView, 0);
         for (int32_t i = 0; i < it.count; i ++) {
             ecs_entity_t view_entity = view_src ? view_src : it.entities[i];
-            if (!flecsEngineSetViewHdri(world, impl, &views[i])) {
-                continue;
-            }
 
             bool rendered = flecsEngineRenderViewWithEffects(
                 world,

@@ -82,7 +82,7 @@ static const char *kShaderSource =
 ecs_entity_t flecsEngineShader_pbrColored(
     ecs_world_t *world)
 {
-    return flecsEngineEnsureShader(world, "PbrColoredShader",
+    return flecsEngine_shader_ensure(world, "PbrColoredShader",
         &(FlecsShader){
             .source = kShaderSource,
             .vertex_entry = "vs_main",

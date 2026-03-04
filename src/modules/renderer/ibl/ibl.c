@@ -1,758 +1,62 @@
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "../renderer.h"
-#include "hdri_loader.h"
+#include "ibl_internal.h"
 #include "flecs_engine.h"
 
-#define FLECS_ENGINE_IBL_ENV_SIZE (512u)
-#define FLECS_ENGINE_IBL_BRDF_LUT_SIZE (256u)
-#define FLECS_ENGINE_IBL_FALLBACK_IMAGE_SIZE (1u)
+ECS_COMPONENT_DECLARE(FlecsIbl);
+ECS_COMPONENT_DECLARE(FlecsIblImpl);
 
-typedef struct FlecsIblFaceUniform {
-    float face_index;
-    float roughness;
-    float face_size;
-    float _padding1;
-} FlecsIblFaceUniform;
+ECS_CTOR(FlecsIbl, ptr, {
+    ptr->file = NULL;
+})
 
-static const char *kCubeFromEquirectShaderSource =
-    "struct VertexOutput {\n"
-    "  @builtin(position) pos : vec4<f32>,\n"
-    "  @location(0) uv : vec2<f32>\n"
-    "};\n"
-    "struct FaceUniform {\n"
-    "  data : vec4<f32>\n"
-    "};\n"
-    "@group(0) @binding(0) var equirect_texture : texture_2d<f32>;\n"
-    "@group(0) @binding(1) var equirect_sampler : sampler;\n"
-    "@group(0) @binding(2) var<uniform> face_uniform : FaceUniform;\n"
-    "const PI : f32 = 3.141592653589793;\n"
-    "@vertex fn vs_main(@builtin(vertex_index) vid : u32) -> VertexOutput {\n"
-    "  var out : VertexOutput;\n"
-    "  var pos = array<vec2<f32>, 3>(\n"
-    "    vec2<f32>(-1.0, -1.0),\n"
-    "    vec2<f32>(3.0, -1.0),\n"
-    "    vec2<f32>(-1.0, 3.0));\n"
-    "  let p = pos[vid];\n"
-    "  out.pos = vec4<f32>(p, 0.0, 1.0);\n"
-    "  out.uv = vec2<f32>((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);\n"
-    "  return out;\n"
-    "}\n"
-    "fn cubeFaceUvToDir(face : u32, uv : vec2<f32>, face_size : f32) -> vec3<f32> {\n"
-    "  let scale = max(1.0 - (1.0 / max(face_size, 1.0)), 0.0);\n"
-    "  let st = (uv * 2.0 - vec2<f32>(1.0, 1.0)) * scale;\n"
-    "  let x = st.x;\n"
-    "  let y = -st.y;\n"
-    "  if (face == 0u) {\n"
-    "    return normalize(vec3<f32>(1.0, y, -x));\n"
-    "  }\n"
-    "  if (face == 1u) {\n"
-    "    return normalize(vec3<f32>(-1.0, y, x));\n"
-    "  }\n"
-    "  if (face == 2u) {\n"
-    "    return normalize(vec3<f32>(x, 1.0, -y));\n"
-    "  }\n"
-    "  if (face == 3u) {\n"
-    "    return normalize(vec3<f32>(x, -1.0, y));\n"
-    "  }\n"
-    "  if (face == 4u) {\n"
-    "    return normalize(vec3<f32>(x, y, 1.0));\n"
-    "  }\n"
-    "  return normalize(vec3<f32>(-x, y, -1.0));\n"
-    "}\n"
-    "fn directionToEquirectUv(dir : vec3<f32>) -> vec2<f32> {\n"
-    "  let d = normalize(dir);\n"
-    "  let phi = atan2(d.z, d.x);\n"
-    "  let theta = asin(clamp(d.y, -1.0, 1.0));\n"
-    "  return vec2<f32>(phi / (2.0 * PI) + 0.5, 0.5 - theta / PI);\n"
-    "}\n"
-    "@fragment fn fs_main(in : VertexOutput) -> @location(0) vec4<f32> {\n"
-    "  let face = u32(face_uniform.data.x + 0.5);\n"
-    "  let dir = cubeFaceUvToDir(face, in.uv, face_uniform.data.z);\n"
-    "  let uv = directionToEquirectUv(dir);\n"
-    "  let hdr = textureSampleLevel(equirect_texture, equirect_sampler, uv, 0.0).rgb;\n"
-    "  return vec4<f32>(hdr, 1.0);\n"
-    "}\n";
-
-static const char *kPrefilterShaderSource =
-    "struct VertexOutput {\n"
-    "  @builtin(position) pos : vec4<f32>,\n"
-    "  @location(0) uv : vec2<f32>\n"
-    "};\n"
-    "struct FaceUniform {\n"
-    "  data : vec4<f32>\n"
-    "};\n"
-    "@group(0) @binding(0) var equirect_texture : texture_2d<f32>;\n"
-    "@group(0) @binding(1) var env_sampler : sampler;\n"
-    "@group(0) @binding(2) var<uniform> face_uniform : FaceUniform;\n"
-    "const PI : f32 = 3.141592653589793;\n"
-    "const SAMPLE_COUNT : u32 = 1024u;\n"
-    "@vertex fn vs_main(@builtin(vertex_index) vid : u32) -> VertexOutput {\n"
-    "  var out : VertexOutput;\n"
-    "  var pos = array<vec2<f32>, 3>(\n"
-    "    vec2<f32>(-1.0, -1.0),\n"
-    "    vec2<f32>(3.0, -1.0),\n"
-    "    vec2<f32>(-1.0, 3.0));\n"
-    "  let p = pos[vid];\n"
-    "  out.pos = vec4<f32>(p, 0.0, 1.0);\n"
-    "  out.uv = vec2<f32>((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);\n"
-    "  return out;\n"
-    "}\n"
-    "fn cubeFaceUvToDir(face : u32, uv : vec2<f32>, face_size : f32) -> vec3<f32> {\n"
-    "  let scale = max(1.0 - (1.0 / max(face_size, 1.0)), 0.0);\n"
-    "  let st = (uv * 2.0 - vec2<f32>(1.0, 1.0)) * scale;\n"
-    "  let x = st.x;\n"
-    "  let y = -st.y;\n"
-    "  if (face == 0u) {\n"
-    "    return normalize(vec3<f32>(1.0, y, -x));\n"
-    "  }\n"
-    "  if (face == 1u) {\n"
-    "    return normalize(vec3<f32>(-1.0, y, x));\n"
-    "  }\n"
-    "  if (face == 2u) {\n"
-    "    return normalize(vec3<f32>(x, 1.0, -y));\n"
-    "  }\n"
-    "  if (face == 3u) {\n"
-    "    return normalize(vec3<f32>(x, -1.0, y));\n"
-    "  }\n"
-    "  if (face == 4u) {\n"
-    "    return normalize(vec3<f32>(x, y, 1.0));\n"
-    "  }\n"
-    "  return normalize(vec3<f32>(-x, y, -1.0));\n"
-    "}\n"
-    "fn radicalInverseVdC(bits_in : u32) -> f32 {\n"
-    "  var bits = bits_in;\n"
-    "  bits = (bits << 16u) | (bits >> 16u);\n"
-    "  bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);\n"
-    "  bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);\n"
-    "  bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);\n"
-    "  bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);\n"
-    "  return f32(bits) * 2.3283064365386963e-10;\n"
-    "}\n"
-    "fn hammersley(i : u32, n : u32) -> vec2<f32> {\n"
-    "  return vec2<f32>(f32(i) / f32(n), radicalInverseVdC(i));\n"
-    "}\n"
-    "fn importanceSampleGGX(xi : vec2<f32>, n : vec3<f32>, roughness : f32) -> vec3<f32> {\n"
-    "  let a = roughness * roughness;\n"
-    "  let phi = 2.0 * PI * xi.x;\n"
-    "  let cos_theta = sqrt((1.0 - xi.y) / (1.0 + ((a * a) - 1.0) * xi.y));\n"
-    "  let sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0.0));\n"
-    "  let h = vec3<f32>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);\n"
-    "  let up = select(vec3<f32>(0.0, 0.0, 1.0), vec3<f32>(1.0, 0.0, 0.0), abs(n.z) > 0.999);\n"
-    "  let tangent = normalize(cross(up, n));\n"
-    "  let bitangent = cross(n, tangent);\n"
-    "  return normalize(tangent * h.x + bitangent * h.y + n * h.z);\n"
-    "}\n"
-    "fn directionToEquirectUv(dir : vec3<f32>) -> vec2<f32> {\n"
-    "  let d = normalize(dir);\n"
-    "  let phi = atan2(d.z, d.x);\n"
-    "  let theta = asin(clamp(d.y, -1.0, 1.0));\n"
-    "  return vec2<f32>(phi / (2.0 * PI) + 0.5, 0.5 - theta / PI);\n"
-    "}\n"
-    "@fragment fn fs_main(in : VertexOutput) -> @location(0) vec4<f32> {\n"
-    "  let face = u32(face_uniform.data.x + 0.5);\n"
-    "  let roughness = clamp(face_uniform.data.y, 0.0, 1.0);\n"
-    "  let n = cubeFaceUvToDir(face, in.uv, face_uniform.data.z);\n"
-    "  let v = n;\n"
-    "  var prefiltered = vec3<f32>(0.0);\n"
-    "  var total_weight = 0.0;\n"
-    "  var i = 0u;\n"
-    "  loop {\n"
-    "    if (i >= SAMPLE_COUNT) {\n"
-    "      break;\n"
-    "    }\n"
-    "    let xi = hammersley(i, SAMPLE_COUNT);\n"
-    "    let h = importanceSampleGGX(xi, n, roughness);\n"
-    "    let l = normalize(2.0 * dot(v, h) * h - v);\n"
-    "    let ndotl = max(dot(n, l), 0.0);\n"
-    "    if (ndotl > 0.0) {\n"
-    "      let env_uv = directionToEquirectUv(l);\n"
-    "      prefiltered += textureSampleLevel(equirect_texture, env_sampler, env_uv, 0.0).rgb * ndotl;\n"
-    "      total_weight += ndotl;\n"
-    "    }\n"
-    "    i = i + 1u;\n"
-    "  }\n"
-    "  if (total_weight > 0.0) {\n"
-    "    return vec4<f32>(prefiltered / total_weight, 1.0);\n"
-    "  }\n"
-    "  return vec4<f32>(0.0, 0.0, 0.0, 1.0);\n"
-    "}\n";
-
-static const char *kBrdfLutShaderSource =
-    "struct VertexOutput {\n"
-    "  @builtin(position) pos : vec4<f32>,\n"
-    "  @location(0) uv : vec2<f32>\n"
-    "};\n"
-    "const PI : f32 = 3.141592653589793;\n"
-    "const SAMPLE_COUNT : u32 = 1024u;\n"
-    "@vertex fn vs_main(@builtin(vertex_index) vid : u32) -> VertexOutput {\n"
-    "  var out : VertexOutput;\n"
-    "  var pos = array<vec2<f32>, 3>(\n"
-    "    vec2<f32>(-1.0, -1.0),\n"
-    "    vec2<f32>(3.0, -1.0),\n"
-    "    vec2<f32>(-1.0, 3.0));\n"
-    "  let p = pos[vid];\n"
-    "  out.pos = vec4<f32>(p, 0.0, 1.0);\n"
-    "  out.uv = vec2<f32>((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);\n"
-    "  return out;\n"
-    "}\n"
-    "fn radicalInverseVdC(bits_in : u32) -> f32 {\n"
-    "  var bits = bits_in;\n"
-    "  bits = (bits << 16u) | (bits >> 16u);\n"
-    "  bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);\n"
-    "  bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);\n"
-    "  bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);\n"
-    "  bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);\n"
-    "  return f32(bits) * 2.3283064365386963e-10;\n"
-    "}\n"
-    "fn hammersley(i : u32, n : u32) -> vec2<f32> {\n"
-    "  return vec2<f32>(f32(i) / f32(n), radicalInverseVdC(i));\n"
-    "}\n"
-    "fn importanceSampleGGX(xi : vec2<f32>, n : vec3<f32>, roughness : f32) -> vec3<f32> {\n"
-    "  let a = roughness * roughness;\n"
-    "  let phi = 2.0 * PI * xi.x;\n"
-    "  let cos_theta = sqrt((1.0 - xi.y) / (1.0 + ((a * a) - 1.0) * xi.y));\n"
-    "  let sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0.0));\n"
-    "  let h = vec3<f32>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);\n"
-    "  let up = select(vec3<f32>(0.0, 0.0, 1.0), vec3<f32>(1.0, 0.0, 0.0), abs(n.z) > 0.999);\n"
-    "  let tangent = normalize(cross(up, n));\n"
-    "  let bitangent = cross(n, tangent);\n"
-    "  return normalize(tangent * h.x + bitangent * h.y + n * h.z);\n"
-    "}\n"
-    "fn geometrySchlickGGX(ndotv : f32, roughness : f32) -> f32 {\n"
-    "  let r = roughness + 1.0;\n"
-    "  let k = (r * r) / 8.0;\n"
-    "  return ndotv / max(ndotv * (1.0 - k) + k, 1e-4);\n"
-    "}\n"
-    "fn geometrySmith(n : vec3<f32>, v : vec3<f32>, l : vec3<f32>, roughness : f32) -> f32 {\n"
-    "  let ndotv = max(dot(n, v), 0.0);\n"
-    "  let ndotl = max(dot(n, l), 0.0);\n"
-    "  let ggx_v = geometrySchlickGGX(ndotv, roughness);\n"
-    "  let ggx_l = geometrySchlickGGX(ndotl, roughness);\n"
-    "  return ggx_v * ggx_l;\n"
-    "}\n"
-    "@fragment fn fs_main(in : VertexOutput) -> @location(0) vec2<f32> {\n"
-    "  let ndotv = clamp(in.uv.x, 0.0, 1.0);\n"
-    "  let roughness = clamp(in.uv.y, 0.0, 1.0);\n"
-    "  let n = vec3<f32>(0.0, 0.0, 1.0);\n"
-    "  let v = vec3<f32>(sqrt(max(1.0 - ndotv * ndotv, 0.0)), 0.0, ndotv);\n"
-    "  var a = 0.0;\n"
-    "  var b = 0.0;\n"
-    "  var i = 0u;\n"
-    "  loop {\n"
-    "    if (i >= SAMPLE_COUNT) {\n"
-    "      break;\n"
-    "    }\n"
-    "    let xi = hammersley(i, SAMPLE_COUNT);\n"
-    "    let h = importanceSampleGGX(xi, n, roughness);\n"
-    "    let l = normalize(2.0 * dot(v, h) * h - v);\n"
-    "    let ndotl = max(l.z, 0.0);\n"
-    "    let ndoth = max(h.z, 0.0);\n"
-    "    let vdoth = max(dot(v, h), 0.0);\n"
-    "    if (ndotl > 0.0) {\n"
-    "      let g = geometrySmith(n, v, l, roughness);\n"
-    "      let g_vis = (g * vdoth) / max(ndoth * ndotv, 1e-4);\n"
-    "      let fc = pow(1.0 - vdoth, 5.0);\n"
-    "      a += (1.0 - fc) * g_vis;\n"
-    "      b += fc * g_vis;\n"
-    "    }\n"
-    "    i = i + 1u;\n"
-    "  }\n"
-    "  return vec2<f32>(a, b) / f32(SAMPLE_COUNT);\n"
-    "}\n";
-
-static bool flecsIblFileExists(
-    const char *path)
-{
-    FILE *f = fopen(path, "rb");
-    if (!f) {
-        return false;
+ECS_MOVE(FlecsIbl, dst, src, {
+    if (dst->file) {
+        ecs_os_free((char*)dst->file);
     }
 
-    fclose(f);
-    return true;
-}
+    *dst = *src;
+    src->file = NULL;
+})
 
-static void flecsIblLogImageStats(
-    const FlecsHdriImage *image,
-    const char *path)
-{
-    if (!image || !image->pixels_rgba32f || image->width <= 0 || image->height <= 0) {
-        return;
+ECS_COPY(FlecsIbl, dst, src, {
+    if (dst->file) {
+        ecs_os_free((char*)dst->file);
     }
 
-    size_t pixel_count = (size_t)image->width * (size_t)image->height;
-    float min_l = INFINITY;
-    float max_l = 0.0f;
-    for (size_t i = 0; i < pixel_count; i ++) {
-        const float *p = &image->pixels_rgba32f[i * 4u];
-        float l = p[0] * 0.2126f + p[1] * 0.7152f + p[2] * 0.0722f;
-        if (l < min_l) {
-            min_l = l;
-        }
-        if (l > max_l) {
-            max_l = l;
-        }
+    dst->file = src->file ? ecs_os_strdup(src->file) : NULL;
+})
+
+ECS_DTOR(FlecsIbl, ptr, {
+    if (ptr->file) {
+        ecs_os_free((char*)ptr->file);
+        ptr->file = NULL;
     }
+})
 
-    ecs_dbg(
-        "[ibl] loaded HDRI '%s' (%dx%d), luminance range [%g, %g]",
-        path ? path : "<unknown>",
-        image->width,
-        image->height,
-        (double)min_l,
-        (double)max_l);
+ECS_DTOR(FlecsIblImpl, ptr, {
+    flecsIblReleaseRuntimeResources(ptr);
+})
 
-    if (max_l <= 1.05f) {
-        ecs_warn(
-            "[ibl] HDRI '%s' appears low-range (max luminance=%g); reflections may look flat",
-            path ? path : "<unknown>",
-            (double)max_l);
-    }
-}
+ECS_MOVE(FlecsIblImpl, dst, src, {
+    flecsIblReleaseRuntimeResources(dst);
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
 
-static uint32_t flecsIblComputeMipCount(
-    uint32_t size)
-{
-    uint32_t mip_count = 1u;
-    while (size > 1u) {
-        size >>= 1u;
-        mip_count ++;
-    }
-    return mip_count;
-}
-
-static uint16_t flecsIblFloatToHalf(
-    float value)
-{
-    uint32_t bits = 0;
-    memcpy(&bits, &value, sizeof(bits));
-
-    uint32_t sign = (bits >> 16u) & 0x8000u;
-    uint32_t mantissa = bits & 0x007FFFFFu;
-    int32_t exp = ((int32_t)((bits >> 23u) & 0xFFu)) - 127 + 15;
-
-    if (exp <= 0) {
-        if (exp < -10) {
-            return (uint16_t)sign;
-        }
-
-        mantissa = (mantissa | 0x00800000u) >> (1 - exp);
-        if (mantissa & 0x00001000u) {
-            mantissa += 0x00002000u;
-        }
-
-        return (uint16_t)(sign | (mantissa >> 13u));
-    }
-
-    if (exp >= 31) {
-        return (uint16_t)(sign | 0x7C00u);
-    }
-
-    if (mantissa & 0x00001000u) {
-        mantissa += 0x00002000u;
-        if (mantissa & 0x00800000u) {
-            mantissa = 0;
-            exp ++;
-            if (exp >= 31) {
-                return (uint16_t)(sign | 0x7C00u);
-            }
-        }
-    }
-
-    return (uint16_t)(sign | ((uint32_t)exp << 10u) | (mantissa >> 13u));
-}
-
-static WGPUShaderModule flecsIblCreateShaderModule(
-    const FlecsEngineImpl *engine,
-    const char *source)
-{
-    WGPUShaderSourceWGSL wgsl_desc = {
-        .chain = { .sType = WGPUSType_ShaderSourceWGSL },
-        .code = (WGPUStringView){
-            .data = source,
-            .length = WGPU_STRLEN
-        }
-    };
-
-    WGPUShaderModuleDescriptor shader_desc = {
-        .nextInChain = (WGPUChainedStruct*)&wgsl_desc
-    };
-
-    return wgpuDeviceCreateShaderModule(engine->device, &shader_desc);
-}
-
-static WGPURenderPipeline flecsIblCreatePipeline(
-    const FlecsEngineImpl *engine,
-    WGPUShaderModule shader_module,
-    const WGPUBindGroupLayout *bind_group_layouts,
-    uint32_t bind_group_layout_count,
-    const char *fragment_entry,
-    WGPUTextureFormat format)
-{
-    WGPUPipelineLayoutDescriptor layout_desc = {
-        .bindGroupLayoutCount = bind_group_layout_count,
-        .bindGroupLayouts = bind_group_layouts
-    };
-
-    WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(
-        engine->device, &layout_desc);
-    if (!pipeline_layout) {
-        return NULL;
-    }
-
-    WGPUColorTargetState color_target = {
-        .format = format,
-        .writeMask = WGPUColorWriteMask_All
-    };
-
-    WGPUVertexState vertex_state = {
-        .module = shader_module,
-        .entryPoint = (WGPUStringView){
-            .data = "vs_main",
-            .length = WGPU_STRLEN
-        }
-    };
-
-    WGPUFragmentState fragment_state = {
-        .module = shader_module,
-        .entryPoint = (WGPUStringView){
-            .data = fragment_entry,
-            .length = WGPU_STRLEN
-        },
-        .targetCount = 1,
-        .targets = &color_target
-    };
-
-    WGPURenderPipelineDescriptor pipeline_desc = {
-        .layout = pipeline_layout,
-        .vertex = vertex_state,
-        .fragment = &fragment_state,
-        .primitive = {
-            .topology = WGPUPrimitiveTopology_TriangleList,
-            .cullMode = WGPUCullMode_None,
-            .frontFace = WGPUFrontFace_CW
-        },
-        .multisample = {
-            .count = 1
-        }
-    };
-
-    WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(
-        engine->device, &pipeline_desc);
-    wgpuPipelineLayoutRelease(pipeline_layout);
-    return pipeline;
-}
-
-static WGPUTextureView flecsIblCreateCubeView(
-    WGPUTexture texture,
-    WGPUTextureFormat format,
-    uint32_t mip_count)
-{
-    WGPUTextureViewDescriptor view_desc = {
-        .format = format,
-        .dimension = WGPUTextureViewDimension_Cube,
-        .baseMipLevel = 0,
-        .mipLevelCount = mip_count,
-        .baseArrayLayer = 0,
-        .arrayLayerCount = 6,
-        .aspect = WGPUTextureAspect_All
-    };
-
-    return wgpuTextureCreateView(texture, &view_desc);
-}
-
-static WGPUTextureView flecsIblCreateCubeFaceView(
-    WGPUTexture texture,
-    WGPUTextureFormat format,
-    uint32_t mip_level,
-    uint32_t array_layer)
-{
-    WGPUTextureViewDescriptor view_desc = {
-        .format = format,
-        .dimension = WGPUTextureViewDimension_2D,
-        .baseMipLevel = mip_level,
-        .mipLevelCount = 1,
-        .baseArrayLayer = array_layer,
-        .arrayLayerCount = 1,
-        .aspect = WGPUTextureAspect_All
-    };
-
-    return wgpuTextureCreateView(texture, &view_desc);
-}
-
-static WGPUTextureView flecsIblCreateTexture2DView(
-    WGPUTexture texture,
-    WGPUTextureFormat format)
-{
-    WGPUTextureViewDescriptor view_desc = {
-        .format = format,
-        .dimension = WGPUTextureViewDimension_2D,
-        .baseMipLevel = 0,
-        .mipLevelCount = 1,
-        .baseArrayLayer = 0,
-        .arrayLayerCount = 1,
-        .aspect = WGPUTextureAspect_All
-    };
-
-    return wgpuTextureCreateView(texture, &view_desc);
-}
-
-static bool flecsIblCreateEquirectTexture(
-    FlecsEngineImpl *impl,
-    const FlecsHdriImage *image)
-{
-    WGPUTextureDescriptor desc = {
-        .usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
-        .dimension = WGPUTextureDimension_2D,
-        .size = (WGPUExtent3D){
-            .width = (uint32_t)image->width,
-            .height = (uint32_t)image->height,
-            .depthOrArrayLayers = 1
-        },
-        .format = WGPUTextureFormat_RGBA16Float,
-        .mipLevelCount = 1,
-        .sampleCount = 1
-    };
-
-    impl->ibl_equirect_texture = wgpuDeviceCreateTexture(impl->device, &desc);
-    if (!impl->ibl_equirect_texture) {
-        return false;
-    }
-
-    impl->ibl_equirect_texture_view = flecsIblCreateTexture2DView(
-        impl->ibl_equirect_texture,
-        WGPUTextureFormat_RGBA16Float);
-    if (!impl->ibl_equirect_texture_view) {
-        return false;
-    }
-
-    size_t pixel_count = (size_t)image->width * (size_t)image->height;
-    size_t texel_count = pixel_count * 4u;
-    uint16_t *pixels_rgba16 = malloc(texel_count * sizeof(uint16_t));
-    if (!pixels_rgba16) {
-        return false;
-    }
-
-    for (size_t i = 0; i < texel_count; i ++) {
-        pixels_rgba16[i] = flecsIblFloatToHalf(image->pixels_rgba32f[i]);
-    }
-
-    WGPUTexelCopyTextureInfo destination = {
-        .texture = impl->ibl_equirect_texture,
-        .mipLevel = 0,
-        .origin = {0, 0, 0},
-        .aspect = WGPUTextureAspect_All
-    };
-
-    WGPUTexelCopyBufferLayout layout = {
-        .offset = 0,
-        .bytesPerRow = (uint32_t)image->width * sizeof(uint16_t) * 4u,
-        .rowsPerImage = (uint32_t)image->height
-    };
-
-    WGPUExtent3D size = {
-        .width = (uint32_t)image->width,
-        .height = (uint32_t)image->height,
-        .depthOrArrayLayers = 1
-    };
-
-    wgpuQueueWriteTexture(
-        impl->queue,
-        &destination,
-        pixels_rgba16,
-        texel_count * sizeof(uint16_t),
-        &layout,
-        &size);
-
-    free(pixels_rgba16);
-    return true;
-}
-
-static bool flecsIblCreateCubeTexture(
-    FlecsEngineImpl *impl,
-    uint32_t size,
-    uint32_t mip_count,
-    WGPUTextureFormat format,
-    WGPUTexture *out_texture,
-    WGPUTextureView *out_cube_view)
-{
-    WGPUTextureDescriptor desc = {
-        .usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment,
-        .dimension = WGPUTextureDimension_2D,
-        .size = (WGPUExtent3D){
-            .width = size,
-            .height = size,
-            .depthOrArrayLayers = 6
-        },
-        .format = format,
-        .mipLevelCount = mip_count,
-        .sampleCount = 1
-    };
-
-    *out_texture = wgpuDeviceCreateTexture(impl->device, &desc);
-    if (!*out_texture) {
-        return false;
-    }
-
-    *out_cube_view = flecsIblCreateCubeView(*out_texture, format, mip_count);
-    if (!*out_cube_view) {
-        return false;
-    }
-
-    return true;
-}
-
-static bool flecsIblCreateBrdfLutTexture(
+WGPUBindGroupLayout flecsEngineEnsureIblBindLayout(
     FlecsEngineImpl *impl)
 {
-    WGPUTextureDescriptor desc = {
-        .usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment,
-        .dimension = WGPUTextureDimension_2D,
-        .size = (WGPUExtent3D){
-            .width = FLECS_ENGINE_IBL_BRDF_LUT_SIZE,
-            .height = FLECS_ENGINE_IBL_BRDF_LUT_SIZE,
-            .depthOrArrayLayers = 1
-        },
-        .format = WGPUTextureFormat_RG16Float,
-        .mipLevelCount = 1,
-        .sampleCount = 1
-    };
-
-    impl->ibl_brdf_lut_texture = wgpuDeviceCreateTexture(impl->device, &desc);
-    if (!impl->ibl_brdf_lut_texture) {
-        return false;
+    if (impl->ibl_bind_layout) {
+        return impl->ibl_bind_layout;
     }
 
-    impl->ibl_brdf_lut_texture_view = flecsIblCreateTexture2DView(
-        impl->ibl_brdf_lut_texture,
-        WGPUTextureFormat_RG16Float);
-    if (!impl->ibl_brdf_lut_texture_view) {
-        return false;
-    }
-
-    return true;
-}
-
-static bool flecsIblCreateSampler(
-    FlecsEngineImpl *impl)
-{
-    WGPUSamplerDescriptor sampler_desc = {
-        .addressModeU = WGPUAddressMode_ClampToEdge,
-        .addressModeV = WGPUAddressMode_ClampToEdge,
-        .addressModeW = WGPUAddressMode_ClampToEdge,
-        .magFilter = WGPUFilterMode_Linear,
-        .minFilter = WGPUFilterMode_Linear,
-        .mipmapFilter = WGPUMipmapFilterMode_Linear,
-        .lodMinClamp = 0.0f,
-        .lodMaxClamp = (float)impl->ibl_prefilter_mip_count,
-        .maxAnisotropy = 1
-    };
-
-    impl->ibl_sampler = wgpuDeviceCreateSampler(impl->device, &sampler_desc);
-    return impl->ibl_sampler != NULL;
-}
-
-static bool flecsIblDrawFullscreenPass(
-    WGPUCommandEncoder encoder,
-    WGPUTextureView target_view,
-    WGPURenderPipeline pipeline,
-    WGPUBindGroup bind_group)
-{
-    WGPURenderPassColorAttachment color_attachment = {
-        .view = target_view,
-        .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
-        .loadOp = WGPULoadOp_Clear,
-        .storeOp = WGPUStoreOp_Store,
-        .clearValue = (WGPUColor){0}
-    };
-
-    WGPURenderPassDescriptor pass_desc = {
-        .colorAttachmentCount = 1,
-        .colorAttachments = &color_attachment
-    };
-
-    WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(
-        encoder, &pass_desc);
-    if (!pass) {
-        return false;
-    }
-
-    wgpuRenderPassEncoderSetPipeline(pass, pipeline);
-    if (bind_group) {
-        wgpuRenderPassEncoderSetBindGroup(pass, 0, bind_group, 0, NULL);
-    }
-    wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
-    wgpuRenderPassEncoderEnd(pass);
-    wgpuRenderPassEncoderRelease(pass);
-    return true;
-}
-
-static bool flecsIblSubmitFullscreenPass(
-    FlecsEngineImpl *impl,
-    WGPUTextureView target_view,
-    WGPURenderPipeline pipeline,
-    WGPUBindGroup bind_group)
-{
-    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(
-        impl->device, &(WGPUCommandEncoderDescriptor){0});
-    if (!encoder) {
-        return false;
-    }
-
-    if (!flecsIblDrawFullscreenPass(encoder, target_view, pipeline, bind_group)) {
-        wgpuCommandEncoderRelease(encoder);
-        return false;
-    }
-
-    WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
-        encoder, &(WGPUCommandBufferDescriptor){0});
-    wgpuCommandEncoderRelease(encoder);
-    if (!command_buffer) {
-        return false;
-    }
-
-    wgpuQueueSubmit(impl->queue, 1, &command_buffer);
-    wgpuCommandBufferRelease(command_buffer);
-    return true;
-}
-
-static bool flecsIblRunPreprocessPasses(
-    FlecsEngineImpl *impl)
-{
-    bool result = false;
-    WGPUShaderModule cube_shader = NULL;
-    WGPUShaderModule prefilter_shader = NULL;
-    WGPUShaderModule brdf_shader = NULL;
-    WGPUBindGroupLayout cube_bind_layout = NULL;
-    WGPUBindGroupLayout prefilter_bind_layout = NULL;
-    WGPUBindGroup cube_bind_group = NULL;
-    WGPUBindGroup prefilter_bind_group = NULL;
-    WGPUBuffer uniform_buffer = NULL;
-    WGPURenderPipeline cube_pipeline = NULL;
-    WGPURenderPipeline prefilter_pipeline = NULL;
-    WGPURenderPipeline brdf_pipeline = NULL;
-
-    cube_shader = flecsIblCreateShaderModule(
-        impl, kCubeFromEquirectShaderSource);
-    prefilter_shader = flecsIblCreateShaderModule(
-        impl, kPrefilterShaderSource);
-    brdf_shader = flecsIblCreateShaderModule(
-        impl, kBrdfLutShaderSource);
-    if (!cube_shader || !prefilter_shader || !brdf_shader) {
-        goto cleanup;
-    }
-
-    WGPUBindGroupLayoutEntry cube_layout_entries[3] = {
+    WGPUBindGroupLayoutEntry layout_entries[3] = {
         {
             .binding = 0,
             .visibility = WGPUShaderStage_Fragment,
             .texture = {
                 .sampleType = WGPUTextureSampleType_Float,
-                .viewDimension = WGPUTextureViewDimension_2D,
+                .viewDimension = WGPUTextureViewDimension_Cube,
                 .multisampled = false
             }
         },
@@ -766,584 +70,197 @@ static bool flecsIblRunPreprocessPasses(
         {
             .binding = 2,
             .visibility = WGPUShaderStage_Fragment,
-            .buffer = {
-                .type = WGPUBufferBindingType_Uniform,
-                .minBindingSize = sizeof(FlecsIblFaceUniform)
-            }
-        }
-    };
-
-    cube_bind_layout = wgpuDeviceCreateBindGroupLayout(
-        impl->device,
-        &(WGPUBindGroupLayoutDescriptor){
-            .entryCount = 3,
-            .entries = cube_layout_entries
-        });
-    if (!cube_bind_layout) {
-        goto cleanup;
-    }
-
-    WGPUBindGroupLayoutEntry prefilter_layout_entries[3] = {
-        {
-            .binding = 0,
-            .visibility = WGPUShaderStage_Fragment,
             .texture = {
                 .sampleType = WGPUTextureSampleType_Float,
                 .viewDimension = WGPUTextureViewDimension_2D,
                 .multisampled = false
             }
-        },
-        {
-            .binding = 1,
-            .visibility = WGPUShaderStage_Fragment,
-            .sampler = {
-                .type = WGPUSamplerBindingType_Filtering
-            }
-        },
-        {
-            .binding = 2,
-            .visibility = WGPUShaderStage_Fragment,
-            .buffer = {
-                .type = WGPUBufferBindingType_Uniform,
-                .minBindingSize = sizeof(FlecsIblFaceUniform)
-            }
         }
     };
 
-    prefilter_bind_layout = wgpuDeviceCreateBindGroupLayout(
+    impl->ibl_bind_layout = wgpuDeviceCreateBindGroupLayout(
         impl->device,
         &(WGPUBindGroupLayoutDescriptor){
             .entryCount = 3,
-            .entries = prefilter_layout_entries
+            .entries = layout_entries
         });
-    if (!prefilter_bind_layout) {
-        goto cleanup;
-    }
 
-    uniform_buffer = wgpuDeviceCreateBuffer(
-        impl->device,
-        &(WGPUBufferDescriptor){
-            .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
-            .size = sizeof(FlecsIblFaceUniform)
-        });
-    if (!uniform_buffer) {
-        goto cleanup;
-    }
-
-    cube_bind_group = wgpuDeviceCreateBindGroup(
-        impl->device,
-        &(WGPUBindGroupDescriptor){
-            .layout = cube_bind_layout,
-            .entryCount = 3,
-            .entries = (WGPUBindGroupEntry[3]){
-                {
-                    .binding = 0,
-                    .textureView = impl->ibl_equirect_texture_view
-                },
-                {
-                    .binding = 1,
-                    .sampler = impl->ibl_sampler
-                },
-                {
-                    .binding = 2,
-                    .buffer = uniform_buffer,
-                    .size = sizeof(FlecsIblFaceUniform)
-                }
-            }
-        });
-    if (!cube_bind_group) {
-        goto cleanup;
-    }
-
-    prefilter_bind_group = wgpuDeviceCreateBindGroup(
-        impl->device,
-        &(WGPUBindGroupDescriptor){
-            .layout = prefilter_bind_layout,
-            .entryCount = 3,
-            .entries = (WGPUBindGroupEntry[3]){
-                {
-                    .binding = 0,
-                    .textureView = impl->ibl_equirect_texture_view
-                },
-                {
-                    .binding = 1,
-                    .sampler = impl->ibl_sampler
-                },
-                {
-                    .binding = 2,
-                    .buffer = uniform_buffer,
-                    .size = sizeof(FlecsIblFaceUniform)
-                }
-            }
-        });
-    if (!prefilter_bind_group) {
-        goto cleanup;
-    }
-
-    cube_pipeline = flecsIblCreatePipeline(
-        impl,
-        cube_shader,
-        &cube_bind_layout,
-        1,
-        "fs_main",
-        WGPUTextureFormat_RGBA16Float);
-    prefilter_pipeline = flecsIblCreatePipeline(
-        impl,
-        prefilter_shader,
-        &prefilter_bind_layout,
-        1,
-        "fs_main",
-        WGPUTextureFormat_RGBA16Float);
-    brdf_pipeline = flecsIblCreatePipeline(
-        impl,
-        brdf_shader,
-        NULL,
-        0,
-        "fs_main",
-        WGPUTextureFormat_RG16Float);
-    if (!cube_pipeline || !prefilter_pipeline || !brdf_pipeline) {
-        goto cleanup;
-    }
-
-    for (uint32_t face = 0; face < 6u; face ++) {
-        FlecsIblFaceUniform uniform = {
-            .face_index = (float)face,
-            .roughness = 0.0f,
-            .face_size = (float)FLECS_ENGINE_IBL_ENV_SIZE,
-            ._padding1 = 0.0f
-        };
-        wgpuQueueWriteBuffer(
-            impl->queue,
-            uniform_buffer,
-            0,
-            &uniform,
-            sizeof(uniform));
-
-        WGPUTextureView face_view = flecsIblCreateCubeFaceView(
-            impl->ibl_environment_cubemap,
-            WGPUTextureFormat_RGBA16Float,
-            0,
-            face);
-        if (!face_view) {
-            goto cleanup;
-        }
-
-        bool draw_ok = flecsIblSubmitFullscreenPass(
-            impl,
-            face_view,
-            cube_pipeline,
-            cube_bind_group);
-        wgpuTextureViewRelease(face_view);
-        if (!draw_ok) {
-            goto cleanup;
-        }
-    }
-
-    for (uint32_t mip = 0; mip < impl->ibl_prefilter_mip_count; mip ++) {
-        float roughness = impl->ibl_prefilter_mip_count > 1u
-            ? (float)mip / (float)(impl->ibl_prefilter_mip_count - 1u)
-            : 0.0f;
-
-        for (uint32_t face = 0; face < 6u; face ++) {
-            uint32_t face_size_u = FLECS_ENGINE_IBL_ENV_SIZE >> mip;
-            if (!face_size_u) {
-                face_size_u = 1u;
-            }
-            FlecsIblFaceUniform uniform = {
-                .face_index = (float)face,
-                .roughness = roughness,
-                .face_size = (float)face_size_u,
-                ._padding1 = 0.0f
-            };
-            wgpuQueueWriteBuffer(
-                impl->queue,
-                uniform_buffer,
-                0,
-                &uniform,
-                sizeof(uniform));
-
-            WGPUTextureView face_view = flecsIblCreateCubeFaceView(
-                impl->ibl_prefiltered_cubemap,
-                WGPUTextureFormat_RGBA16Float,
-                mip,
-                face);
-            if (!face_view) {
-                goto cleanup;
-            }
-
-            bool draw_ok = flecsIblSubmitFullscreenPass(
-                impl,
-                face_view,
-                prefilter_pipeline,
-                prefilter_bind_group);
-            wgpuTextureViewRelease(face_view);
-            if (!draw_ok) {
-                goto cleanup;
-            }
-        }
-    }
-
-    if (!flecsIblSubmitFullscreenPass(
-        impl,
-        impl->ibl_brdf_lut_texture_view,
-        brdf_pipeline,
-        NULL))
-    {
-        goto cleanup;
-    }
-    result = true;
-
-cleanup:
-    if (brdf_pipeline) {
-        wgpuRenderPipelineRelease(brdf_pipeline);
-    }
-    if (prefilter_pipeline) {
-        wgpuRenderPipelineRelease(prefilter_pipeline);
-    }
-    if (cube_pipeline) {
-        wgpuRenderPipelineRelease(cube_pipeline);
-    }
-    if (prefilter_bind_group) {
-        wgpuBindGroupRelease(prefilter_bind_group);
-    }
-    if (cube_bind_group) {
-        wgpuBindGroupRelease(cube_bind_group);
-    }
-    if (uniform_buffer) {
-        wgpuBufferRelease(uniform_buffer);
-    }
-    if (prefilter_bind_layout) {
-        wgpuBindGroupLayoutRelease(prefilter_bind_layout);
-    }
-    if (cube_bind_layout) {
-        wgpuBindGroupLayoutRelease(cube_bind_layout);
-    }
-    if (brdf_shader) {
-        wgpuShaderModuleRelease(brdf_shader);
-    }
-    if (prefilter_shader) {
-        wgpuShaderModuleRelease(prefilter_shader);
-    }
-    if (cube_shader) {
-        wgpuShaderModuleRelease(cube_shader);
-    }
-
-    return result;
+    return impl->ibl_bind_layout;
 }
 
-static bool flecsIblCreateRuntimeBindGroup(
-    FlecsEngineImpl *impl)
+bool flecsIblCreateRuntimeBindGroup(
+    const FlecsEngineImpl *engine,
+    FlecsIblImpl *ibl)
 {
-    if (!impl->ibl_bind_layout) {
-        WGPUBindGroupLayoutEntry layout_entries[3] = {
-            {
-                .binding = 0,
-                .visibility = WGPUShaderStage_Fragment,
-                .texture = {
-                    .sampleType = WGPUTextureSampleType_Float,
-                    .viewDimension = WGPUTextureViewDimension_Cube,
-                    .multisampled = false
-                }
-            },
-            {
-                .binding = 1,
-                .visibility = WGPUShaderStage_Fragment,
-                .sampler = {
-                    .type = WGPUSamplerBindingType_Filtering
-                }
-            },
-            {
-                .binding = 2,
-                .visibility = WGPUShaderStage_Fragment,
-                .texture = {
-                    .sampleType = WGPUTextureSampleType_Float,
-                    .viewDimension = WGPUTextureViewDimension_2D,
-                    .multisampled = false
-                }
-            }
-        };
-
-        impl->ibl_bind_layout = wgpuDeviceCreateBindGroupLayout(
-            impl->device,
-            &(WGPUBindGroupLayoutDescriptor){
-                .entryCount = 3,
-                .entries = layout_entries
-            });
-        if (!impl->ibl_bind_layout) {
-            return false;
-        }
+    if (ibl->ibl_bind_group) {
+        wgpuBindGroupRelease(ibl->ibl_bind_group);
+        ibl->ibl_bind_group = NULL;
     }
 
-    if (impl->ibl_bind_group) {
-        wgpuBindGroupRelease(impl->ibl_bind_group);
-        impl->ibl_bind_group = NULL;
+    WGPUBindGroupLayout bind_layout = engine->ibl_bind_layout;
+    if (!bind_layout) {
+        return false;
     }
 
-    impl->ibl_bind_group = wgpuDeviceCreateBindGroup(
-        impl->device,
+    ibl->ibl_bind_group = wgpuDeviceCreateBindGroup(
+        engine->device,
         &(WGPUBindGroupDescriptor){
-            .layout = impl->ibl_bind_layout,
+            .layout = bind_layout,
             .entryCount = 3,
             .entries = (WGPUBindGroupEntry[3]){
                 {
                     .binding = 0,
-                    .textureView = impl->ibl_prefiltered_cubemap_view
+                    .textureView = ibl->ibl_prefiltered_cubemap_view
                 },
                 {
                     .binding = 1,
-                    .sampler = impl->ibl_sampler
+                    .sampler = ibl->ibl_sampler
                 },
                 {
                     .binding = 2,
-                    .textureView = impl->ibl_brdf_lut_texture_view
+                    .textureView = ibl->ibl_brdf_lut_texture_view
                 }
             }
         });
 
-    return impl->ibl_bind_group != NULL;
+    return ibl->ibl_bind_group != NULL;
 }
 
-static void flecsIblReleaseRuntimeResources(
-    FlecsEngineImpl *impl)
+void flecsIblReleaseRuntimeResources(
+    FlecsIblImpl *ibl)
 {
-    if (!impl) {
+    if (!ibl) {
         return;
     }
 
-    if (impl->ibl_bind_group) {
-        wgpuBindGroupRelease(impl->ibl_bind_group);
-        impl->ibl_bind_group = NULL;
+    if (ibl->ibl_bind_group) {
+        wgpuBindGroupRelease(ibl->ibl_bind_group);
+        ibl->ibl_bind_group = NULL;
     }
 
-    if (impl->ibl_sampler) {
-        wgpuSamplerRelease(impl->ibl_sampler);
-        impl->ibl_sampler = NULL;
+    if (ibl->ibl_sampler) {
+        wgpuSamplerRelease(ibl->ibl_sampler);
+        ibl->ibl_sampler = NULL;
     }
 
-    if (impl->ibl_brdf_lut_texture_view) {
-        wgpuTextureViewRelease(impl->ibl_brdf_lut_texture_view);
-        impl->ibl_brdf_lut_texture_view = NULL;
+    if (ibl->ibl_brdf_lut_texture_view) {
+        wgpuTextureViewRelease(ibl->ibl_brdf_lut_texture_view);
+        ibl->ibl_brdf_lut_texture_view = NULL;
     }
 
-    if (impl->ibl_brdf_lut_texture) {
-        wgpuTextureRelease(impl->ibl_brdf_lut_texture);
-        impl->ibl_brdf_lut_texture = NULL;
+    if (ibl->ibl_brdf_lut_texture) {
+        wgpuTextureRelease(ibl->ibl_brdf_lut_texture);
+        ibl->ibl_brdf_lut_texture = NULL;
     }
 
-    if (impl->ibl_prefiltered_cubemap_view) {
-        wgpuTextureViewRelease(impl->ibl_prefiltered_cubemap_view);
-        impl->ibl_prefiltered_cubemap_view = NULL;
+    if (ibl->ibl_prefiltered_cubemap_view) {
+        wgpuTextureViewRelease(ibl->ibl_prefiltered_cubemap_view);
+        ibl->ibl_prefiltered_cubemap_view = NULL;
     }
 
-    if (impl->ibl_prefiltered_cubemap) {
-        wgpuTextureRelease(impl->ibl_prefiltered_cubemap);
-        impl->ibl_prefiltered_cubemap = NULL;
+    if (ibl->ibl_prefiltered_cubemap) {
+        wgpuTextureRelease(ibl->ibl_prefiltered_cubemap);
+        ibl->ibl_prefiltered_cubemap = NULL;
     }
 
-    if (impl->ibl_environment_cubemap_view) {
-        wgpuTextureViewRelease(impl->ibl_environment_cubemap_view);
-        impl->ibl_environment_cubemap_view = NULL;
+    if (ibl->ibl_equirect_texture_view) {
+        wgpuTextureViewRelease(ibl->ibl_equirect_texture_view);
+        ibl->ibl_equirect_texture_view = NULL;
     }
 
-    if (impl->ibl_environment_cubemap) {
-        wgpuTextureRelease(impl->ibl_environment_cubemap);
-        impl->ibl_environment_cubemap = NULL;
+    if (ibl->ibl_equirect_texture) {
+        wgpuTextureRelease(ibl->ibl_equirect_texture);
+        ibl->ibl_equirect_texture = NULL;
     }
 
-    if (impl->ibl_equirect_texture_view) {
-        wgpuTextureViewRelease(impl->ibl_equirect_texture_view);
-        impl->ibl_equirect_texture_view = NULL;
-    }
-
-    if (impl->ibl_equirect_texture) {
-        wgpuTextureRelease(impl->ibl_equirect_texture);
-        impl->ibl_equirect_texture = NULL;
-    }
-
-    impl->ibl_prefilter_mip_count = 0;
+    ibl->ibl_prefilter_mip_count = 0;
 }
 
 void flecsEngineReleaseIblResources(
     FlecsEngineImpl *impl)
 {
-    flecsIblReleaseRuntimeResources(impl);
-
     if (impl && impl->ibl_bind_layout) {
         wgpuBindGroupLayoutRelease(impl->ibl_bind_layout);
         impl->ibl_bind_layout = NULL;
     }
 }
 
-bool flecsEngineInitIblResources(
-    FlecsEngineImpl *impl,
-    const char *hdri_path)
+static void FlecsIbl_on_set(
+    ecs_iter_t *it)
 {
-    flecsIblReleaseRuntimeResources(impl);
-
-    impl->ibl_prefilter_mip_count = flecsIblComputeMipCount(
-        FLECS_ENGINE_IBL_ENV_SIZE);
-
-    const char *resolved_hdri_path = hdri_path;
-    if (!resolved_hdri_path || !resolved_hdri_path[0]) {
-        const char *hdri_candidates[] = {
-            "industrial_sunset_puresky_4k.exr",
-            "../industrial_sunset_puresky_4k.exr",
-            "industrial_sunset_puresky_4k.hdr",
-            "../industrial_sunset_puresky_4k.hdr"
-        };
-
-        for (size_t i = 0; i < sizeof(hdri_candidates) / sizeof(hdri_candidates[0]); i ++) {
-            if (flecsIblFileExists(hdri_candidates[i])) {
-                resolved_hdri_path = hdri_candidates[i];
-                break;
-            }
-        }
+    FlecsEngineImpl *engine = ecs_singleton_get_mut(
+        it->world, FlecsEngineImpl);
+    if (!engine) {
+        return;
     }
 
-    FlecsHdriImage image = {0};
-    if (resolved_hdri_path) {
-        if (!flecsHdriLoad(resolved_hdri_path, &image)) {
-            ecs_warn(
-                "failed to load HDRI '%s', falling back to black IBL",
-                resolved_hdri_path);
-        } else {
-            flecsIblLogImageStats(&image, resolved_hdri_path);
-        }
-    } else {
-        ecs_warn("no HDRI file found, falling back to black IBL");
+    if (!flecsEngineEnsureIblBindLayout(engine)) {
+        ecs_err("failed to create IBL bind layout");
+        return;
     }
 
-    if (!image.pixels_rgba32f) {
-        image.width = (int32_t)FLECS_ENGINE_IBL_FALLBACK_IMAGE_SIZE;
-        image.height = (int32_t)FLECS_ENGINE_IBL_FALLBACK_IMAGE_SIZE;
-        image.pixels_rgba32f = malloc(sizeof(float) * 4u);
-        if (!image.pixels_rgba32f) {
-            return false;
+    FlecsIbl *hdri = ecs_field(it, FlecsIbl, 0);
+    for (int32_t i = 0; i < it->count; i ++) {
+        FlecsIblImpl *ibl_impl = ecs_ensure(
+            it->world, it->entities[i], FlecsIblImpl);
+        flecsIblReleaseRuntimeResources(ibl_impl);
+
+        if (!flecsEngineInitIblResources(engine, ibl_impl, hdri[i].file)) {
+            ecs_err("failed to initialize IBL resources");
+            continue;
         }
 
-        image.pixels_rgba32f[0] = 0.0f;
-        image.pixels_rgba32f[1] = 0.0f;
-        image.pixels_rgba32f[2] = 0.0f;
-        image.pixels_rgba32f[3] = 1.0f;
+        ecs_modified(it->world, it->entities[i], FlecsIblImpl);
     }
-
-    bool ok = false;
-    if (!flecsIblCreateEquirectTexture(impl, &image)) {
-        goto done;
-    }
-
-    if (!flecsIblCreateCubeTexture(
-        impl,
-        FLECS_ENGINE_IBL_ENV_SIZE,
-        1,
-        WGPUTextureFormat_RGBA16Float,
-        &impl->ibl_environment_cubemap,
-        &impl->ibl_environment_cubemap_view))
-    {
-        goto done;
-    }
-
-    if (!flecsIblCreateCubeTexture(
-        impl,
-        FLECS_ENGINE_IBL_ENV_SIZE,
-        impl->ibl_prefilter_mip_count,
-        WGPUTextureFormat_RGBA16Float,
-        &impl->ibl_prefiltered_cubemap,
-        &impl->ibl_prefiltered_cubemap_view))
-    {
-        goto done;
-    }
-
-    if (!flecsIblCreateBrdfLutTexture(impl)) {
-        goto done;
-    }
-
-    if (!flecsIblCreateSampler(impl)) {
-        goto done;
-    }
-
-    if (!flecsIblRunPreprocessPasses(impl)) {
-        goto done;
-    }
-
-    if (!flecsIblCreateRuntimeBindGroup(impl)) {
-        goto done;
-    }
-
-    ok = true;
-
-done:
-    flecsHdriImageFree(&image);
-    if (!ok) {
-        flecsIblReleaseRuntimeResources(impl);
-    }
-    return ok;
 }
 
-static bool flecsIblPathEquals(
-    const char *lhs,
-    const char *rhs)
+ecs_entity_t flecsEngine_createHdri(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name,
+    const char *file)
 {
-    if (lhs == rhs) {
-        return true;
+    if (!file || !file[0]) {
+        ecs_err("cannot create hdri entity: missing file path");
+        return 0;
     }
-    if (!lhs || !rhs) {
-        return false;
-    }
-    return ecs_os_strcmp(lhs, rhs) == 0;
+
+    ecs_entity_t hdri = ecs_entity(world, {
+        .parent = parent,
+        .name = name
+    });
+
+    ecs_set(world, hdri, FlecsIbl, {
+        .file = file
+    });
+
+    return hdri;
 }
 
-bool flecsEngineSetViewHdri(
-    const ecs_world_t *world,
-    FlecsEngineImpl *impl,
-    const FlecsRenderView *view)
+void flecsEngine_ibl_register(
+    ecs_world_t *world)
 {
-    const char *hdri_path = NULL;
-    ecs_entity_t hdri_entity = 0;
+    ECS_COMPONENT_DEFINE(world, FlecsIbl);
+    ECS_COMPONENT_DEFINE(world, FlecsIblImpl);
 
-    if (view && view->hdri) {
-        hdri_entity = view->hdri;
-        const FlecsHdri *hdri = ecs_get(world, hdri_entity, FlecsHdri);
-        if (!hdri) {
-            char *name = ecs_get_path(world, hdri_entity);
-            ecs_err(
-                "render view references invalid hdri entity '%s'",
-                name ? name : "<unnamed>");
-            ecs_os_free(name);
-        } else if (hdri->file && hdri->file[0]) {
-            hdri_path = hdri->file;
-        } else {
-            char *name = ecs_get_path(world, hdri_entity);
-            ecs_warn(
-                "hdri entity '%s' has no file path; using fallback IBL",
-                name ? name : "<unnamed>");
-            ecs_os_free(name);
+    ecs_set_hooks(world, FlecsIbl, {
+        .ctor = ecs_ctor(FlecsIbl),
+        .move = ecs_move(FlecsIbl),
+        .copy = ecs_copy(FlecsIbl),
+        .dtor = ecs_dtor(FlecsIbl),
+        .on_set = FlecsIbl_on_set
+    });
+
+    ecs_set_hooks(world, FlecsIblImpl, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsIblImpl),
+        .dtor = ecs_dtor(FlecsIblImpl)
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsIbl),
+        .members = {
+            { .name = "file", .type = ecs_id(ecs_string_t) }
         }
-    }
-
-    if (impl->ibl_bind_group && flecsIblPathEquals(impl->ibl_hdri_path, hdri_path)) {
-        impl->ibl_hdri_entity = hdri_entity;
-        return true;
-    }
-
-    if (!flecsEngineInitIblResources(impl, hdri_path)) {
-        if (hdri_path) {
-            ecs_err("failed to initialize IBL resources for '%s'", hdri_path);
-        } else {
-            ecs_err("failed to initialize fallback IBL resources");
-        }
-        return false;
-    }
-
-    if (impl->ibl_hdri_path) {
-        ecs_os_free(impl->ibl_hdri_path);
-        impl->ibl_hdri_path = NULL;
-    }
-
-    if (hdri_path) {
-        impl->ibl_hdri_path = ecs_os_strdup(hdri_path);
-    }
-
-    impl->ibl_hdri_entity = hdri_entity;
-    return true;
+    });
 }

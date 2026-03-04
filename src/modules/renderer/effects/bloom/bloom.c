@@ -443,7 +443,7 @@ static bool flecsBloomEnsureTexture(
 static ecs_entity_t flecsRenderEffect_bloom_shader(
     ecs_world_t *world)
 {
-    return flecsEngineEnsureShader(world, "BloomEffectPlaceholderShader",
+    return flecsEngine_shader_ensure(world, "BloomEffectPlaceholderShader",
         &(FlecsShader){
             .source = kPlaceholderShaderSource,
             .vertex_entry = "vs_main",

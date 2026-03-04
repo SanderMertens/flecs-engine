@@ -43,7 +43,7 @@ static const char *kShaderSource =
 static ecs_entity_t flecsRenderEffect_tonyMcMapFace_shader(
     ecs_world_t *world)
 {
-    return flecsEngineEnsureShader(world, "TonyMcMapfaceShader",
+    return flecsEngine_shader_ensure(world, "TonyMcMapfaceShader",
         &(FlecsShader){
             .source = kShaderSource,
             .vertex_entry = "vs_main",

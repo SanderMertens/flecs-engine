@@ -27,7 +27,7 @@ static const char *kShaderSource =
 static ecs_entity_t flecsRenderEffect_invert_shader(
     ecs_world_t *world)
 {
-    return flecsEngineEnsureShader(world, "InvertPostShader",
+    return flecsEngine_shader_ensure(world, "InvertPostShader",
         &(FlecsShader){
             .source = kShaderSource,
             .vertex_entry = "vs_main",

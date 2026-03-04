@@ -74,6 +74,9 @@ ECS_PRIVATE
     void (*free_ctx)(void *ctx);
 });
 
+void flecsEngine_shader_register(
+    ecs_world_t *world);
+
 void flecsEngine_renderBatch_register(
     ecs_world_t *world);
 
@@ -86,13 +89,16 @@ void flecsEngine_batchSets_register(
 void flecsEngine_renderView_register(
     ecs_world_t *world);
 
+void flecsEngine_ibl_register(
+    ecs_world_t *world);
+
 void flecsEngine_tonyMcMapFace_register(
     ecs_world_t *world);
 
 void flecsEngine_bloom_register(
     ecs_world_t *world);
 
-ecs_entity_t flecsEngineEnsureShader(
+ecs_entity_t flecsEngine_shader_ensure(
     ecs_world_t *world,
     const char *name,
     const FlecsShader *shader);
@@ -111,16 +117,18 @@ void flecsEngineReleaseMaterialBuffer(
     FlecsEngineImpl *impl);
 
 bool flecsEngineInitIblResources(
-    FlecsEngineImpl *impl,
+    FlecsEngineImpl *engine,
+    FlecsIblImpl *ibl,
     const char *hdri_path);
 
-bool flecsEngineSetViewHdri(
-    const ecs_world_t *world,
-    FlecsEngineImpl *impl,
-    const FlecsRenderView *view);
+WGPUBindGroupLayout flecsEngineEnsureIblBindLayout(
+    FlecsEngineImpl *impl);
 
 void flecsEngineReleaseIblResources(
     FlecsEngineImpl *impl);
+
+void flecsEngineReleaseAllIblRuntimeResources(
+    ecs_world_t *world);
 
 void flecsEngineReleaseEffectTargets(
     FlecsEngineImpl *impl);
@@ -161,6 +169,10 @@ void flecsEngineRenderEffect(
     const FlecsRenderEffectImpl *effect_impl,
     WGPUTextureView input_view,
     WGPUTextureFormat output_format);
+
+const FlecsShaderImpl* flecsEngine_shader_ensureImpl(
+    ecs_world_t *world,
+    ecs_entity_t shader_entity);
 
 void FlecsEngineRendererImport(
     ecs_world_t *world);

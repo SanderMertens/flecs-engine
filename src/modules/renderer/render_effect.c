@@ -152,8 +152,7 @@ static void FlecsRenderEffect_on_set(
 
         if (!effects[i].shader) {
             char *effect_name = ecs_get_path(world, e);
-            ecs_err("missing shader asset for render effect %s",
-                effect_name ? effect_name : "<unnamed>");
+            ecs_err("missing shader asset for render effect %s", effect_name);
             ecs_os_free(effect_name);
             continue;
         }
@@ -163,8 +162,7 @@ static void FlecsRenderEffect_on_set(
             char *effect_name = ecs_get_path(world, e);
             char *shader_name = ecs_get_path(world, effects[i].shader);
             ecs_err("invalid shader asset '%s' for render effect %s",
-                shader_name ? shader_name : "<unnamed>",
-                effect_name ? effect_name : "<unnamed>");
+                shader_name, effect_name);
             ecs_os_free(shader_name);
             ecs_os_free(effect_name);
             continue;
@@ -174,8 +172,7 @@ static void FlecsRenderEffect_on_set(
             world, effects[i].shader, FlecsShaderImpl);
         if (!shader_impl || !shader_impl->shader_module) {
             char *effect_name = ecs_get_path(world, e);
-            ecs_err("missing compiled shader for render effect %s",
-                effect_name ? effect_name : "<unnamed>");
+            ecs_err("missing compiled shader for render effect %s", effect_name);
             ecs_os_free(effect_name);
             continue;
         }
@@ -223,8 +220,9 @@ static void FlecsRenderEffect_on_set(
 
         if (layout_entry_count > 2 && !effects[i].bind_callback) {
             char *effect_name = ecs_get_path(world, e);
-            ecs_err("render effect %s has custom setup bindings but no bind callback",
-                effect_name ? effect_name : "<unnamed>");
+            ecs_err(
+                "render effect %s has custom setup bindings but no bind callback",
+                effect_name);
             ecs_os_free(effect_name);
             flecsRenderEffectImplRelease(&impl);
             continue;

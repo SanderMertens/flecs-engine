@@ -26,7 +26,7 @@ static const char *kShaderSource =
 static ecs_entity_t flecsRenderEffect_passthrough_shader(
     ecs_world_t *world)
 {
-    return flecsEngineEnsureShader(world, "PassthroughPostShader",
+    return flecsEngine_shader_ensure(world, "PassthroughPostShader",
         &(FlecsShader){
             .source = kShaderSource,
             .vertex_entry = "vs_main",

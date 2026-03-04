@@ -6,16 +6,6 @@
 
 ECS_COMPONENT_DECLARE(FlecsRenderBatch);
 ECS_COMPONENT_DECLARE(FlecsRenderBatchImpl);
-ECS_COMPONENT_DECLARE(FlecsRenderEffect);
-ECS_COMPONENT_DECLARE(FlecsVertex);
-ECS_COMPONENT_DECLARE(FlecsLitVertex);
-ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
-ECS_COMPONENT_DECLARE(FlecsInstanceColor);
-ECS_COMPONENT_DECLARE(FlecsInstancePbrMaterial);
-ECS_COMPONENT_DECLARE(FlecsInstanceMaterialId);
-ECS_COMPONENT_DECLARE(FlecsUniform);
-ECS_COMPONENT_DECLARE(FlecsShader);
-ECS_COMPONENT_DECLARE(FlecsShaderImpl);
 
 ECS_DTOR(FlecsRenderBatch, ptr, {
     if (ptr->ctx && ptr->free_ctx) {
@@ -37,15 +27,6 @@ static float flecsEngineColorChannelToFloat(
     return (float)value / 255.0f;
 }
 
-static void flecsShaderImplRelease(
-    FlecsShaderImpl *ptr)
-{
-    if (ptr->shader_module) {
-        wgpuShaderModuleRelease(ptr->shader_module);
-        ptr->shader_module = NULL;
-    }
-}
-
 static void flecsRenderBatchImplRelease(
     FlecsRenderBatchImpl *ptr)
 {
@@ -61,6 +42,13 @@ static void flecsRenderBatchImplRelease(
         ptr->bind_group = NULL;
     }
 
+    if (ptr->bind_group_materials) {
+        wgpuBindGroupRelease(ptr->bind_group_materials);
+        ptr->bind_group_materials = NULL;
+    }
+
+    ptr->material_buffer_size = 0;
+
     if (ptr->bind_layout) {
         wgpuBindGroupLayoutRelease(ptr->bind_layout);
         ptr->bind_layout = NULL;
@@ -71,16 +59,6 @@ static void flecsRenderBatchImplRelease(
         ptr->pipeline_hdr = NULL;
     }
 }
-
-ECS_DTOR(FlecsShaderImpl, ptr, {
-    flecsShaderImplRelease(ptr);
-})
-
-ECS_MOVE(FlecsShaderImpl, dst, src, {
-    flecsShaderImplRelease(dst);
-    *dst = *src;
-    ecs_os_zeromem(src);
-})
 
 ECS_DTOR(FlecsRenderBatchImpl, ptr, {
     flecsRenderBatchImplRelease(ptr);
@@ -112,143 +90,6 @@ ECS_COPY(FlecsRenderBatchSet, dst, src, {
 ECS_DTOR(FlecsRenderBatchSet, ptr, {
     ecs_vec_fini_t(NULL, &ptr->batches, ecs_entity_t);
 })
-
-static bool flecsShaderCompile(
-    ecs_world_t *world,
-    ecs_entity_t shader_entity,
-    const FlecsShader *shader,
-    FlecsShaderImpl *shader_impl)
-{
-    const FlecsEngineImpl *engine = ecs_singleton_get(world, FlecsEngineImpl);
-    if (!engine) {
-        char *name = ecs_get_path(world, shader_entity);
-        ecs_err("cannot compile shader '%s': engine is not initialized",
-            name ? name : "<unnamed>");
-        ecs_os_free(name);
-        return false;
-    }
-
-    if (!shader || !shader->source) {
-        char *name = ecs_get_path(world, shader_entity);
-        ecs_err("shader asset '%s' has no source", name ? name : "<unnamed>");
-        ecs_os_free(name);
-        flecsShaderImplRelease(shader_impl);
-        return false;
-    }
-
-    flecsShaderImplRelease(shader_impl);
-
-    WGPUShaderSourceWGSL wgsl_desc = {
-        .chain = {
-            .sType = WGPUSType_ShaderSourceWGSL
-        },
-        .code = (WGPUStringView){
-            .data = shader->source,
-            .length = WGPU_STRLEN
-        }
-    };
-
-    shader_impl->shader_module = wgpuDeviceCreateShaderModule(
-        engine->device, &(WGPUShaderModuleDescriptor){
-            .nextInChain = (WGPUChainedStruct *)&wgsl_desc
-        });
-
-    if (!shader_impl->shader_module) {
-        char *name = ecs_get_path(world, shader_entity);
-        ecs_err("failed to compile shader asset '%s'", name ? name : "<unnamed>");
-        ecs_os_free(name);
-        return false;
-    }
-
-    return true;
-}
-
-static void flecsMarkShaderUsersDirty(
-    ecs_world_t *world,
-    ecs_entity_t shader_entity)
-{
-    ecs_iter_t qit = ecs_each_id(world, ecs_id(FlecsRenderBatch));
-    while (ecs_each_next(&qit)) {
-        FlecsRenderBatch *batches = ecs_field(&qit, FlecsRenderBatch, 0);
-        for (int32_t i = 0; i < qit.count; i ++) {
-            if (batches[i].shader == shader_entity) {
-                ecs_modified(world, qit.entities[i], FlecsRenderBatch);
-            }
-        }
-    }
-
-    ecs_iter_t eit = ecs_each_id(world, ecs_id(FlecsRenderEffect));
-    while (ecs_each_next(&eit)) {
-        FlecsRenderEffect *effects = ecs_field(&eit, FlecsRenderEffect, 0);
-        for (int32_t i = 0; i < eit.count; i ++) {
-            if (effects[i].shader == shader_entity) {
-                ecs_modified(world, eit.entities[i], FlecsRenderEffect);
-            }
-        }
-    }
-}
-
-static void FlecsShader_on_set(
-    ecs_iter_t *it)
-{
-    ecs_world_t *world = it->world;
-    FlecsShader *shaders = ecs_field(it, FlecsShader, 0);
-
-    for (int32_t i = 0; i < it->count; i ++) {
-        ecs_entity_t shader_entity = it->entities[i];
-        FlecsShaderImpl *shader_impl = ecs_ensure(world, shader_entity, FlecsShaderImpl);
-        if (!flecsShaderCompile(world, shader_entity, &shaders[i], shader_impl)) {
-            continue;
-        }
-
-        flecsMarkShaderUsersDirty(world, shader_entity);
-    }
-}
-
-static const FlecsShaderImpl* flecsEnsureShaderImpl(
-    ecs_world_t *world,
-    ecs_entity_t shader_entity)
-{
-    const FlecsShader *shader = ecs_get(world, shader_entity, FlecsShader);
-    if (!shader) {
-        char *name = ecs_get_path(world, shader_entity);
-        ecs_err("entity '%s' does not have FlecsShader", name ? name : "<unnamed>");
-        ecs_os_free(name);
-        return NULL;
-    }
-
-    FlecsShaderImpl *shader_impl = ecs_ensure(world, shader_entity, FlecsShaderImpl);
-    if (!shader_impl->shader_module) {
-        if (!flecsShaderCompile(world, shader_entity, shader, shader_impl)) {
-            return NULL;
-        }
-    }
-
-    return shader_impl;
-}
-
-ecs_entity_t flecsEngineEnsureShader(
-    ecs_world_t *world,
-    const char *name,
-    const FlecsShader *shader)
-{
-    ecs_entity_t renderer_module = ecs_lookup(world, "flecs.engine.renderer");
-    ecs_entity_t shader_entity = ecs_entity_init(world, &(ecs_entity_desc_t){
-        .name = name,
-        .parent = renderer_module
-    });
-
-    const FlecsShader *existing = ecs_get(world, shader_entity, FlecsShader);
-    if (!existing ||
-        !ecs_os_strcmp(existing->source, shader->source) ||
-        !ecs_os_strcmp(existing->vertex_entry, shader->vertex_entry) ||
-        !ecs_os_strcmp(existing->fragment_entry, shader->fragment_entry))
-    {
-        ecs_set_ptr(world, shader_entity, FlecsShader, shader);
-    }
-
-    return shader_entity;
-}
 
 static int32_t flecsVertexAttrFromType(
     const ecs_world_t *world,
@@ -593,7 +434,7 @@ static void FlecsRenderBatch_on_set(
     FlecsRenderBatch *rb = ecs_field(it, FlecsRenderBatch, 0);
     WGPUVertexAttribute instance_attrs[256] = {0};
     WGPUVertexBufferLayout vertex_buffers[1 + FLECS_ENGINE_INSTANCE_TYPES_MAX] = {0};
-    const FlecsEngineImpl *engine = ecs_singleton_get(world, FlecsEngineImpl);
+    FlecsEngineImpl *engine = ecs_singleton_get_mut(world, FlecsEngineImpl);
     if (!engine) {
         ecs_err("cannot build render batches: engine is not initialized");
         return;
@@ -630,14 +471,13 @@ static void FlecsRenderBatch_on_set(
             char *batch_name = ecs_get_path(world, e);
             char *shader_name = ecs_get_path(world, rb[i].shader);
             ecs_err("invalid shader asset '%s' for render batch %s",
-                shader_name ? shader_name : "<unnamed>",
-                batch_name ? batch_name : "<unnamed>");
+                shader_name, batch_name);
             ecs_os_free(shader_name);
             ecs_os_free(batch_name);
             continue;
         }
 
-        const FlecsShaderImpl *shader_impl = flecsEnsureShaderImpl(world, rb[i].shader);
+        const FlecsShaderImpl *shader_impl = flecsEngine_shader_ensureImpl(world, rb[i].shader);
         if (!shader_impl || !shader_impl->shader_module) {
             continue;
         }
@@ -666,12 +506,13 @@ static void FlecsRenderBatch_on_set(
             instance_attrs);
 
         bool use_material_buffer = flecsBatchUsesMaterialId(&rb[i]);
+        impl.uses_material = use_material_buffer;
         impl.uses_ibl = flecsShaderUsesIbl(shader);
 
-        if (impl.uses_ibl && !engine->ibl_bind_layout) {
+        if (impl.uses_ibl && !flecsEngineEnsureIblBindLayout(engine)) {
             char *batch_name = ecs_get_path(world, e);
             ecs_err("failed to create render batch '%s': IBL bind layout is not available",
-                batch_name ? batch_name : "<unnamed>");
+                batch_name);
             ecs_os_free(batch_name);
             flecsRenderBatchImplRelease(&impl);
             continue;
@@ -806,6 +647,90 @@ void flecsEngineRenderBatch_setupLight(
         flecsEngineColorChannelToFloat(rgb.b) * light->intensity;
 }
 
+static bool flecsRenderBatchEnsureMaterialsBindGroup(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const FlecsRenderBatch *batch,
+    FlecsRenderBatchImpl *impl)
+{
+    if (!engine->material_buffer || !engine->material_count) {
+        return false;
+    }
+
+    uint64_t material_buffer_size =
+        (uint64_t)engine->material_count * sizeof(FlecsGpuMaterial);
+
+    if (impl->bind_group_materials &&
+        impl->material_buffer_size == material_buffer_size)
+    {
+        return true;
+    }
+
+    if (impl->bind_group_materials) {
+        wgpuBindGroupRelease(impl->bind_group_materials);
+        impl->bind_group_materials = NULL;
+    }
+
+    WGPUBindGroupEntry entries[FLECS_ENGINE_UNIFORMS_MAX + 1] = {0};
+    for (uint8_t i = 0; i < impl->uniform_count; i ++) {
+        entries[i] = (WGPUBindGroupEntry){
+            .binding = i,
+            .buffer = impl->uniform_buffers[i],
+            .size = flecs_type_sizeof(world, batch->uniforms[i])
+        };
+    }
+
+    uint32_t storage_binding = impl->uniform_count;
+    entries[storage_binding] = (WGPUBindGroupEntry){
+        .binding = storage_binding,
+        .buffer = engine->material_buffer,
+        .size = material_buffer_size
+    };
+
+    WGPUBindGroupDescriptor bind_group_desc = {
+        .entries = entries,
+        .entryCount = storage_binding + 1,
+        .layout = impl->bind_layout
+    };
+
+    impl->bind_group_materials = wgpuDeviceCreateBindGroup(
+        engine->device, &bind_group_desc);
+    if (!impl->bind_group_materials) {
+        impl->material_buffer_size = 0;
+        return false;
+    }
+
+    impl->material_buffer_size = material_buffer_size;
+    return true;
+}
+
+static void flecsRenderBatchUpdateUniforms(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const FlecsRenderView *view,
+    const FlecsRenderBatchImpl *impl)
+{
+    FlecsUniform uniforms = {0};
+    uniforms.camera_pos[3] = 1.0f;
+
+    if (view->camera) {
+        flecsEngineRenderBatch_setupCamera(world, &uniforms, view->camera);
+    }
+
+    if (view->light) {
+        flecsEngineRenderBatch_setupLight(world, &uniforms, view->light);
+    }
+
+    flecsEngineGetClearColorVec4(engine, uniforms.clear_color);
+
+    wgpuQueueWriteBuffer(
+        engine->queue,
+        impl->uniform_buffers[0],
+        0,
+        &uniforms,
+        sizeof(FlecsUniform));
+}
+
 void flecsEngineRenderBatch(
     const ecs_world_t *world,
     FlecsEngineImpl *engine,
@@ -815,90 +740,41 @@ void flecsEngineRenderBatch(
 {
     const FlecsRenderBatch *batch = ecs_get(
         world, batch_entity, FlecsRenderBatch);
-    const FlecsRenderBatchImpl *impl = ecs_get(
+    FlecsRenderBatchImpl *impl = (FlecsRenderBatchImpl*)ecs_get(
         world, batch_entity, FlecsRenderBatchImpl);
-    bool use_material_buffer = flecsBatchUsesMaterialId(batch);
+    if (!batch || !impl) {
+        return;
+    }
 
     WGPURenderPipeline pipeline = impl->pipeline_hdr;
     ecs_assert(pipeline != NULL, ECS_INTERNAL_ERROR, NULL);
 
     if (pipeline != engine->last_pipeline) {
-        FlecsUniform uniforms = {0};
-        uniforms.camera_pos[3] = 1.0f;
-
-        if (view->camera) {
-            flecsEngineRenderBatch_setupCamera(world, &uniforms, view->camera);
-        }
-
-        if (view->light) {
-            flecsEngineRenderBatch_setupLight(world, &uniforms, view->light);
-        }
-
-        flecsEngineGetClearColorVec4(engine, uniforms.clear_color);
-
         wgpuRenderPassEncoderSetPipeline(pass, pipeline);
         engine->last_pipeline = pipeline;
-
-        wgpuQueueWriteBuffer(
-            engine->queue,
-            impl->uniform_buffers[0],
-            0,
-            &uniforms,
-            sizeof(FlecsUniform));
+        flecsRenderBatchUpdateUniforms(world, engine, view, impl);
     }
 
     WGPUBindGroup bind_group = impl->bind_group;
-    if (use_material_buffer) {
-        if (!engine->material_buffer || !engine->material_count) {
+    if (impl->uses_material) {
+        if (!flecsRenderBatchEnsureMaterialsBindGroup(
+            world, engine, batch, impl))
+        {
             return;
         }
 
-        WGPUBindGroupEntry entries[FLECS_ENGINE_UNIFORMS_MAX + 1] = {0};
-        for (uint8_t i = 0; i < impl->uniform_count; i ++) {
-            entries[i] = (WGPUBindGroupEntry){
-                .binding = i,
-                .buffer = impl->uniform_buffers[i],
-                .size = flecs_type_sizeof(world, batch->uniforms[i])
-            };
-        }
-
-        uint32_t storage_binding = impl->uniform_count;
-        entries[storage_binding] = (WGPUBindGroupEntry){
-            .binding = storage_binding,
-            .buffer = engine->material_buffer,
-            .size = (uint64_t)engine->material_count * sizeof(FlecsGpuMaterial)
-        };
-
-        WGPUBindGroupDescriptor bind_group_desc = {
-            .entries = entries,
-            .entryCount = storage_binding + 1,
-            .layout = impl->bind_layout
-        };
-
-        bind_group = wgpuDeviceCreateBindGroup(
-            engine->device, &bind_group_desc);
-        if (!bind_group) {
-            return;
-        }
+        bind_group = impl->bind_group_materials;
     }
 
     wgpuRenderPassEncoderSetBindGroup(pass, 0, bind_group, 0, NULL);
-    if (impl->uses_ibl) {
-        if (!engine->ibl_bind_group) {
-            if (use_material_buffer) {
-                wgpuBindGroupRelease(bind_group);
-            }
-            return;
-        }
 
-        wgpuRenderPassEncoderSetBindGroup(pass, 1, engine->ibl_bind_group, 0, NULL);
+    if (impl->uses_ibl) {
+        const FlecsIblImpl *ibl = ecs_get(world, view->hdri, FlecsIblImpl);
+        ecs_assert(ibl != NULL, ECS_INTERNAL_ERROR, NULL);
+        wgpuRenderPassEncoderSetBindGroup(pass, 1, ibl->ibl_bind_group, 0, NULL);
     }
 
     batch->callback(world, engine, pass, batch);
-
-    if (use_material_buffer) {
-        wgpuBindGroupRelease(bind_group);
-    }
 }
 
 void flecsEngine_renderBatch_register(
@@ -906,15 +782,6 @@ void flecsEngine_renderBatch_register(
 {
     ECS_COMPONENT_DEFINE(world, FlecsRenderBatch);
     ECS_COMPONENT_DEFINE(world, FlecsRenderBatchImpl);
-    ECS_COMPONENT_DEFINE(world, FlecsVertex);
-    ECS_COMPONENT_DEFINE(world, FlecsLitVertex);
-    ECS_COMPONENT_DEFINE(world, FlecsInstanceTransform);
-    ECS_COMPONENT_DEFINE(world, FlecsInstanceColor);
-    ECS_COMPONENT_DEFINE(world, FlecsInstancePbrMaterial);
-    ECS_COMPONENT_DEFINE(world, FlecsInstanceMaterialId);
-    ECS_COMPONENT_DEFINE(world, FlecsUniform);
-    ECS_COMPONENT_DEFINE(world, FlecsShader);
-    ECS_COMPONENT_DEFINE(world, FlecsShaderImpl);
     ECS_COMPONENT_DEFINE(world, FlecsRenderBatchSet);
 
     ecs_entity_t entity_vector_t = ecs_vector(world, {
@@ -934,89 +801,11 @@ void flecsEngine_renderBatch_register(
         .dtor = ecs_dtor(FlecsRenderBatchImpl)
     });
 
-    ecs_set_hooks(world, FlecsShader, {
-        .ctor = flecs_default_ctor,
-        .on_set = FlecsShader_on_set
-    });
-
-    ecs_set_hooks(world, FlecsShaderImpl, {
-        .ctor = flecs_default_ctor,
-        .move = ecs_move(FlecsShaderImpl),
-        .dtor = ecs_dtor(FlecsShaderImpl)
-    });
-
     ecs_set_hooks(world, FlecsRenderBatchSet, {
         .ctor = ecs_ctor(FlecsRenderBatchSet),
         .move = ecs_move(FlecsRenderBatchSet),
         .copy = ecs_copy(FlecsRenderBatchSet),
         .dtor = ecs_dtor(FlecsRenderBatchSet)
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsVertex),
-        .members = {
-            { .name = "p", .type = ecs_id(flecs_vec3_t) },
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsLitVertex),
-        .members = {
-            { .name = "p", .type = ecs_id(flecs_vec3_t) },
-            { .name = "n", .type = ecs_id(flecs_vec3_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsInstanceTransform),
-        .members = {
-            { .name = "c0", .type = ecs_id(flecs_vec3_t) },
-            { .name = "c1", .type = ecs_id(flecs_vec3_t) },
-            { .name = "c2", .type = ecs_id(flecs_vec3_t) },
-            { .name = "c3", .type = ecs_id(flecs_vec3_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsInstanceColor),
-        .members = {
-            { .name = "color", .type = ecs_id(flecs_rgba_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsInstancePbrMaterial),
-        .members = {
-            { .name = "metallic", .type = ecs_id(ecs_f32_t) },
-            { .name = "roughness", .type = ecs_id(ecs_f32_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsInstanceMaterialId),
-        .members = {
-            { .name = "value", .type = ecs_id(ecs_u32_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsUniform),
-        .members = {
-            { .name = "mvp", .type = ecs_id(flecs_mat4_t) },
-            { .name = "clear_color", .type = ecs_id(ecs_f32_t), .count = 4 },
-            { .name = "light_ray_dir", .type = ecs_id(ecs_f32_t), .count = 4 },
-            { .name = "light_color", .type = ecs_id(ecs_f32_t), .count = 4 },
-            { .name = "camera_pos", .type = ecs_id(ecs_f32_t), .count = 4 },
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsShader),
-        .members = {
-            { .name = "source", .type = ecs_id(ecs_string_t) },
-            { .name = "vertex_entry", .type = ecs_id(ecs_string_t) },
-            { .name = "fragment_entry", .type = ecs_id(ecs_string_t) }
-        }
     });
 
     ecs_struct(world, {

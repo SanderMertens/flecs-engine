@@ -195,6 +195,7 @@ static void flecsEngineReleaseFrameTarget(
 }
 
 static void flecsEngineCleanup(
+    ecs_world_t *world,
     FlecsEngineImpl *impl,
     bool terminate_runtime)
 {
@@ -203,12 +204,7 @@ static void flecsEngineCleanup(
         impl->view_query = NULL;
     }
 
-    flecsEngineReleaseIblResources(impl);
-    if (impl->ibl_hdri_path) {
-        ecs_os_free(impl->ibl_hdri_path);
-        impl->ibl_hdri_path = NULL;
-    }
-    impl->ibl_hdri_entity = 0;
+    impl->fallback_ibl = 0;
 
     flecsEngineReleaseMaterialBuffer(impl);
 
@@ -355,11 +351,6 @@ int flecsEngineInit(
         goto error;
     }
 
-    if (!flecsEngineInitIblResources(&impl, NULL)) {
-        ecs_err("Failed to initialize IBL resources\n");
-        goto error;
-    }
-
     impl.view_query = ecs_query(world, {
         .entity = ecs_entity(world, {
             .parent = ecs_lookup(world, "flecs.engine")
@@ -385,11 +376,18 @@ int flecsEngineInit(
         .cache_kind = EcsQueryCacheAuto
     });
 
+    impl.fallback_ibl = ecs_entity(world, {
+        .parent = ecs_lookup(world, "flecs.engine.renderer")
+    });
+    ecs_set(world, impl.fallback_ibl, FlecsIbl, {
+        .file = NULL
+    });
+
     ecs_singleton_set_ptr(world, FlecsEngineImpl, &impl);
     return 0;
 
 error:
-    flecsEngineCleanup(&impl, false);
+    flecsEngineCleanup(world, &impl, false);
     return -1;
 }
 
@@ -397,7 +395,7 @@ static void FlecsEngineDestroy(
     ecs_iter_t *it)
 {
     FlecsEngineImpl *impl = ecs_field(it, FlecsEngineImpl, 0);
-    flecsEngineCleanup(impl, true);
+    flecsEngineCleanup(it->world, impl, true);
 }
 
 static void FlecsEngineRender(
