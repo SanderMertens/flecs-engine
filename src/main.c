@@ -115,6 +115,70 @@ static int flecsParseArgs(
   return 0;
 }
 
+void initEngine(
+  ecs_world_t *world, 
+  FlecsAppOptions options) 
+{
+  ecs_entity_t view_entity =  ecs_entity(world, { .name = "view" });
+  FlecsRenderView view = {};
+  FlecsRenderBatchSet batch_set = {};
+
+  if (options.frame_output_mode) {
+    ecs_singleton_set(world, FlecsFrameOutput, {
+      .width = options.width,
+      .height = options.height,
+      .path = options.frame_output_path,
+      .clear_color = {0, 0, 0}
+    });
+  } else {
+    ecs_singleton_set(world, FlecsWindow, {
+      .title = "Hello World",
+      .width = options.width,
+      .height = options.height,
+      .clear_color = {0, 0, 0}
+    });
+  }
+
+  // Camera
+  view.camera = ecs_entity(world, { .name = "camera" });
+  ecs_set(world, view.camera, FlecsCamera, {
+      .fov = glm_rad(60.0f),
+      .near_ = 0.1f,
+      .far_ = 1000.0f,
+      .aspect_ratio = options.width / (float)options.height
+  });
+  ecs_add(world, view.camera, FlecsCameraController);
+  ecs_set(world, view.camera, FlecsPosition3, {0, 10, 24});
+  ecs_set(world, view.camera, FlecsLookAt, {0, 8, 0});
+
+  // Light
+  view.light = ecs_entity(world, { .name = "light" });
+  ecs_set(world, view.light, FlecsPosition3, {8, 0, 5});
+  ecs_set(world, view.light, FlecsDirectionalLight, { .intensity = 1.0f });
+  ecs_set(world, view.light, FlecsLookAt, { 0, 0, 0 });
+  ecs_set(world, view.light, FlecsRgba, {255, 255, 255, 255});
+
+  // HDRI (optional, for image based lighting)
+  view.hdri = flecsEngine_createHdri(
+    world, view_entity, "hdri", "industrial_sunset_puresky_4k.exr", 4096, 1024);
+
+  // RenderBatches (what to render in scene)
+  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
+    flecsEngine_createBatchSet_primitiveShapes(world, view_entity, "primitiveBatch");
+  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
+    flecsEngine_createBatchSet_primitiveShapes_matIndex(world, view_entity, "primitiveWMatIndexBatch");
+
+  // Post process effects
+  FlecsBloom bloom_settings = flecsEngine_bloomSettingsDefault();
+  ecs_vec_append_t(NULL, &view.effects, ecs_entity_t)[0] =
+    flecsEngine_createEffect_bloom(world, view_entity, "bloomEffect", 0, &bloom_settings);
+  ecs_vec_append_t(NULL, &view.effects, ecs_entity_t)[0] =
+    flecsEngine_createEffect_tonyMcMapFace(world, view_entity, "tonyMcMapFaceEffect", 1);
+
+  ecs_set_ptr(world, view_entity, FlecsRenderView, &view);
+  ecs_set_ptr(world, view_entity, FlecsRenderBatchSet, &batch_set);
+}
+
 int main(
   int argc,
   char *argv[])
@@ -135,64 +199,7 @@ int main(
   ECS_IMPORT(world, FlecsStats);
   ECS_IMPORT(world, FlecsEngine);
 
-  if (options.frame_output_mode) {
-    ecs_singleton_set(world, FlecsFrameOutput, {
-      .width = options.width,
-      .height = options.height,
-      .path = options.frame_output_path,
-      .clear_color = {0, 0, 0}
-    });
-  } else {
-    ecs_singleton_set(world, FlecsWindow, {
-      .title = "Hello World",
-      .width = options.width,
-      .height = options.height,
-      .clear_color = {0, 0, 0}
-    });
-  }
-
-  ecs_entity_t camera = ecs_entity(world, { .name = "camera" });
-  ecs_set(world, camera, FlecsCamera, {
-      .fov = glm_rad(60.0f),
-      .near_ = 0.1f,
-      .far_ = 1000.0f,
-      .aspect_ratio = options.width / (float)options.height
-  });
-  
-  ecs_add(world, camera, FlecsCameraController);
-  ecs_set(world, camera, FlecsPosition3, {0, 10, 24});
-  ecs_set(world, camera, FlecsLookAt, {0, 8, 0});
-
-  ecs_entity_t light = ecs_entity(world, { .name = "light" });
-  ecs_set(world, light, FlecsPosition3, {8, 0, 5});
-  ecs_set(world, light, FlecsDirectionalLight, { .intensity = 1.0f });
-  ecs_set(world, light, FlecsLookAt, { 0, 0, 0 });
-  ecs_set(world, light, FlecsRgba, {255, 255, 255, 255});
-
-  ecs_entity_t view =  ecs_entity(world, { .name = "view" });
-  FlecsRenderBatchSet batch_set = *ecs_ensure(world, view, FlecsRenderBatchSet);
-  // ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
-  //   flecsEngine_createBatch_infiniteGrid(world, view, "infiniteGridBatch");
-  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
-    flecsEngine_createBatchSet_primitiveShapes(
-      world, view, "primitiveBatch");
-  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
-    flecsEngine_createBatchSet_primitiveShapes_matIndex(
-      world, view, "primitiveWMatIndexBatch");
-  ecs_set_ptr(world, view, FlecsRenderBatchSet, &batch_set);
-
-  FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
-  v->camera = camera;
-  v->light = light;
-  v->hdri = flecsEngine_createHdri(
-    world, view, "hdri", "industrial_sunset_puresky_4k.exr", 1024, 64);
-  FlecsBloom bloom_settings = flecsEngine_bloomSettingsDefault();
-  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
-    flecsEngine_createEffect_bloom(
-      world, view, "bloomEffect", 0, &bloom_settings);
-  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
-    flecsEngine_createEffect_tonyMcMapFace(
-      world, view, "tonyMcMapFaceEffect", 1);
+  initEngine(world, options);
 
   int numShapes = 7;
   int shapeY = 15;
