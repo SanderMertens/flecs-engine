@@ -160,7 +160,7 @@ void initEngine(
 
   // HDRI (optional, for image based lighting)
   view.hdri = flecsEngine_createHdri(
-    world, view_entity, "hdri", "industrial_sunset_puresky_4k.exr", 4096, 1024);
+    world, view_entity, "hdri", "industrial_sunset_puresky_4k.exr", 1024, 64);
 
   // RenderBatches (what to render in scene)
   ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
@@ -360,14 +360,27 @@ int main(
     }
   }
 
+  ecs_entity_t material = ecs_new_w_id(world, EcsPrefab);
+  ecs_add_pair(world, material, EcsChildOf, shapes);
+  ecs_set(world, material, FlecsRgba, {0, 0, 0, 255});
+  ecs_set(world, material, FlecsPbrMaterial, {
+    .metallic = 0,
+    .roughness = 1
+  });
+
+  numShapes = 100;
+  for (int x = 0; x < numShapes; x ++) {
+    for (int y = 0; y < numShapes; y ++) {
+      float h = (x + y) / 2 + 1;
+      ecs_entity_t e = ecs_new_w_pair(world, EcsChildOf, shapes);
+      ecs_set(world, e, FlecsBox, { 2, h, 2 });
+      ecs_set(world, e, FlecsPosition3, { 20 + x * 2, h / 2, -10 - y * 2 });
+      ecs_add_pair(world, e, EcsIsA, material);
+    }
+  }
+
   // numShapes = 100;
-  // ecs_entity_t material = ecs_new_w_id(world, EcsPrefab);
-  // ecs_add_pair(world, material, EcsChildOf, shapes);
-  // ecs_set(world, material, FlecsRgba, {200, 200, 200, 255});
-  // ecs_set(world, material, FlecsPbrMaterial, {
-  //   .metallic = 0,
-  //   .roughness = 0
-  // });
+
   // for (int x = 0; x < numShapes; x ++) {
   //   for (int y = 0; y < numShapes; y ++) {
   //     ecs_entity_t sphere = ecs_new_w_pair(world, EcsChildOf, shapes);

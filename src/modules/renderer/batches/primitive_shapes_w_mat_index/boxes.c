@@ -34,8 +34,6 @@ redo: {
         while (ecs_query_next(&it)) {
             const FlecsBox *boxes = ecs_field(&it, FlecsBox, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
-            const FlecsMaterialId *material_ids =
-                ecs_field(&it, FlecsMaterialId, 2);
 
             if ((ctx->count + it.count) <= ctx->capacity) {
                 for (int32_t i = 0; i < it.count; i ++) {
@@ -53,7 +51,7 @@ redo: {
                     engine,
                     ctx,
                     ctx->count,
-                    material_ids,
+                    ecs_field(&it, FlecsMaterialId, 2),
                     it.count);
             }
 

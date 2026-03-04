@@ -12,6 +12,8 @@ typedef struct {
     FlecsInstanceTransform *cpu_transforms;
     int32_t count;
     int32_t capacity;
+    FlecsMaterialId *cpu_material_ids;
+    int32_t material_id_capacity;
     FlecsMesh3Impl mesh;
 } flecs_engine_batch_ctx_t;
 
@@ -46,7 +48,7 @@ void flecsEngine_batchCtx_uploadInstances(
 
 void flecsEngine_batchCtx_uploadMaterialIds(
     const FlecsEngineImpl *engine,
-    const flecs_engine_batch_ctx_t *ctx,
+    flecs_engine_batch_ctx_t *ctx,
     int32_t offset,
     const FlecsMaterialId *material_ids,
     int32_t count);

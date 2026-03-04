@@ -40,8 +40,6 @@ redo: {
             const FlecsRightTriangle *right_triangles =
                 ecs_field(&it, FlecsRightTriangle, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
-            const FlecsMaterialId *material_ids =
-                ecs_field(&it, FlecsMaterialId, 2);
 
             if ((ctx->batch.count + it.count) <= ctx->batch.capacity) {
                 for (int32_t i = 0; i < it.count; i ++) {
@@ -59,7 +57,7 @@ redo: {
                     engine,
                     &ctx->batch,
                     ctx->batch.count,
-                    material_ids,
+                    ecs_field(&it, FlecsMaterialId, 2),
                     it.count);
             }
 

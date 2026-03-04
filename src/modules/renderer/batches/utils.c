@@ -136,6 +136,17 @@ void flecsEngine_batchCtx_ensureCapacity(
     ctx->capacity = new_capacity;
 }
 
+static FlecsMaterialId* flecsEngine_batchCtx_ensureMaterialIds(
+    flecs_engine_batch_ctx_t *ctx,
+    int32_t count)
+{
+    if (count > ctx->material_id_capacity) {
+        ecs_os_free(ctx->cpu_material_ids);
+        ctx->cpu_material_ids = ecs_os_malloc_n(FlecsMaterialId, count);
+    }
+    return ctx->cpu_material_ids;
+}
+
 void flecsEngine_batchCtx_draw(
     const WGPURenderPassEncoder pass,
     const flecs_engine_batch_ctx_t *ctx)
@@ -283,9 +294,9 @@ void flecsEngine_batchCtx_uploadInstances(
 
 void flecsEngine_batchCtx_uploadMaterialIds(
     const FlecsEngineImpl *engine,
-    const flecs_engine_batch_ctx_t *ctx,
+    flecs_engine_batch_ctx_t *ctx,
     int32_t offset,
-    const FlecsMaterialId *material_ids,
+    const FlecsMaterialId *material_id,
     int32_t count)
 {
     if (!count) {
@@ -299,11 +310,16 @@ void flecsEngine_batchCtx_uploadMaterialIds(
         &ctx->cpu_transforms[offset],
         (uint64_t)count * sizeof(FlecsInstanceTransform));
 
+    FlecsMaterialId *matIds = flecsEngine_batchCtx_ensureMaterialIds(ctx, count);
+    for (int i = 0; i < count; i ++) {
+        matIds[i] = material_id[0];
+    }
+
     wgpuQueueWriteBuffer(
         engine->queue,
         ctx->instance_material_id,
         (uint64_t)offset * sizeof(FlecsMaterialId),
-        material_ids,
+        matIds,
         (uint64_t)count * sizeof(FlecsMaterialId));
 }
 
