@@ -116,56 +116,63 @@ static int32_t flecsVertexAttrFromType(
         return -1;
     }
 
-    ecs_member_t *members = ecs_vec_first(&s->members);
     int32_t attr = 0;
-    for (i = 0; i < member_count; i ++) {
-        if (members[i].type == ecs_id(flecs_vec3_t)) {
-            attrs[attr].format = WGPUVertexFormat_Float32x3;
-            attrs[attr].shaderLocation = location_offset + attr;
-            attrs[attr].offset = members[i].offset;
-            attr ++;
+    if (type == ecs_id(flecs_rgba_t)) {
+        attrs[attr].format = WGPUVertexFormat_Unorm8x4;
+        attrs[attr].shaderLocation = location_offset + attr;
+        attrs[attr].offset = 0;
+        attr ++;
+    } else {
+        ecs_member_t *members = ecs_vec_first(&s->members);
+        for (i = 0; i < member_count; i ++) {
+            if (members[i].type == ecs_id(flecs_vec3_t)) {
+                attrs[attr].format = WGPUVertexFormat_Float32x3;
+                attrs[attr].shaderLocation = location_offset + attr;
+                attrs[attr].offset = members[i].offset;
+                attr ++;
 
-        } else if (members[i].type == ecs_id(ecs_f32_t)) {
-            attrs[attr].format = WGPUVertexFormat_Float32;
-            attrs[attr].shaderLocation = location_offset + attr;
-            attrs[attr].offset = members[i].offset;
-            attr ++;
+            } else if (members[i].type == ecs_id(ecs_f32_t)) {
+                attrs[attr].format = WGPUVertexFormat_Float32;
+                attrs[attr].shaderLocation = location_offset + attr;
+                attrs[attr].offset = members[i].offset;
+                attr ++;
 
-        } else if (members[i].type == ecs_id(flecs_rgba_t)) {
-            attrs[attr].format = WGPUVertexFormat_Unorm8x4;
-            attrs[attr].shaderLocation = location_offset + attr;
-            attrs[attr].offset = members[i].offset;
-            attr ++;
+            } else if (members[i].type == ecs_id(flecs_rgba_t)) {
+                attrs[attr].format = WGPUVertexFormat_Unorm8x4;
+                attrs[attr].shaderLocation = location_offset + attr;
+                attrs[attr].offset = members[i].offset;
+                attr ++;
 
-        } else if (members[i].type == ecs_id(ecs_u32_t)) {
-            attrs[attr].format = WGPUVertexFormat_Uint32;
-            attrs[attr].shaderLocation = location_offset + attr;
-            attrs[attr].offset = members[i].offset;
-            attr ++;
+            } else if (members[i].type == ecs_id(ecs_u32_t)) {
+                attrs[attr].format = WGPUVertexFormat_Uint32;
+                attrs[attr].shaderLocation = location_offset + attr;
+                attrs[attr].offset = members[i].offset;
+                attr ++;
 
-        } else if (members[i].type == ecs_id(flecs_mat4_t)) {
-            if ((attr + 4) >= attr_count) {
-                char *str = ecs_id_str(world, type);
-                ecs_err("cannot derive attributes from type '%s': "
-                    "too many attributes (max is %d)", str, attr_count);
-                ecs_os_free(str);
+            } else if (members[i].type == ecs_id(flecs_mat4_t)) {
+                if ((attr + 4) >= attr_count) {
+                    char *str = ecs_id_str(world, type);
+                    ecs_err("cannot derive attributes from type '%s': "
+                        "too many attributes (max is %d)", str, attr_count);
+                    ecs_os_free(str);
+                    return -1;
+                }
+
+                for (int32_t col = 0; col < 4; col ++) {
+                    attrs[attr].format = WGPUVertexFormat_Float32x4;
+                    attrs[attr].shaderLocation = location_offset + attr;
+                    attrs[attr].offset = members[i].offset + (sizeof(vec4) * col);
+                    attr ++;
+                }
+            } else {
+                char *type_str = ecs_id_str(world, type);
+                char *member_type_str = ecs_id_str(world, members[i].type);
+                ecs_err("unsupported member type '%s' for attribute '%s' "
+                    "in type '%s'", member_type_str, members[i].name, type_str);
+                ecs_os_free(member_type_str);
+                ecs_os_free(type_str);
                 return -1;
             }
-
-            for (int32_t col = 0; col < 4; col ++) {
-                attrs[attr].format = WGPUVertexFormat_Float32x4;
-                attrs[attr].shaderLocation = location_offset + attr;
-                attrs[attr].offset = members[i].offset + (sizeof(vec4) * col);
-                attr ++;
-            }
-        } else {
-            char *type_str = ecs_id_str(world, type);
-            char *member_type_str = ecs_id_str(world, members[i].type);
-            ecs_err("unsupported member type '%s' for attribute '%s' "
-                "in type '%s'", member_type_str, members[i].name, type_str);
-            ecs_os_free(member_type_str);
-            ecs_os_free(type_str);
-            return -1;
         }
     }
 
@@ -196,7 +203,7 @@ static bool flecsBatchUsesMaterialId(
             break;
         }
 
-        if (type == ecs_id(FlecsInstanceMaterialId)) {
+        if (type == ecs_id(FlecsMaterialId)) {
             return true;
         }
     }

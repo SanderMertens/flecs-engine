@@ -113,9 +113,9 @@ ecs_entity_t flecsEngine_createBatch_right_triangles(
         .vertex_type = ecs_id(FlecsLitVertex),
         .instance_types = {
             ecs_id(FlecsInstanceTransform),
-            ecs_id(FlecsInstanceColor),
-            ecs_id(FlecsInstancePbrMaterial),
-            ecs_id(FlecsInstanceEmissive)
+            ecs_id(FlecsRgba),
+            ecs_id(FlecsPbrMaterial),
+            ecs_id(FlecsEmissive)
         },
         .uniforms = {
             ecs_id(FlecsUniform)

@@ -7,7 +7,7 @@
 typedef struct {
     flecs_engine_batch_ctx_t batch;
     FlecsWorldTransform3 transform;
-    FlecsInstanceColor color;
+    FlecsRgba color;
     flecs_vec3_t size;
 } flecs_engine_infinite_grid_ctx_t;
 
@@ -20,7 +20,7 @@ static flecs_engine_infinite_grid_ctx_t* flecsEngine_infinite_grid_createCtx(
 
     glm_mat4_identity(result->transform.m);
     glm_rotate(result->transform.m, -glm_rad(90.0f), (vec3){1.0f, 0.0f, 0.0f});
-    result->color.color = (flecs_rgba_t){96, 96, 112, 255};
+    result->color = (flecs_rgba_t){96, 96, 112, 255};
     result->size = (flecs_vec3_t){2000.0f, 2000.0f, 1.0f};
 
     return result;
@@ -92,7 +92,7 @@ ecs_entity_t flecsEngine_createBatch_infiniteGrid(
         .vertex_type = ecs_id(FlecsLitVertex),
         .instance_types = {
             ecs_id(FlecsInstanceTransform),
-            ecs_id(FlecsInstanceColor)
+            ecs_id(FlecsRgba)
         },
         .uniforms = {
             ecs_id(FlecsUniform)

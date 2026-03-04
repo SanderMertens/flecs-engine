@@ -29,32 +29,6 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
 
 typedef struct {
-    flecs_rgba_t color;
-} FlecsInstanceColor;
-
-extern ECS_COMPONENT_DECLARE(FlecsInstanceColor);
-
-typedef struct {
-    float metallic;
-    float roughness;
-} FlecsInstancePbrMaterial;
-
-extern ECS_COMPONENT_DECLARE(FlecsInstancePbrMaterial);
-
-typedef struct {
-    flecs_rgba_t color;
-    float strength;
-} FlecsInstanceEmissive;
-
-extern ECS_COMPONENT_DECLARE(FlecsInstanceEmissive);
-
-typedef struct {
-    uint32_t value;
-} FlecsInstanceMaterialId;
-
-extern ECS_COMPONENT_DECLARE(FlecsInstanceMaterialId);
-
-typedef struct {
     flecs_mat4_t mvp;
     float clear_color[4];
     float light_ray_dir[4];

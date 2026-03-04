@@ -179,15 +179,15 @@ FlecsDefaultAttrCache* flecsEngine_defaultAttrCache_create(void);
 void flecsEngine_defaultAttrCache_free(
     FlecsDefaultAttrCache *ptr);
 
-FlecsInstancePbrMaterial* flecsEngine_defaultAttrCache_getMaterial(
+FlecsPbrMaterial* flecsEngine_defaultAttrCache_getMaterial(
     const FlecsEngineImpl *engine,
     int32_t count);
 
-FlecsInstanceEmissive* flecsEngine_defaultAttrCache_getEmissive(
+FlecsEmissive* flecsEngine_defaultAttrCache_getEmissive(
     const FlecsEngineImpl *engine,
     int32_t count);
 
-FlecsInstanceColor* flecsEngine_defaultAttrCache_getColor(
+FlecsRgba* flecsEngine_defaultAttrCache_getColor(
     const FlecsEngineImpl *engine,
     int32_t count);
 

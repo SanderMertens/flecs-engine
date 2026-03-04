@@ -108,7 +108,7 @@ ecs_entity_t flecsEngine_createBatch_quads_matIndex(
         .vertex_type = ecs_id(FlecsLitVertex),
         .instance_types = {
             ecs_id(FlecsInstanceTransform),
-            ecs_id(FlecsInstanceMaterialId)
+            ecs_id(FlecsMaterialId)
         },
         .uniforms = {
             ecs_id(FlecsUniform)

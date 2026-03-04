@@ -2,20 +2,6 @@
 
 #include "batches.h"
 
-_Static_assert(sizeof(FlecsMaterialId) == sizeof(FlecsInstanceMaterialId),
-    "FlecsMaterialId and FlecsInstanceMaterialId must share layout");
-_Static_assert(offsetof(FlecsMaterialId, value) ==
-        offsetof(FlecsInstanceMaterialId, value),
-    "FlecsMaterialId and FlecsInstanceMaterialId must share layout");
-_Static_assert(sizeof(FlecsEmissive) == sizeof(FlecsInstanceEmissive),
-    "FlecsEmissive and FlecsInstanceEmissive must share layout");
-_Static_assert(offsetof(FlecsEmissive, color) ==
-        offsetof(FlecsInstanceEmissive, color),
-    "FlecsEmissive and FlecsInstanceEmissive must share layout");
-_Static_assert(offsetof(FlecsEmissive, strength) ==
-        offsetof(FlecsInstanceEmissive, strength),
-    "FlecsEmissive and FlecsInstanceEmissive must share layout");
-
 static float flecsEngine_clampf(
     float value,
     float min_value,
@@ -129,19 +115,19 @@ void flecsEngine_batchCtx_ensureCapacity(
     ctx->instance_pbr = wgpuDeviceCreateBuffer(engine->device,
         &(WGPUBufferDescriptor){
             .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
-            .size = (uint64_t)new_capacity * sizeof(FlecsInstancePbrMaterial)
+            .size = (uint64_t)new_capacity * sizeof(FlecsPbrMaterial)
         });
 
     ctx->instance_emissive = wgpuDeviceCreateBuffer(engine->device,
         &(WGPUBufferDescriptor){
             .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
-            .size = (uint64_t)new_capacity * sizeof(FlecsInstanceEmissive)
+            .size = (uint64_t)new_capacity * sizeof(FlecsEmissive)
         });
 
     ctx->instance_material_id = wgpuDeviceCreateBuffer(engine->device,
         &(WGPUBufferDescriptor){
             .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
-            .size = (uint64_t)new_capacity * sizeof(FlecsInstanceMaterialId)
+            .size = (uint64_t)new_capacity * sizeof(FlecsMaterialId)
         });
 
     ctx->cpu_transforms =
@@ -266,32 +252,32 @@ void flecsEngine_batchCtx_uploadInstances(
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_pbr,
-            (uint64_t)offset * sizeof(FlecsInstancePbrMaterial),
+            (uint64_t)offset * sizeof(FlecsPbrMaterial),
             materials,
-            (uint64_t)count * sizeof(FlecsInstancePbrMaterial));
+            (uint64_t)count * sizeof(FlecsPbrMaterial));
     } else {
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_pbr,
-            (uint64_t)offset * sizeof(FlecsInstancePbrMaterial),
+            (uint64_t)offset * sizeof(FlecsPbrMaterial),
             flecsEngine_defaultAttrCache_getMaterial(engine, count),
-            (uint64_t)count * sizeof(FlecsInstancePbrMaterial));
+            (uint64_t)count * sizeof(FlecsPbrMaterial));
     }
 
     if (emissives) {
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_emissive,
-            (uint64_t)offset * sizeof(FlecsInstanceEmissive),
+            (uint64_t)offset * sizeof(FlecsEmissive),
             emissives,
-            (uint64_t)count * sizeof(FlecsInstanceEmissive));
+            (uint64_t)count * sizeof(FlecsEmissive));
     } else {
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_emissive,
-            (uint64_t)offset * sizeof(FlecsInstanceEmissive),
+            (uint64_t)offset * sizeof(FlecsEmissive),
             flecsEngine_defaultAttrCache_getEmissive(engine, count),
-            (uint64_t)count * sizeof(FlecsInstanceEmissive));
+            (uint64_t)count * sizeof(FlecsEmissive));
     }
 }
 
@@ -316,9 +302,9 @@ void flecsEngine_batchCtx_uploadMaterialIds(
     wgpuQueueWriteBuffer(
         engine->queue,
         ctx->instance_material_id,
-        (uint64_t)offset * sizeof(FlecsInstanceMaterialId),
+        (uint64_t)offset * sizeof(FlecsMaterialId),
         material_ids,
-        (uint64_t)count * sizeof(FlecsInstanceMaterialId));
+        (uint64_t)count * sizeof(FlecsMaterialId));
 }
 
 void flecsEngine_packInstanceTransform(

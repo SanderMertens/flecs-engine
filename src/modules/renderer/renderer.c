@@ -8,10 +8,10 @@ ECS_COMPONENT_DECLARE(FlecsRenderEffect);
 ECS_COMPONENT_DECLARE(FlecsVertex);
 ECS_COMPONENT_DECLARE(FlecsLitVertex);
 ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
-ECS_COMPONENT_DECLARE(FlecsInstanceColor);
-ECS_COMPONENT_DECLARE(FlecsInstancePbrMaterial);
-ECS_COMPONENT_DECLARE(FlecsInstanceEmissive);
-ECS_COMPONENT_DECLARE(FlecsInstanceMaterialId);
+ECS_COMPONENT_DECLARE(FlecsRgba);
+ECS_COMPONENT_DECLARE(FlecsPbrMaterial);
+ECS_COMPONENT_DECLARE(FlecsEmissive);
+ECS_COMPONENT_DECLARE(FlecsMaterialId);
 ECS_COMPONENT_DECLARE(FlecsUniform);
 
 static float flecsEngineColorChannelToFloat(
@@ -67,10 +67,6 @@ void FlecsEngineRendererImport(
     ECS_COMPONENT_DEFINE(world, FlecsVertex);
     ECS_COMPONENT_DEFINE(world, FlecsLitVertex);
     ECS_COMPONENT_DEFINE(world, FlecsInstanceTransform);
-    ECS_COMPONENT_DEFINE(world, FlecsInstanceColor);
-    ECS_COMPONENT_DEFINE(world, FlecsInstancePbrMaterial);
-    ECS_COMPONENT_DEFINE(world, FlecsInstanceEmissive);
-    ECS_COMPONENT_DEFINE(world, FlecsInstanceMaterialId);
     ECS_COMPONENT_DEFINE(world, FlecsUniform);
 
     ecs_struct(world, {
@@ -95,36 +91,6 @@ void FlecsEngineRendererImport(
             { .name = "c1", .type = ecs_id(flecs_vec3_t) },
             { .name = "c2", .type = ecs_id(flecs_vec3_t) },
             { .name = "c3", .type = ecs_id(flecs_vec3_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsInstanceColor),
-        .members = {
-            { .name = "color", .type = ecs_id(flecs_rgba_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsInstancePbrMaterial),
-        .members = {
-            { .name = "metallic", .type = ecs_id(ecs_f32_t) },
-            { .name = "roughness", .type = ecs_id(ecs_f32_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsInstanceEmissive),
-        .members = {
-            { .name = "color", .type = ecs_id(flecs_rgba_t) },
-            { .name = "strength", .type = ecs_id(ecs_f32_t) }
-        }
-    });
-
-    ecs_struct(world, {
-        .entity = ecs_id(FlecsInstanceMaterialId),
-        .members = {
-            { .name = "value", .type = ecs_id(ecs_u32_t) }
         }
     });
 

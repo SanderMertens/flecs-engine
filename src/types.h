@@ -19,11 +19,11 @@ typedef struct {
 } FlecsGpuMaterial;
 
 typedef struct {
-    FlecsInstanceColor *color;
+    FlecsRgba *color;
     ecs_size_t color_count;
-    FlecsInstancePbrMaterial *material;
+    FlecsPbrMaterial *material;
     ecs_size_t material_count;
-    FlecsInstanceEmissive *emissive;
+    FlecsEmissive *emissive;
     ecs_size_t emissive_count;
 } FlecsDefaultAttrCache;
 
