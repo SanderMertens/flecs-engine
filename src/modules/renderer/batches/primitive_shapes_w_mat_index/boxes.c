@@ -80,12 +80,15 @@ static void flecsEngine_boxes_callback(
 }
 
 ecs_entity_t flecsEngine_createBatch_boxes_wMatIndex(
-    ecs_world_t *world)
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name)
 {
-    ecs_entity_t batch = ecs_new(world);
+    ecs_entity_t batch = ecs_entity(world, { .parent = parent, .name = name });
     ecs_entity_t shader = flecsEngineShader_pbrColoredMaterialIndex(world);
 
     ecs_query_t *q = ecs_query(world, {
+        .entity = batch,
         .terms = {
             { .id = ecs_id(FlecsBox), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },

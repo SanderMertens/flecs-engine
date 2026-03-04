@@ -87,12 +87,15 @@ static void flecsEngine_right_triangles_callback(
 }
 
 ecs_entity_t flecsEngine_createBatch_right_triangles_wMatIndex(
-    ecs_world_t *world)
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name)
 {
-    ecs_entity_t batch = ecs_new(world);
+    ecs_entity_t batch = ecs_entity(world, { .parent = parent, .name = name });
     ecs_entity_t shader = flecsEngineShader_pbrColoredMaterialIndex(world);
 
     ecs_query_t *q = ecs_query(world, {
+        .entity = batch,
         .terms = {
             { .id = ecs_id(FlecsRightTriangle), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },

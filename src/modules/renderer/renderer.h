@@ -88,8 +88,20 @@ void FlecsShaderImpl_dtor(
     int32_t _count,
     const ecs_type_info_t *type_info);
 
+void FlecsShaderImpl_move(
+    void *_dst_ptr,
+    void *_src_ptr,
+    int32_t _count,
+    const ecs_type_info_t *type_info);
+
 void FlecsRenderBatchImpl_dtor(
     void *_ptr,
+    int32_t _count,
+    const ecs_type_info_t *type_info);
+
+void FlecsRenderBatchImpl_move(
+    void *_dst_ptr,
+    void *_src_ptr,
     int32_t _count,
     const ecs_type_info_t *type_info);
 
@@ -98,13 +110,31 @@ void FlecsRenderEffectImpl_dtor(
     int32_t _count,
     const ecs_type_info_t *type_info);
 
+void FlecsRenderEffectImpl_move(
+    void *_dst_ptr,
+    void *_src_ptr,
+    int32_t _count,
+    const ecs_type_info_t *type_info);
+
 void FlecsTonyImpl_dtor(
     void *_ptr,
     int32_t _count,
     const ecs_type_info_t *type_info);
 
+void FlecsTonyImpl_move(
+    void *_dst_ptr,
+    void *_src_ptr,
+    int32_t _count,
+    const ecs_type_info_t *type_info);
+
 void FlecsBloomImpl_dtor(
     void *_ptr,
+    int32_t _count,
+    const ecs_type_info_t *type_info);
+
+void FlecsBloomImpl_move(
+    void *_dst_ptr,
+    void *_src_ptr,
     int32_t _count,
     const ecs_type_info_t *type_info);
 

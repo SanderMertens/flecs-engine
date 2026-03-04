@@ -37,9 +37,11 @@ static ecs_entity_t flecsRenderEffect_invert_shader(
 
 ecs_entity_t flecsEngine_createEffect_invert(
     ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name,
     int32_t input)
 {
-    ecs_entity_t effect = ecs_new(world);
+    ecs_entity_t effect = ecs_entity(world, { .parent = parent, .name = name });
     ecs_set(world, effect, FlecsRenderEffect, {
         .shader = flecsRenderEffect_invert_shader(world),
         .input = input

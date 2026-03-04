@@ -4,92 +4,100 @@
 #include "../batches.h"
 #include "flecs_engine.h"
 
-static flecs_engine_batch_ctx_t* flecsEngine_boxes_createCtx(
-    ecs_world_t *world) 
+typedef struct {
+    flecs_engine_batch_ctx_t batch;
+} flecs_engine_quads_ctx_t;
+
+static flecs_engine_quads_ctx_t* flecsEngine_quads_createCtx(
+    ecs_world_t *world)
 {
-    flecs_engine_batch_ctx_t *result =
-        ecs_os_calloc_t(flecs_engine_batch_ctx_t);
-    flecsEngine_batchCtx_init(result, flecsGeometry3_getBoxAsset(world));
+    flecs_engine_quads_ctx_t *result =
+        ecs_os_calloc_t(flecs_engine_quads_ctx_t);
+    flecsEngine_batchCtx_init(&result->batch, flecsGeometry3_getQuadAsset(world));
     return result;
 }
 
-static void flecsEngine_boxes_deleteCtx(
+static void flecsEngine_quads_deleteCtx(
     void *arg)
 {
-    flecs_engine_batch_ctx_t *ctx = arg;
-    flecsEngine_batchCtx_fini(ctx);
+    flecs_engine_quads_ctx_t *ctx = arg;
+    flecsEngine_batchCtx_fini(&ctx->batch);
     ecs_os_free(ctx);
 }
 
-static void flecsEngine_boxes_prepareInstances(
+static void flecsEngine_quads_prepareInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,
-    flecs_engine_batch_ctx_t *ctx)
+    flecs_engine_quads_ctx_t *ctx)
 {
 redo: {
         ecs_iter_t it = ecs_query_iter(world, batch->query);
-        ctx->count = 0;
+        ctx->batch.count = 0;
 
         while (ecs_query_next(&it)) {
-            const FlecsBox *boxes = ecs_field(&it, FlecsBox, 0);
+            const FlecsQuad *quads = ecs_field(&it, FlecsQuad, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
             const FlecsPbrMaterial *materials =
                 ecs_field(&it, FlecsPbrMaterial, 3);
 
-            if ((ctx->count + it.count) <= ctx->capacity) {
+            if ((ctx->batch.count + it.count) <= ctx->batch.capacity) {
                 for (int32_t i = 0; i < it.count; i ++) {
-                    int32_t index = ctx->count + i;
+                    int32_t index = ctx->batch.count + i;
                     flecsEngine_packInstanceTransform(
-                        &ctx->cpu_transforms[index],
+                        &ctx->batch.cpu_transforms[index],
                         &wt[i],
-                        boxes[i].x,
-                        boxes[i].y,
-                        boxes[i].z);
+                        quads[i].x,
+                        quads[i].y,
+                        1.0f);
 
                 }
 
                 flecsEngine_batchCtx_uploadInstances(
                     engine,
-                    ctx,
-                    ctx->count,
+                    &ctx->batch,
+                    ctx->batch.count,
                     colors,
                     materials,
                     it.count);
             }
 
-            ctx->count += it.count;
+            ctx->batch.count += it.count;
         }
 
-        if (ctx->count > ctx->capacity) {
-            flecsEngine_batchCtx_ensureCapacity(engine, ctx, ctx->count);
-            ecs_assert(ctx->count <= ctx->capacity, ECS_INTERNAL_ERROR, NULL);
+        if (ctx->batch.count > ctx->batch.capacity) {
+            flecsEngine_batchCtx_ensureCapacity(
+                engine, &ctx->batch, ctx->batch.count);
+            ecs_assert(ctx->batch.count <= ctx->batch.capacity, ECS_INTERNAL_ERROR, NULL);
             goto redo;
         }
     }
 }
 
-static void flecsEngine_boxes_callback(
+static void flecsEngine_quads_callback(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
-    flecs_engine_batch_ctx_t *ctx = batch->ctx;
-    flecsEngine_boxes_prepareInstances(world, engine, batch, ctx);
-    flecsEngine_batchCtx_draw(pass, ctx);
+    flecs_engine_quads_ctx_t *ctx = batch->ctx;
+    flecsEngine_quads_prepareInstances(world, engine, batch, ctx);
+    flecsEngine_batchCtx_draw(pass, &ctx->batch);
 }
 
-ecs_entity_t flecsEngine_createBatch_boxes(
-    ecs_world_t *world)
+ecs_entity_t flecsEngine_createBatch_quads(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name)
 {
-    ecs_entity_t batch = ecs_new(world);
+    ecs_entity_t batch = ecs_entity(world, { .parent = parent, .name = name });
     ecs_entity_t shader = flecsEngineShader_pbrColored(world);
 
     ecs_query_t *q = ecs_query(world, {
+        .entity = batch,
         .terms = {
-            { .id = ecs_id(FlecsBox), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsQuad), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
             { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf }
@@ -109,9 +117,9 @@ ecs_entity_t flecsEngine_createBatch_boxes(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_boxes_callback,
-        .ctx = flecsEngine_boxes_createCtx((ecs_world_t*)world),
-        .free_ctx = flecsEngine_boxes_deleteCtx
+        .callback = flecsEngine_quads_callback,
+        .ctx = flecsEngine_quads_createCtx((ecs_world_t*)world),
+        .free_ctx = flecsEngine_quads_deleteCtx
     });
 
     return batch;

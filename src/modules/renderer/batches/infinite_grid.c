@@ -80,9 +80,11 @@ static void flecsEngine_infinite_grid_callback(
 }
 
 ecs_entity_t flecsEngine_createBatch_infiniteGrid(
-    ecs_world_t *world)
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name)
 {
-    ecs_entity_t batch = ecs_new(world);
+    ecs_entity_t batch = ecs_entity(world, { .parent = parent, .name = name });
     ecs_entity_t shader = flecsEngineShader_infiniteGrid(world);
 
     ecs_set(world, batch, FlecsRenderBatch, {

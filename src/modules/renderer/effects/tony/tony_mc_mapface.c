@@ -72,6 +72,12 @@ ECS_DTOR(FlecsTonyImpl, ptr, {
     flecsTonyReleaseResources(ptr);
 })
 
+ECS_MOVE(FlecsTonyImpl, dst, src, {
+    flecsTonyReleaseResources(dst);
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
 static bool flecsRenderEffect_tonyMcMapFace_setup(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
@@ -233,9 +239,11 @@ static bool flecsRenderEffect_tonyMcMapFace_bind(
 
 ecs_entity_t flecsEngine_createEffect_tonyMcMapFace(
     ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name,
     int32_t input)
 {
-    ecs_entity_t effect = ecs_new(world);
+    ecs_entity_t effect = ecs_entity(world, { .parent = parent, .name = name });
     ecs_set(world, effect, FlecsRenderEffect, {
         .shader = flecsRenderEffect_tonyMcMapFace_shader(world),
         .input = input,

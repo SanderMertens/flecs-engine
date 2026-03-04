@@ -4,97 +4,95 @@
 #include "../batches.h"
 #include "flecs_engine.h"
 
-typedef struct {
-    flecs_engine_batch_ctx_t batch;
-} flecs_engine_triangles_ctx_t;
-
-static flecs_engine_triangles_ctx_t* flecsEngine_triangles_createCtx(
-    ecs_world_t *world)
+static flecs_engine_batch_ctx_t* flecsEngine_boxes_createCtx(
+    ecs_world_t *world) 
 {
-    flecs_engine_triangles_ctx_t *result =
-        ecs_os_calloc_t(flecs_engine_triangles_ctx_t);
-    flecsEngine_batchCtx_init(&result->batch, flecsGeometry3_getTriangleAsset(world));
+    flecs_engine_batch_ctx_t *result =
+        ecs_os_calloc_t(flecs_engine_batch_ctx_t);
+    flecsEngine_batchCtx_init(result, flecsGeometry3_getBoxAsset(world));
     return result;
 }
 
-static void flecsEngine_triangles_deleteCtx(
+static void flecsEngine_boxes_deleteCtx(
     void *arg)
 {
-    flecs_engine_triangles_ctx_t *ctx = arg;
-    flecsEngine_batchCtx_fini(&ctx->batch);
+    flecs_engine_batch_ctx_t *ctx = arg;
+    flecsEngine_batchCtx_fini(ctx);
     ecs_os_free(ctx);
 }
 
-static void flecsEngine_triangles_prepareInstances(
+static void flecsEngine_boxes_prepareInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,
-    flecs_engine_triangles_ctx_t *ctx)
+    flecs_engine_batch_ctx_t *ctx)
 {
 redo: {
         ecs_iter_t it = ecs_query_iter(world, batch->query);
-        ctx->batch.count = 0;
+        ctx->count = 0;
 
         while (ecs_query_next(&it)) {
-            const FlecsTriangle *triangles = ecs_field(&it, FlecsTriangle, 0);
+            const FlecsBox *boxes = ecs_field(&it, FlecsBox, 0);
             const FlecsWorldTransform3 *wt = ecs_field(&it, FlecsWorldTransform3, 1);
             const FlecsRgba *colors = ecs_field(&it, FlecsRgba, 2);
             const FlecsPbrMaterial *materials =
                 ecs_field(&it, FlecsPbrMaterial, 3);
 
-            if ((ctx->batch.count + it.count) <= ctx->batch.capacity) {
+            if ((ctx->count + it.count) <= ctx->capacity) {
                 for (int32_t i = 0; i < it.count; i ++) {
-                    int32_t index = ctx->batch.count + i;
+                    int32_t index = ctx->count + i;
                     flecsEngine_packInstanceTransform(
-                        &ctx->batch.cpu_transforms[index],
+                        &ctx->cpu_transforms[index],
                         &wt[i],
-                        triangles[i].x,
-                        triangles[i].y,
-                        1.0f);
+                        boxes[i].x,
+                        boxes[i].y,
+                        boxes[i].z);
 
                 }
 
                 flecsEngine_batchCtx_uploadInstances(
                     engine,
-                    &ctx->batch,
-                    ctx->batch.count,
+                    ctx,
+                    ctx->count,
                     colors,
                     materials,
                     it.count);
             }
 
-            ctx->batch.count += it.count;
+            ctx->count += it.count;
         }
 
-        if (ctx->batch.count > ctx->batch.capacity) {
-            flecsEngine_batchCtx_ensureCapacity(
-                engine, &ctx->batch, ctx->batch.count);
-            ecs_assert(ctx->batch.count <= ctx->batch.capacity, ECS_INTERNAL_ERROR, NULL);
+        if (ctx->count > ctx->capacity) {
+            flecsEngine_batchCtx_ensureCapacity(engine, ctx, ctx->count);
+            ecs_assert(ctx->count <= ctx->capacity, ECS_INTERNAL_ERROR, NULL);
             goto redo;
         }
     }
 }
 
-static void flecsEngine_triangles_callback(
+static void flecsEngine_boxes_callback(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
-    flecs_engine_triangles_ctx_t *ctx = batch->ctx;
-    flecsEngine_triangles_prepareInstances(world, engine, batch, ctx);
-    flecsEngine_batchCtx_draw(pass, &ctx->batch);
+    flecs_engine_batch_ctx_t *ctx = batch->ctx;
+    flecsEngine_boxes_prepareInstances(world, engine, batch, ctx);
+    flecsEngine_batchCtx_draw(pass, ctx);
 }
 
-ecs_entity_t flecsEngine_createBatch_triangles(
-    ecs_world_t *world)
+ecs_entity_t flecsEngine_createBatch_boxes(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name)
 {
-    ecs_entity_t batch = ecs_new(world);
+    ecs_entity_t batch = ecs_entity(world, { .parent = parent, .name = name });
     ecs_entity_t shader = flecsEngineShader_pbrColored(world);
 
     ecs_query_t *q = ecs_query(world, {
+        .entity = batch,
         .terms = {
-            { .id = ecs_id(FlecsTriangle), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsBox), .src.id = EcsSelf },
             { .id = ecs_id(FlecsWorldTransform3), .src.id = EcsSelf },
             { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
             { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf }
@@ -114,9 +112,9 @@ ecs_entity_t flecsEngine_createBatch_triangles(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_triangles_callback,
-        .ctx = flecsEngine_triangles_createCtx((ecs_world_t*)world),
-        .free_ctx = flecsEngine_triangles_deleteCtx
+        .callback = flecsEngine_boxes_callback,
+        .ctx = flecsEngine_boxes_createCtx((ecs_world_t*)world),
+        .free_ctx = flecsEngine_boxes_deleteCtx
     });
 
     return batch;

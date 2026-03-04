@@ -29,6 +29,12 @@ ECS_DTOR(FlecsRenderEffectImpl, ptr, {
     flecsRenderEffectImplRelease(ptr);
 })
 
+ECS_MOVE(FlecsRenderEffectImpl, dst, src, {
+    flecsRenderEffectImplRelease(dst);
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
 static bool flecsRenderEffectCreateInputSampler(
     const FlecsEngineImpl *engine,
     FlecsRenderEffectImpl *impl)

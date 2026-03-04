@@ -29,10 +29,26 @@ ECS_DTOR(FlecsRenderBatch, ptr, {
     }
 })
 
+ECS_MOVE(FlecsRenderBatch, dst, src, {
+    if (dst->ctx && dst->free_ctx) {
+        dst->free_ctx(dst->ctx);
+    }
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
 ECS_DTOR(FlecsRenderEffect, ptr, {
     if (ptr->ctx && ptr->free_ctx) {
         ptr->free_ctx(ptr->ctx);
     }
+})
+
+ECS_MOVE(FlecsRenderEffect, dst, src, {
+    if (dst->ctx && dst->free_ctx) {
+        dst->free_ctx(dst->ctx);
+    }
+    *dst = *src;
+    ecs_os_zeromem(src);
 })
 
 ECS_CTOR(FlecsRenderBatchSet, ptr, {
@@ -148,33 +164,39 @@ void FlecsEngineRendererImport(
 
     ecs_set_hooks(world, FlecsRenderBatch, {
         .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderBatch),
         .dtor = ecs_dtor(FlecsRenderBatch),
         .on_set = FlecsRenderBatch_on_set
     });
 
     ecs_set_hooks(world, FlecsRenderBatchImpl, {
         .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderBatchImpl),
         .dtor = ecs_dtor(FlecsRenderBatchImpl)
     });
 
     ecs_set_hooks(world, FlecsRenderEffect, {
         .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderEffect),
         .dtor = ecs_dtor(FlecsRenderEffect),
         .on_set = FlecsRenderEffect_on_set
     });
 
     ecs_set_hooks(world, FlecsRenderEffectImpl, {
         .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderEffectImpl),
         .dtor = ecs_dtor(FlecsRenderEffectImpl)
     });
 
     ecs_set_hooks(world, FlecsTonyImpl, {
         .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsTonyImpl),
         .dtor = ecs_dtor(FlecsTonyImpl)
     });
 
     ecs_set_hooks(world, FlecsBloomImpl, {
         .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsBloomImpl),
         .dtor = ecs_dtor(FlecsBloomImpl)
     });
 
@@ -185,6 +207,7 @@ void FlecsEngineRendererImport(
 
     ecs_set_hooks(world, FlecsShaderImpl, {
         .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsShaderImpl),
         .dtor = ecs_dtor(FlecsShaderImpl)
     });
 

@@ -48,8 +48,20 @@ ECS_DTOR(FlecsShaderImpl, ptr, {
     flecsShaderImplRelease(ptr);
 })
 
+ECS_MOVE(FlecsShaderImpl, dst, src, {
+    flecsShaderImplRelease(dst);
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
 ECS_DTOR(FlecsRenderBatchImpl, ptr, {
     flecsRenderBatchImplRelease(ptr);
+})
+
+ECS_MOVE(FlecsRenderBatchImpl, dst, src, {
+    flecsRenderBatchImplRelease(dst);
+    *dst = *src;
+    ecs_os_zeromem(src);
 })
 
 static bool flecsShaderCompile(

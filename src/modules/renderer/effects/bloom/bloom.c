@@ -335,6 +335,12 @@ ECS_DTOR(FlecsBloomImpl, ptr, {
     flecsBloomReleaseResources(ptr);
 })
 
+ECS_MOVE(FlecsBloomImpl, dst, src, {
+    flecsBloomReleaseResources(dst);
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
 static bool flecsBloomCreateTexture(
     const FlecsEngineImpl *engine,
     FlecsBloomImpl *bloom,
@@ -994,10 +1000,12 @@ static bool flecsRenderEffect_bloom_render(
 
 ecs_entity_t flecsEngine_createEffect_bloom(
     ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name,
     int32_t input,
     const FlecsBloom *settings)
 {
-    ecs_entity_t effect = ecs_new(world);
+    ecs_entity_t effect = ecs_entity(world, { .parent = parent, .name = name });
     ecs_set_ptr(world, effect, FlecsBloom, settings);
 
     ecs_set(world, effect, FlecsRenderEffect, {

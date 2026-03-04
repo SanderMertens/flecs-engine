@@ -171,18 +171,29 @@ int main(
 
   ecs_entity_t view =  ecs_entity(world, { .name = "view" });
   FlecsRenderBatchSet batch_set = *ecs_ensure(world, view, FlecsRenderBatchSet);
-  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] = flecsEngine_createBatch_infiniteGrid(world);
-  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] = flecsEngine_createBatchSet_primitiveShapes(world);
-  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] = flecsEngine_createBatchSet_primitiveShapes_wMatIndex(world);
+  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
+    flecsEngine_createBatch_infiniteGrid(world, view, "infiniteGridBatch");
+  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
+    flecsEngine_createBatchSet_primitiveShapes(
+      world, view, "primitiveBatch");
+  ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
+    flecsEngine_createBatchSet_primitiveShapes_wMatIndex(
+      world, view, "primitiveWMatIndexBatch");
   ecs_set_ptr(world, view, FlecsRenderBatchSet, &batch_set);
 
   FlecsRenderView *v = ecs_ensure(world, view, FlecsRenderView);
   v->camera = camera;
   v->light = light;
   FlecsBloom bloom_settings = flecsEngine_bloomSettingsDefault();
-  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] = flecsEngine_createEffect_bloom(world, 0, &bloom_settings);
-  // ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] = flecsEngine_createEffect_passthrough(world, 1);
-  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] = flecsEngine_createEffect_tonyMcMapFace(world, 1);
+  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
+    flecsEngine_createEffect_bloom(
+      world, view, "bloomEffect", 0, &bloom_settings);
+  // ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
+  //   flecsEngine_createEffect_passthrough(
+  //     world, view, "PassthroughEffect", 1);
+  ecs_vec_append_t(NULL, &v->effects, ecs_entity_t)[0] =
+    flecsEngine_createEffect_tonyMcMapFace(
+      world, view, "tonyMcMapFaceEffect", 1);
 
   int numShapes = 7;
   int shapeY = 15;
@@ -337,6 +348,7 @@ int main(
       });
 
       ecs_entity_t material = ecs_new_w_id(world, EcsPrefab);
+      ecs_add_pair(world, material, EcsChildOf, shapes);
       ecs_set(world, material, FlecsRgba, {230, 230, 230, 255});
       ecs_set(world, material, FlecsPbrMaterial, {
         .metallic = metallic,
