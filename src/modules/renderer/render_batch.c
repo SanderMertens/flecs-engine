@@ -3,6 +3,33 @@
 #include "renderer.h"
 #include "flecs_engine.h"
 
+ECS_COMPONENT_DECLARE(FlecsRenderBatch);
+ECS_COMPONENT_DECLARE(FlecsRenderBatchImpl);
+ECS_COMPONENT_DECLARE(FlecsRenderEffect);
+ECS_COMPONENT_DECLARE(FlecsVertex);
+ECS_COMPONENT_DECLARE(FlecsLitVertex);
+ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
+ECS_COMPONENT_DECLARE(FlecsInstanceColor);
+ECS_COMPONENT_DECLARE(FlecsInstancePbrMaterial);
+ECS_COMPONENT_DECLARE(FlecsInstanceMaterialId);
+ECS_COMPONENT_DECLARE(FlecsUniform);
+ECS_COMPONENT_DECLARE(FlecsShader);
+ECS_COMPONENT_DECLARE(FlecsShaderImpl);
+
+ECS_DTOR(FlecsRenderBatch, ptr, {
+    if (ptr->ctx && ptr->free_ctx) {
+        ptr->free_ctx(ptr->ctx);
+    }
+})
+
+ECS_MOVE(FlecsRenderBatch, dst, src, {
+    if (dst->ctx && dst->free_ctx) {
+        dst->free_ctx(dst->ctx);
+    }
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
 static float flecsEngineColorChannelToFloat(
     uint8_t value)
 {
@@ -62,6 +89,27 @@ ECS_MOVE(FlecsRenderBatchImpl, dst, src, {
     flecsRenderBatchImplRelease(dst);
     *dst = *src;
     ecs_os_zeromem(src);
+})
+
+ECS_COMPONENT_DECLARE(FlecsRenderBatchSet);
+
+ECS_CTOR(FlecsRenderBatchSet, ptr, {
+    ecs_vec_init_t(NULL, &ptr->batches, ecs_entity_t, 0);
+})
+
+ECS_MOVE(FlecsRenderBatchSet, dst, src, {
+    ecs_vec_fini_t(NULL, &dst->batches, ecs_entity_t);
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
+ECS_COPY(FlecsRenderBatchSet, dst, src, {
+    ecs_vec_fini_t(NULL, &dst->batches, ecs_entity_t);
+    dst->batches = ecs_vec_copy_t(NULL, &src->batches, ecs_entity_t);
+})
+
+ECS_DTOR(FlecsRenderBatchSet, ptr, {
+    ecs_vec_fini_t(NULL, &ptr->batches, ecs_entity_t);
 })
 
 static bool flecsShaderCompile(
@@ -139,7 +187,7 @@ static void flecsMarkShaderUsersDirty(
     }
 }
 
-void FlecsShader_on_set(
+static void FlecsShader_on_set(
     ecs_iter_t *it)
 {
     ecs_world_t *world = it->world;
@@ -520,7 +568,7 @@ static WGPURenderPipeline flecsCreateRenderBatchPipeline(
     return pipeline;
 }
 
-void FlecsRenderBatch_on_set(
+static void FlecsRenderBatch_on_set(
     ecs_iter_t *it)
 {
     ecs_world_t *world = it->world;
@@ -811,4 +859,130 @@ void flecsEngineRenderBatch(
     if (use_material_buffer) {
         wgpuBindGroupRelease(bind_group);
     }
+}
+
+void flecsEngine_renderBatch_register(
+    ecs_world_t *world)
+{
+    ECS_COMPONENT_DEFINE(world, FlecsRenderBatch);
+    ECS_COMPONENT_DEFINE(world, FlecsRenderBatchImpl);
+    ECS_COMPONENT_DEFINE(world, FlecsVertex);
+    ECS_COMPONENT_DEFINE(world, FlecsLitVertex);
+    ECS_COMPONENT_DEFINE(world, FlecsInstanceTransform);
+    ECS_COMPONENT_DEFINE(world, FlecsInstanceColor);
+    ECS_COMPONENT_DEFINE(world, FlecsInstancePbrMaterial);
+    ECS_COMPONENT_DEFINE(world, FlecsInstanceMaterialId);
+    ECS_COMPONENT_DEFINE(world, FlecsUniform);
+    ECS_COMPONENT_DEFINE(world, FlecsShader);
+    ECS_COMPONENT_DEFINE(world, FlecsShaderImpl);
+    ECS_COMPONENT_DEFINE(world, FlecsRenderBatchSet);
+
+    ecs_entity_t entity_vector_t = ecs_vector(world, {
+        .type = ecs_id(ecs_entity_t)
+    });
+
+    ecs_set_hooks(world, FlecsRenderBatch, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderBatch),
+        .dtor = ecs_dtor(FlecsRenderBatch),
+        .on_set = FlecsRenderBatch_on_set
+    });
+
+    ecs_set_hooks(world, FlecsRenderBatchImpl, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderBatchImpl),
+        .dtor = ecs_dtor(FlecsRenderBatchImpl)
+    });
+
+    ecs_set_hooks(world, FlecsShader, {
+        .ctor = flecs_default_ctor,
+        .on_set = FlecsShader_on_set
+    });
+
+    ecs_set_hooks(world, FlecsShaderImpl, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsShaderImpl),
+        .dtor = ecs_dtor(FlecsShaderImpl)
+    });
+
+    ecs_set_hooks(world, FlecsRenderBatchSet, {
+        .ctor = ecs_ctor(FlecsRenderBatchSet),
+        .move = ecs_move(FlecsRenderBatchSet),
+        .copy = ecs_copy(FlecsRenderBatchSet),
+        .dtor = ecs_dtor(FlecsRenderBatchSet)
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsVertex),
+        .members = {
+            { .name = "p", .type = ecs_id(flecs_vec3_t) },
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsLitVertex),
+        .members = {
+            { .name = "p", .type = ecs_id(flecs_vec3_t) },
+            { .name = "n", .type = ecs_id(flecs_vec3_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsInstanceTransform),
+        .members = {
+            { .name = "c0", .type = ecs_id(flecs_vec3_t) },
+            { .name = "c1", .type = ecs_id(flecs_vec3_t) },
+            { .name = "c2", .type = ecs_id(flecs_vec3_t) },
+            { .name = "c3", .type = ecs_id(flecs_vec3_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsInstanceColor),
+        .members = {
+            { .name = "color", .type = ecs_id(flecs_rgba_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsInstancePbrMaterial),
+        .members = {
+            { .name = "metallic", .type = ecs_id(ecs_f32_t) },
+            { .name = "roughness", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsInstanceMaterialId),
+        .members = {
+            { .name = "value", .type = ecs_id(ecs_u32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsUniform),
+        .members = {
+            { .name = "mvp", .type = ecs_id(flecs_mat4_t) },
+            { .name = "clear_color", .type = ecs_id(ecs_f32_t), .count = 4 },
+            { .name = "light_ray_dir", .type = ecs_id(ecs_f32_t), .count = 4 },
+            { .name = "light_color", .type = ecs_id(ecs_f32_t), .count = 4 },
+            { .name = "camera_pos", .type = ecs_id(ecs_f32_t), .count = 4 },
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsShader),
+        .members = {
+            { .name = "source", .type = ecs_id(ecs_string_t) },
+            { .name = "vertex_entry", .type = ecs_id(ecs_string_t) },
+            { .name = "fragment_entry", .type = ecs_id(ecs_string_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsRenderBatchSet),
+        .members = {
+            { .name = "batches", .type = entity_vector_t }
+        }
+    });
 }

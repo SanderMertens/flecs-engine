@@ -84,7 +84,7 @@ static void flecsEngine_quads_callback(
     flecsEngine_batchCtx_drawMaterialIndex(pass, &ctx->batch);
 }
 
-ecs_entity_t flecsEngine_createBatch_quads_wMatIndex(
+ecs_entity_t flecsEngine_createBatch_quads_matIndex(
     ecs_world_t *world,
     ecs_entity_t parent,
     const char *name)

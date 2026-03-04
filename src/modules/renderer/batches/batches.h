@@ -57,4 +57,62 @@ void flecsEngine_packInstanceTransform(
     float scale_y,
     float scale_z);
 
+ecs_entity_t flecsEngine_createBatch_mesh(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_boxes(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_quads(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_triangles(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_right_triangles(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_triangle_prisms(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_right_triangle_prisms(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+
+ecs_entity_t flecsEngine_createBatch_mesh_matIndex(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_boxes_matIndex(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_quads_matIndex(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_triangles_matIndex(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_right_triangles_matIndex(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_triangle_prisms_matIndex(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+ecs_entity_t flecsEngine_createBatch_right_triangle_prisms_matIndex(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
+
 #endif

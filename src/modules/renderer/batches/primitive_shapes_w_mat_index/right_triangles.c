@@ -86,7 +86,7 @@ static void flecsEngine_right_triangles_callback(
     flecsEngine_batchCtx_drawMaterialIndex(pass, &ctx->batch);
 }
 
-ecs_entity_t flecsEngine_createBatch_right_triangles_wMatIndex(
+ecs_entity_t flecsEngine_createBatch_right_triangles_matIndex(
     ecs_world_t *world,
     ecs_entity_t parent,
     const char *name)

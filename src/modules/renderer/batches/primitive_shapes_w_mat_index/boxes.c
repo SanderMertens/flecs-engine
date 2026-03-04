@@ -79,7 +79,7 @@ static void flecsEngine_boxes_callback(
     flecsEngine_batchCtx_drawMaterialIndex(pass, ctx);
 }
 
-ecs_entity_t flecsEngine_createBatch_boxes_wMatIndex(
+ecs_entity_t flecsEngine_createBatch_boxes_matIndex(
     ecs_world_t *world,
     ecs_entity_t parent,
     const char *name)

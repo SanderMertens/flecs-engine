@@ -3,6 +3,9 @@
 #include "../../renderer.h"
 #include "flecs_engine.h"
 
+ECS_COMPONENT_DECLARE(FlecsBloom);
+ECS_COMPONENT_DECLARE(FlecsBloomImpl);
+
 #define FLECS_ENGINE_BLOOM_PREFERRED_TEXTURE_FORMAT (WGPUTextureFormat_RG11B10Ufloat)
 #define FLECS_ENGINE_BLOOM_MAX_DIMENSION (8192u)
 
@@ -1016,4 +1019,39 @@ ecs_entity_t flecsEngine_createEffect_bloom(
     });
 
     return effect;
+}
+
+void flecsEngine_bloom_register(
+    ecs_world_t *world)
+{
+    ECS_COMPONENT_DEFINE(world, FlecsBloom);
+    ECS_COMPONENT_DEFINE(world, FlecsBloomImpl);
+
+    ecs_set_hooks(world, FlecsBloomImpl, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsBloomImpl),
+        .dtor = ecs_dtor(FlecsBloomImpl)
+    });
+
+    ecs_entity_t bloom_prefilter_t = ecs_struct(world, {
+        .entity = ecs_entity(world, { .name = "FlecsBloomPrefilter" }),
+        .members = {
+            { .name = "threshold", .type = ecs_id(ecs_f32_t) },
+            { .name = "threshold_softness", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsBloom),
+        .members = {
+            { .name = "intensity", .type = ecs_id(ecs_f32_t) },
+            { .name = "low_frequency_boost", .type = ecs_id(ecs_f32_t) },
+            { .name = "low_frequency_boost_curvature", .type = ecs_id(ecs_f32_t) },
+            { .name = "high_pass_frequency", .type = ecs_id(ecs_f32_t) },
+            { .name = "prefilter", .type = bloom_prefilter_t },
+            { .name = "max_mip_dimension", .type = ecs_id(ecs_u32_t) },
+            { .name = "scale_x", .type = ecs_id(ecs_f32_t) },
+            { .name = "scale_y", .type = ecs_id(ecs_f32_t) }
+        }
+    });
 }

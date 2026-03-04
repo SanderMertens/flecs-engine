@@ -169,7 +169,7 @@ static void flecsEngine_mesh_callback(
     }
 }
 
-ecs_entity_t flecsEngine_createBatch_mesh_wMatIndex(
+ecs_entity_t flecsEngine_createBatch_mesh_matIndex(
     ecs_world_t *world,
     ecs_entity_t parent,
     const char *name)

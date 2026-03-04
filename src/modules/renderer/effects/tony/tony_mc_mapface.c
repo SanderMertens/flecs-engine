@@ -2,6 +2,8 @@
 #include "tony_mc_mapface_lut.h"
 #include "flecs_engine.h"
 
+ECS_COMPONENT_DECLARE(FlecsTonyImpl);
+
 static const char *kShaderSource =
     "struct VertexOutput {\n"
     "  @builtin(position) pos : vec4<f32>,\n"
@@ -252,4 +254,16 @@ ecs_entity_t flecsEngine_createEffect_tonyMcMapFace(
     });
 
     return effect;
+}
+
+void flecsEngine_tonyMcMapFace_register(
+    ecs_world_t *world)
+{
+    ECS_COMPONENT_DEFINE(world, FlecsTonyImpl);
+
+    ecs_set_hooks(world, FlecsTonyImpl, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsTonyImpl),
+        .dtor = ecs_dtor(FlecsTonyImpl)
+    });
 }

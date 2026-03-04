@@ -83,40 +83,15 @@ typedef struct {
 
 extern ECS_COMPONENT_DECLARE(FlecsBloom);
 
-ecs_entity_t flecsEngine_createBatch_mesh(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
+ECS_STRUCT(FlecsRenderBatchSet, {
+    ecs_vec_t batches;
+});
 
-ecs_entity_t flecsEngine_createBatch_boxes(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createBatch_quads(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createBatch_triangles(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createBatch_right_triangles(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createBatch_triangle_prisms(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createBatch_right_triangle_prisms(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
+ECS_STRUCT(FlecsRenderView, {
+    ecs_entity_t camera;
+    ecs_entity_t light;
+    ecs_vec_t effects;
+});
 
 ecs_entity_t flecsEngine_createBatch_infiniteGrid(
     ecs_world_t *world,
@@ -128,7 +103,7 @@ ecs_entity_t flecsEngine_createBatchSet_primitiveShapes(
     ecs_entity_t parent,
     const char *name);
 
-ecs_entity_t flecsEngine_createBatchSet_primitiveShapes_wMatIndex(
+ecs_entity_t flecsEngine_createBatchSet_primitiveShapes_matIndex(
     ecs_world_t *world,
     ecs_entity_t parent,
     const char *name);
@@ -139,13 +114,13 @@ ecs_entity_t flecsEngine_createEffect_tonyMcMapFace(
     const char *name,
     int32_t input);
 
-FlecsBloom flecsEngine_bloomSettingsDefault(void);
-
 ecs_entity_t flecsEngine_createEffect_invert(
     ecs_world_t *world,
     ecs_entity_t parent,
     const char *name,
     int32_t input);
+
+FlecsBloom flecsEngine_bloomSettingsDefault(void);
 
 ecs_entity_t flecsEngine_createEffect_bloom(
     ecs_world_t *world,
@@ -159,15 +134,5 @@ ecs_entity_t flecsEngine_createEffect_passthrough(
     ecs_entity_t parent,
     const char *name,
     int32_t input);
-
-ECS_STRUCT(FlecsRenderBatchSet, {
-    ecs_vec_t batches;
-});
-
-ECS_STRUCT(FlecsRenderView, {
-    ecs_entity_t camera;
-    ecs_entity_t light;
-    ecs_vec_t effects;
-});
 
 #endif

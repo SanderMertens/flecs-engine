@@ -86,7 +86,7 @@ static void flecsEngine_right_triangle_prisms_callback(
     flecsEngine_batchCtx_drawMaterialIndex(pass, &ctx->batch);
 }
 
-ecs_entity_t flecsEngine_createBatch_right_triangle_prisms_wMatIndex(
+ecs_entity_t flecsEngine_createBatch_right_triangle_prisms_matIndex(
     ecs_world_t *world,
     ecs_entity_t parent,
     const char *name)

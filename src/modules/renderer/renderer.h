@@ -74,69 +74,23 @@ ECS_PRIVATE
     void (*free_ctx)(void *ctx);
 });
 
-void FlecsRenderBatch_on_set(
-    ecs_iter_t *it);
+void flecsEngine_renderBatch_register(
+    ecs_world_t *world);
 
-void FlecsRenderEffect_on_set(
-    ecs_iter_t *it);
+void flecsEngine_renderEffect_register(
+    ecs_world_t *world);
 
-void FlecsShader_on_set(
-    ecs_iter_t *it);
+void flecsEngine_batchSets_register(
+    ecs_world_t *world);
 
-void FlecsShaderImpl_dtor(
-    void *_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
+void flecsEngine_renderView_register(
+    ecs_world_t *world);
 
-void FlecsShaderImpl_move(
-    void *_dst_ptr,
-    void *_src_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
+void flecsEngine_tonyMcMapFace_register(
+    ecs_world_t *world);
 
-void FlecsRenderBatchImpl_dtor(
-    void *_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
-
-void FlecsRenderBatchImpl_move(
-    void *_dst_ptr,
-    void *_src_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
-
-void FlecsRenderEffectImpl_dtor(
-    void *_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
-
-void FlecsRenderEffectImpl_move(
-    void *_dst_ptr,
-    void *_src_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
-
-void FlecsTonyImpl_dtor(
-    void *_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
-
-void FlecsTonyImpl_move(
-    void *_dst_ptr,
-    void *_src_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
-
-void FlecsBloomImpl_dtor(
-    void *_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
-
-void FlecsBloomImpl_move(
-    void *_dst_ptr,
-    void *_src_ptr,
-    int32_t _count,
-    const ecs_type_info_t *type_info);
+void flecsEngine_bloom_register(
+    ecs_world_t *world);
 
 ecs_entity_t flecsEngineEnsureShader(
     ecs_world_t *world,

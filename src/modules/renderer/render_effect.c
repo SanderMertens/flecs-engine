@@ -1,6 +1,23 @@
 #include "renderer.h"
 #include "flecs_engine.h"
 
+ECS_COMPONENT_DECLARE(FlecsRenderEffect);
+ECS_COMPONENT_DECLARE(FlecsRenderEffectImpl);
+
+ECS_DTOR(FlecsRenderEffect, ptr, {
+    if (ptr->ctx && ptr->free_ctx) {
+        ptr->free_ctx(ptr->ctx);
+    }
+})
+
+ECS_MOVE(FlecsRenderEffect, dst, src, {
+    if (dst->ctx && dst->free_ctx) {
+        dst->free_ctx(dst->ctx);
+    }
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
 static void flecsRenderEffectImplRelease(
     FlecsRenderEffectImpl *ptr)
 {
@@ -117,7 +134,7 @@ static WGPURenderPipeline flecsCreateRenderEffectPipeline(
     return pipeline;
 }
 
-void FlecsRenderEffect_on_set(
+static void FlecsRenderEffect_on_set(
     ecs_iter_t *it)
 {
     ecs_world_t *world = it->world;
@@ -313,4 +330,24 @@ void flecsEngineRenderEffect(
     wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
 
     wgpuBindGroupRelease(bind_group);
+}
+
+void flecsEngine_renderEffect_register(
+    ecs_world_t *world)
+{
+    ECS_COMPONENT_DEFINE(world, FlecsRenderEffect);
+    ECS_COMPONENT_DEFINE(world, FlecsRenderEffectImpl);
+
+    ecs_set_hooks(world, FlecsRenderEffect, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderEffect),
+        .dtor = ecs_dtor(FlecsRenderEffect),
+        .on_set = FlecsRenderEffect_on_set
+    });
+
+    ecs_set_hooks(world, FlecsRenderEffectImpl, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderEffectImpl),
+        .dtor = ecs_dtor(FlecsRenderEffectImpl)
+    });
 }

@@ -1,6 +1,31 @@
 #include "renderer.h"
 #include "flecs_engine.h"
 
+ECS_COMPONENT_DECLARE(FlecsRenderView);
+
+ECS_CTOR(FlecsRenderView, ptr, {
+    ecs_vec_init_t(NULL, &ptr->effects, ecs_entity_t, 0);
+    ptr->camera = 0;
+    ptr->light = 0;
+})
+
+ECS_MOVE(FlecsRenderView, dst, src, {
+    ecs_vec_fini_t(NULL, &dst->effects, ecs_entity_t);
+    *dst = *src;
+    ecs_os_zeromem(src);
+})
+
+ECS_COPY(FlecsRenderView, dst, src, {
+    ecs_vec_fini_t(NULL, &dst->effects, ecs_entity_t);
+    dst->camera = src->camera;
+    dst->light = src->light;
+    dst->effects = ecs_vec_copy_t(NULL, &src->effects, ecs_entity_t);
+})
+
+ECS_DTOR(FlecsRenderView, ptr, {
+    ecs_vec_fini_t(NULL, &ptr->effects, ecs_entity_t);
+})
+
 static void flecsEngineRenderBatchSet(
     const ecs_world_t *world,
     FlecsEngineImpl *engine,
@@ -55,4 +80,30 @@ void flecsEngineRenderView(
         pass,
         view,
         batch_set);
+}
+
+void flecsEngine_renderView_register(
+    ecs_world_t *world)
+{
+    ECS_COMPONENT_DEFINE(world, FlecsRenderView);
+
+    ecs_set_hooks(world, FlecsRenderView, {
+        .ctor = ecs_ctor(FlecsRenderView),
+        .move = ecs_move(FlecsRenderView),
+        .copy = ecs_copy(FlecsRenderView),
+        .dtor = ecs_dtor(FlecsRenderView)
+    });
+
+    ecs_entity_t entity_vector_t = ecs_vector(world, {
+        .type = ecs_id(ecs_entity_t)
+    });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsRenderView),
+        .members = {
+            { .name = "camera", .type = ecs_id(ecs_entity_t) },
+            { .name = "light", .type = ecs_id(ecs_entity_t) },
+            { .name = "effects", .type = entity_vector_t }
+        }
+    });
 }

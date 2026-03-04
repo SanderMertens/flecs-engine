@@ -177,7 +177,7 @@ int main(
     flecsEngine_createBatchSet_primitiveShapes(
       world, view, "primitiveBatch");
   ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
-    flecsEngine_createBatchSet_primitiveShapes_wMatIndex(
+    flecsEngine_createBatchSet_primitiveShapes_matIndex(
       world, view, "primitiveWMatIndexBatch");
   ecs_set_ptr(world, view, FlecsRenderBatchSet, &batch_set);
 
