@@ -31,10 +31,11 @@ FetchContent_MakeAvailable(cglm)
 FetchContent_Declare(
   flecs
   GIT_REPOSITORY https://github.com/SanderMertens/flecs.git
-  GIT_TAG master
+  GIT_TAG script_w_on_replace
 )
 set(FLECS_SHARED OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(flecs)
+target_compile_definitions(flecs_static PUBLIC FLECS_SCRIPT_MATH)
 
 
 file(GLOB_RECURSE FLECS_ENGINE_SOURCES CONFIGURE_DEPENDS

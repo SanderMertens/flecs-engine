@@ -5,7 +5,7 @@
 #include "flecs_engine.h"
 
 typedef struct {
-    flecs_engine_batch_ctx_t batch;
+    flecsEngine_batch_t batch;
 } flecs_engine_mesh_group_ctx_t;
 
 static uint64_t flecsEngine_mesh_groupByMesh(
@@ -45,7 +45,7 @@ static void* flecsEngine_mesh_onGroupCreate(
     (void)ptr;
     flecs_engine_mesh_group_ctx_t *result =
         ecs_os_calloc_t(flecs_engine_mesh_group_ctx_t);
-    flecsEngine_batchCtx_init(&result->batch, NULL);
+    flecsEngine_batch_init(&result->batch, NULL);
     return result;
 }
 
@@ -60,7 +60,7 @@ static void flecsEngine_mesh_onGroupDelete(
     (void)ptr;
 
     flecs_engine_mesh_group_ctx_t *ctx = group_ptr;
-    flecsEngine_batchCtx_fini(&ctx->batch);
+    flecsEngine_batch_fini(&ctx->batch);
     ecs_os_free(ctx);
 }
 
@@ -92,7 +92,7 @@ redo: {
 
                 }
 
-                flecsEngine_batchCtx_uploadInstances(
+                flecsEngine_batch_uploadInstances(
                     engine,
                     &ctx->batch,
                     ctx->batch.count,
@@ -106,7 +106,7 @@ redo: {
         }
 
         if (ctx->batch.count > ctx->batch.capacity) {
-            flecsEngine_batchCtx_ensureCapacity(
+            flecsEngine_batch_ensureCapacity(
                 engine, &ctx->batch, ctx->batch.count);
             ecs_assert(
                 ctx->batch.count <= ctx->batch.capacity,
@@ -150,7 +150,7 @@ static void flecsEngine_mesh_renderGroup(
 
     flecsEngine_mesh_prepareInstances(world, engine, batch, group_id, ctx);
     ctx->batch.mesh = *mesh;
-    flecsEngine_batchCtx_draw(pass, &ctx->batch);
+    flecsEngine_batch_draw(pass, &ctx->batch);
 }
 
 static void flecsEngine_mesh_callback(

@@ -15,40 +15,40 @@ typedef struct {
     FlecsMaterialId *cpu_material_ids;
     int32_t material_id_capacity;
     FlecsMesh3Impl mesh;
-} flecs_engine_batch_ctx_t;
+} flecsEngine_batch_t;
 
-void flecsEngine_batchCtx_init(
-    flecs_engine_batch_ctx_t *ctx,
+void flecsEngine_batch_init(
+    flecsEngine_batch_t *ctx,
     const FlecsMesh3Impl *mesh);
 
-void flecsEngine_batchCtx_fini(
-    flecs_engine_batch_ctx_t *ctx);
+void flecsEngine_batch_fini(
+    flecsEngine_batch_t *ctx);
 
-void flecsEngine_batchCtx_ensureCapacity(
+void flecsEngine_batch_ensureCapacity(
     const FlecsEngineImpl *engine,
-    flecs_engine_batch_ctx_t *ctx,
+    flecsEngine_batch_t *ctx,
     int32_t count);
 
-void flecsEngine_batchCtx_draw(
+void flecsEngine_batch_draw(
     const WGPURenderPassEncoder pass,
-    const flecs_engine_batch_ctx_t *ctx);
+    const flecsEngine_batch_t *ctx);
 
-void flecsEngine_batchCtx_drawMaterialIndex(
+void flecsEngine_batch_drawMaterialIndex(
     const WGPURenderPassEncoder pass,
-    const flecs_engine_batch_ctx_t *ctx);
+    const flecsEngine_batch_t *ctx);
 
-void flecsEngine_batchCtx_uploadInstances(
+void flecsEngine_batch_uploadInstances(
     const FlecsEngineImpl *engine,
-    flecs_engine_batch_ctx_t *ctx,
+    flecsEngine_batch_t *ctx,
     int32_t offset,
     const FlecsRgba *colors,
     const FlecsPbrMaterial *materials,
     const FlecsEmissive *emissives,
     int32_t count);
 
-void flecsEngine_batchCtx_uploadMaterialIds(
+void flecsEngine_batch_uploadMaterialIds(
     const FlecsEngineImpl *engine,
-    flecs_engine_batch_ctx_t *ctx,
+    flecsEngine_batch_t *ctx,
     int32_t offset,
     const FlecsMaterialId *material_ids,
     int32_t count);

@@ -47,24 +47,6 @@ typedef struct {
 
 extern ECS_COMPONENT_DECLARE(FlecsShader);
 
-typedef struct {
-    float threshold;
-    float threshold_softness;
-} FlecsBloomPrefilter;
-
-typedef struct {
-    float intensity;
-    float low_frequency_boost;
-    float low_frequency_boost_curvature;
-    float high_pass_frequency;
-    FlecsBloomPrefilter prefilter;
-    uint32_t max_mip_dimension;
-    float scale_x;
-    float scale_y;
-} FlecsBloom;
-
-extern ECS_COMPONENT_DECLARE(FlecsBloom);
-
 ECS_STRUCT(FlecsRenderBatchSet, {
     ecs_vec_t batches;
 });
@@ -91,47 +73,6 @@ ecs_entity_t flecsEngine_createHdri(
     const char *file,
     uint32_t filterSampleCount,
     uint32_t lutSampleCount);
-
-ecs_entity_t flecsEngine_createBatch_infiniteGrid(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createBatch_skybox(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createBatchSet_primitiveShapes(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createBatchSet_primitiveShapes_matIndex(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name);
-
-ecs_entity_t flecsEngine_createEffect_tonyMcMapFace(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name,
-    int32_t input);
-
-ecs_entity_t flecsEngine_createEffect_invert(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name,
-    int32_t input);
-
-FlecsBloom flecsEngine_bloomSettingsDefault(void);
-
-ecs_entity_t flecsEngine_createEffect_bloom(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name,
-    int32_t input,
-    const FlecsBloom *settings);
 
 ecs_entity_t flecsEngine_createEffect_passthrough(
     ecs_world_t *world,

@@ -16,8 +16,8 @@ static float flecsEngine_clampf(
     return value;
 }
 
-void flecsEngine_batchCtx_init(
-    flecs_engine_batch_ctx_t *ctx,
+void flecsEngine_batch_init(
+    flecsEngine_batch_t *ctx,
     const FlecsMesh3Impl *mesh)
 {
     ctx->instance_transform = NULL;
@@ -35,8 +35,8 @@ void flecsEngine_batchCtx_init(
     }
 }
 
-void flecsEngine_batchCtx_fini(
-    flecs_engine_batch_ctx_t *ctx)
+void flecsEngine_batch_fini(
+    flecsEngine_batch_t *ctx)
 {
     if (ctx->instance_transform) {
         wgpuBufferRelease(ctx->instance_transform);
@@ -67,9 +67,9 @@ void flecsEngine_batchCtx_fini(
     ctx->capacity = 0;
 }
 
-void flecsEngine_batchCtx_ensureCapacity(
+void flecsEngine_batch_ensureCapacity(
     const FlecsEngineImpl *engine,
-    flecs_engine_batch_ctx_t *ctx,
+    flecsEngine_batch_t *ctx,
     int32_t count)
 {
     if (count <= ctx->capacity) {
@@ -136,8 +136,8 @@ void flecsEngine_batchCtx_ensureCapacity(
     ctx->capacity = new_capacity;
 }
 
-static FlecsMaterialId* flecsEngine_batchCtx_ensureMaterialIds(
-    flecs_engine_batch_ctx_t *ctx,
+static FlecsMaterialId* flecsEngine_batch_ensureMaterialIds(
+    flecsEngine_batch_t *ctx,
     int32_t count)
 {
     if (count > ctx->material_id_capacity) {
@@ -147,9 +147,9 @@ static FlecsMaterialId* flecsEngine_batchCtx_ensureMaterialIds(
     return ctx->cpu_material_ids;
 }
 
-void flecsEngine_batchCtx_draw(
+void flecsEngine_batch_draw(
     const WGPURenderPassEncoder pass,
-    const flecs_engine_batch_ctx_t *ctx)
+    const flecsEngine_batch_t *ctx)
 {
     if (!ctx->count) {
         return;
@@ -192,9 +192,9 @@ void flecsEngine_batchCtx_draw(
         pass, ctx->mesh.index_count, ctx->count, 0, 0, 0);
 }
 
-void flecsEngine_batchCtx_drawMaterialIndex(
+void flecsEngine_batch_drawMaterialIndex(
     const WGPURenderPassEncoder pass,
-    const flecs_engine_batch_ctx_t *ctx)
+    const flecsEngine_batch_t *ctx)
 {
     if (!ctx->count) {
         return;
@@ -223,9 +223,9 @@ void flecsEngine_batchCtx_drawMaterialIndex(
     wgpuRenderPassEncoderDrawIndexed(pass, ctx->mesh.index_count, ctx->count, 0, 0, 0);
 }
 
-void flecsEngine_batchCtx_uploadInstances(
+void flecsEngine_batch_uploadInstances(
     const FlecsEngineImpl *engine,
-    flecs_engine_batch_ctx_t *ctx,
+    flecsEngine_batch_t *ctx,
     int32_t offset,
     const FlecsRgba *colors,
     const FlecsPbrMaterial *materials,
@@ -292,9 +292,9 @@ void flecsEngine_batchCtx_uploadInstances(
     }
 }
 
-void flecsEngine_batchCtx_uploadMaterialIds(
+void flecsEngine_batch_uploadMaterialIds(
     const FlecsEngineImpl *engine,
-    flecs_engine_batch_ctx_t *ctx,
+    flecsEngine_batch_t *ctx,
     int32_t offset,
     const FlecsMaterialId *material_id,
     int32_t count)
@@ -310,7 +310,7 @@ void flecsEngine_batchCtx_uploadMaterialIds(
         &ctx->cpu_transforms[offset],
         (uint64_t)count * sizeof(FlecsInstanceTransform));
 
-    FlecsMaterialId *matIds = flecsEngine_batchCtx_ensureMaterialIds(ctx, count);
+    FlecsMaterialId *matIds = flecsEngine_batch_ensureMaterialIds(ctx, count);
     for (int i = 0; i < count; i ++) {
         matIds[i] = material_id[0];
     }

@@ -5,7 +5,7 @@
 #include "flecs_engine.h"
 
 typedef struct {
-    flecs_engine_batch_ctx_t batch;
+    flecsEngine_batch_t batch;
 } flecs_engine_quads_ctx_t;
 
 static flecs_engine_quads_ctx_t* flecsEngine_quads_createCtx(
@@ -13,7 +13,7 @@ static flecs_engine_quads_ctx_t* flecsEngine_quads_createCtx(
 {
     flecs_engine_quads_ctx_t *result =
         ecs_os_calloc_t(flecs_engine_quads_ctx_t);
-    flecsEngine_batchCtx_init(&result->batch, flecsGeometry3_getQuadAsset(world));
+    flecsEngine_batch_init(&result->batch, flecsGeometry3_getQuadAsset(world));
     return result;
 }
 
@@ -21,7 +21,7 @@ static void flecsEngine_quads_deleteCtx(
     void *arg)
 {
     flecs_engine_quads_ctx_t *ctx = arg;
-    flecsEngine_batchCtx_fini(&ctx->batch);
+    flecsEngine_batch_fini(&ctx->batch);
     ecs_os_free(ctx);
 }
 
@@ -51,7 +51,7 @@ redo: {
 
                 }
 
-                flecsEngine_batchCtx_uploadMaterialIds(
+                flecsEngine_batch_uploadMaterialIds(
                     engine,
                     &ctx->batch,
                     ctx->batch.count,
@@ -63,7 +63,7 @@ redo: {
         }
 
         if (ctx->batch.count > ctx->batch.capacity) {
-            flecsEngine_batchCtx_ensureCapacity(
+            flecsEngine_batch_ensureCapacity(
                 engine, &ctx->batch, ctx->batch.count);
             ecs_assert(ctx->batch.count <= ctx->batch.capacity, ECS_INTERNAL_ERROR, NULL);
             goto redo;
@@ -79,7 +79,7 @@ static void flecsEngine_quads_callback(
 {
     flecs_engine_quads_ctx_t *ctx = batch->ctx;
     flecsEngine_quads_prepareInstances(world, engine, batch, ctx);
-    flecsEngine_batchCtx_drawMaterialIndex(pass, &ctx->batch);
+    flecsEngine_batch_drawMaterialIndex(pass, &ctx->batch);
 }
 
 ecs_entity_t flecsEngine_createBatch_quads_matIndex(

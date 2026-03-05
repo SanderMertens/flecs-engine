@@ -4,20 +4,20 @@
 #include "../batches.h"
 #include "flecs_engine.h"
 
-static flecs_engine_batch_ctx_t* flecsEngine_boxes_createCtx(
+static flecsEngine_batch_t* flecsEngine_boxes_createCtx(
     ecs_world_t *world) 
 {
-    flecs_engine_batch_ctx_t *result =
-        ecs_os_calloc_t(flecs_engine_batch_ctx_t);
-    flecsEngine_batchCtx_init(result, flecsGeometry3_getBoxAsset(world));
+    flecsEngine_batch_t *result =
+        ecs_os_calloc_t(flecsEngine_batch_t);
+    flecsEngine_batch_init(result, flecsGeometry3_getBoxAsset(world));
     return result;
 }
 
 static void flecsEngine_boxes_deleteCtx(
     void *arg)
 {
-    flecs_engine_batch_ctx_t *ctx = arg;
-    flecsEngine_batchCtx_fini(ctx);
+    flecsEngine_batch_t *ctx = arg;
+    flecsEngine_batch_fini(ctx);
     ecs_os_free(ctx);
 }
 
@@ -25,7 +25,7 @@ static void flecsEngine_boxes_prepareInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,
-    flecs_engine_batch_ctx_t *ctx)
+    flecsEngine_batch_t *ctx)
 {
 redo: {
         ecs_iter_t it = ecs_query_iter(world, batch->query);
@@ -47,7 +47,7 @@ redo: {
 
                 }
 
-                flecsEngine_batchCtx_uploadMaterialIds(
+                flecsEngine_batch_uploadMaterialIds(
                     engine,
                     ctx,
                     ctx->count,
@@ -59,7 +59,7 @@ redo: {
         }
 
         if (ctx->count > ctx->capacity) {
-            flecsEngine_batchCtx_ensureCapacity(engine, ctx, ctx->count);
+            flecsEngine_batch_ensureCapacity(engine, ctx, ctx->count);
             ecs_assert(ctx->count <= ctx->capacity, ECS_INTERNAL_ERROR, NULL);
             goto redo;
         }
@@ -72,9 +72,9 @@ static void flecsEngine_boxes_callback(
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
-    flecs_engine_batch_ctx_t *ctx = batch->ctx;
+    flecsEngine_batch_t *ctx = batch->ctx;
     flecsEngine_boxes_prepareInstances(world, engine, batch, ctx);
-    flecsEngine_batchCtx_drawMaterialIndex(pass, ctx);
+    flecsEngine_batch_drawMaterialIndex(pass, ctx);
 }
 
 ecs_entity_t flecsEngine_createBatch_boxes_matIndex(

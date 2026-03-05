@@ -118,7 +118,7 @@ static int32_t flecsVertexAttrFromType(
     }
 
     int32_t attr = 0;
-    if (type == ecs_id(flecs_rgba_t)) {
+    if (type == ecs_id(flecs_rgba_t) || type == ecs_id(FlecsRgba)) {
         attrs[attr].format = WGPUVertexFormat_Unorm8x4;
         attrs[attr].shaderLocation = location_offset + attr;
         attrs[attr].offset = 0;
@@ -138,7 +138,9 @@ static int32_t flecsVertexAttrFromType(
                 attrs[attr].offset = members[i].offset;
                 attr ++;
 
-            } else if (members[i].type == ecs_id(flecs_rgba_t)) {
+            } else if (members[i].type == ecs_id(flecs_rgba_t) ||
+                       members[i].type == ecs_id(FlecsRgba)) 
+            {
                 attrs[attr].format = WGPUVertexFormat_Unorm8x4;
                 attrs[attr].shaderLocation = location_offset + attr;
                 attrs[attr].offset = members[i].offset;

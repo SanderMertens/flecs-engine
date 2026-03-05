@@ -5,6 +5,18 @@ ECS_COMPONENT_DECLARE(FlecsPbrMaterial);
 ECS_COMPONENT_DECLARE(FlecsEmissive);
 ECS_COMPONENT_DECLARE(FlecsMaterialId);
 
+static void FlecsEmissive_on_add(
+    ecs_iter_t *it)
+{
+    FlecsEmissive *emissive = ecs_field(it, FlecsEmissive, 0);
+    for (int32_t i = 0; i < it->count; i ++) {
+        const FlecsRgba *color = ecs_get(it->world, it->entities[i], FlecsRgba);
+        if (color) {
+            ecs_os_memcpy_t(&emissive[i].color, &color, FlecsRgba);
+        }
+    }
+}
+
 static void FlecsMaterialIdOnAdd(
     ecs_iter_t *it)
 {
@@ -36,8 +48,16 @@ void FlecsEngineMaterialImport(
 
     ecs_set_name_prefix(world, "Flecs");
 
-    ecs_id(FlecsRgba) = ecs_id(flecs_rgba_t);
-    
+    ECS_COMPONENT_DEFINE(world, FlecsRgba);
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsRgba),
+        .members = {
+            { .name = "r", .type = ecs_id(ecs_u8_t) },
+            { .name = "g", .type = ecs_id(ecs_u8_t) },
+            { .name = "b", .type = ecs_id(ecs_u8_t) },
+            { .name = "a", .type = ecs_id(ecs_u8_t) },
+        }
+    });
     ecs_add_pair(world, ecs_id(FlecsRgba), EcsOnInstantiate, EcsInherit);
 
     ECS_COMPONENT_DEFINE(world, FlecsPbrMaterial);
@@ -48,8 +68,7 @@ void FlecsEngineMaterialImport(
             { .name = "roughness", .type = ecs_id(ecs_f32_t) }
         }
     });
-    ecs_add_pair(
-        world, ecs_id(FlecsPbrMaterial), EcsOnInstantiate, EcsInherit);
+    ecs_add_pair(world, ecs_id(FlecsPbrMaterial), EcsOnInstantiate, EcsInherit);
 
     ECS_COMPONENT_DEFINE(world, FlecsEmissive);
     ecs_struct(world, {
@@ -59,9 +78,7 @@ void FlecsEngineMaterialImport(
             { .name = "strength", .type = ecs_id(ecs_f32_t) }
         }
     });
-    ecs_add_pair(
-        world, ecs_id(FlecsEmissive), EcsOnInstantiate, EcsInherit);
-
+    ecs_add_pair(world, ecs_id(FlecsEmissive), EcsOnInstantiate, EcsInherit);
     ECS_COMPONENT_DEFINE(world, FlecsMaterialId);
     ecs_struct(world, {
         .entity = ecs_id(FlecsMaterialId),
@@ -69,8 +86,7 @@ void FlecsEngineMaterialImport(
             { .name = "value", .type = ecs_id(ecs_u32_t) }
         }
     });
-    ecs_add_pair(
-        world, ecs_id(FlecsMaterialId), EcsOnInstantiate, EcsInherit);
+    ecs_add_pair(world, ecs_id(FlecsMaterialId), EcsOnInstantiate, EcsInherit);
 
     ecs_observer(world, {
         .entity = ecs_entity(world, {
