@@ -2,6 +2,7 @@
 #include "flecs_engine.h"
 
 ECS_COMPONENT_DECLARE(FlecsRenderView);
+ECS_COMPONENT_DECLARE(FlecsRenderViewImpl);
 
 ECS_CTOR(FlecsRenderView, ptr, {
     ecs_vec_init_t(NULL, &ptr->effects, ecs_entity_t, 0);
@@ -28,66 +29,197 @@ ECS_DTOR(FlecsRenderView, ptr, {
     ecs_vec_fini_t(NULL, &ptr->effects, ecs_entity_t);
 })
 
-static void flecsEngineRenderBatchSet(
-    ecs_world_t *world,
-    FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
-    const FlecsRenderView *view,
-    const FlecsRenderBatchSet *batch_set)
+static void flecsEngineReleaseViewTargets(
+    FlecsRenderViewImpl *impl)
 {
-    int32_t i, count = ecs_vec_count(&batch_set->batches);
-    ecs_entity_t *batches = ecs_vec_first(&batch_set->batches);
-
-    for (i = 0; i < count; i ++) {
-        ecs_entity_t batch_entity = batches[i];
-        if (!batch_entity) {
-            continue;
-        }
-
-        const FlecsRenderBatchSet *nested_batch_set = ecs_get(
-            world, batch_entity, FlecsRenderBatchSet);
-        if (nested_batch_set) {
-            flecsEngineRenderBatchSet(
-                world,
-                engine,
-                pass,
-                view,
-                nested_batch_set);
-            continue;
-        }
-
-        flecsEngineRenderBatch(world, engine, pass, view, batch_entity);
-    }
-}
-
-void flecsEngineRenderView(
-    ecs_world_t *world,
-    FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
-    ecs_entity_t view_entity,
-    const FlecsRenderView *view)
-{
-    const FlecsRenderBatchSet *batch_set = ecs_get(
-        world, view_entity, FlecsRenderBatchSet);
-    if (!batch_set) {
+    if (!impl) {
         return;
     }
 
-    /* Always set pipeline/uniforms for first batch in view */
+    for (int32_t i = 0; i < impl->effect_target_count; i ++) {
+        if (impl->effect_target_views && impl->effect_target_views[i]) {
+            wgpuTextureViewRelease(impl->effect_target_views[i]);
+            impl->effect_target_views[i] = NULL;
+        }
+        if (impl->effect_target_textures && impl->effect_target_textures[i]) {
+            wgpuTextureRelease(impl->effect_target_textures[i]);
+            impl->effect_target_textures[i] = NULL;
+        }
+    }
+
+    if (impl->effect_target_views) {
+        ecs_os_free(impl->effect_target_views);
+        impl->effect_target_views = NULL;
+    }
+    if (impl->effect_target_textures) {
+        ecs_os_free(impl->effect_target_textures);
+        impl->effect_target_textures = NULL;
+    }
+
+    impl->effect_target_count = 0;
+    impl->effect_target_width = 0;
+    impl->effect_target_height = 0;
+    impl->effect_target_format = WGPUTextureFormat_Undefined;
+}
+
+ECS_MOVE(FlecsRenderViewImpl, dst, src, {
+    flecsEngineReleaseViewTargets(dst);
+    *dst = *src;
+    ecs_os_memset_t(src, 0, FlecsRenderViewImpl);
+})
+
+ECS_DTOR(FlecsRenderViewImpl, ptr, {
+    flecsEngineReleaseViewTargets(ptr);
+})
+
+static bool flecsEngineCreateViewTargets(
+    FlecsEngineImpl *engine,
+    FlecsRenderViewImpl *impl,
+    int32_t effect_count,
+    WGPUTextureFormat format)
+{
+    uint32_t width = (uint32_t)engine->width;
+    uint32_t height = (uint32_t)engine->height;
+
+    impl->effect_target_textures = ecs_os_calloc_n(WGPUTexture, effect_count);
+    impl->effect_target_views = ecs_os_calloc_n(WGPUTextureView, effect_count);
+    if (!impl->effect_target_textures || !impl->effect_target_views) {
+        goto error;
+    }
+
+    WGPUTextureDescriptor color_desc = {
+        .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding,
+        .dimension = WGPUTextureDimension_2D,
+        .size = (WGPUExtent3D){
+            .width = width,
+            .height = height,
+            .depthOrArrayLayers = 1
+        },
+        .format = format,
+        .mipLevelCount = 1,
+        .sampleCount = 1
+    };
+
+    for (int32_t i = 0; i < effect_count; i ++) {
+        impl->effect_target_textures[i] = wgpuDeviceCreateTexture(
+            engine->device, &color_desc);
+        if (!impl->effect_target_textures[i]) {
+            goto error;
+        }
+
+        impl->effect_target_views[i] = wgpuTextureCreateView(
+            impl->effect_target_textures[i], NULL);
+        if (!impl->effect_target_views[i]) {
+            goto error;
+        }
+    }
+
+    impl->effect_target_count = effect_count;
+    impl->effect_target_width = width;
+    impl->effect_target_height = height;
+    impl->effect_target_format = format;
+
+    return true;
+error:
+    flecsEngineReleaseViewTargets(impl);
+    return false;
+}
+
+static int flecsEngineEnsureViewTargets(
+    FlecsEngineImpl *engine,
+    FlecsRenderViewImpl *impl,
+    int32_t effect_count)
+{
+    if (effect_count <= 0) {
+        goto error;
+    }
+
+    uint32_t width = (uint32_t)engine->width;
+    uint32_t height = (uint32_t)engine->height;
+    WGPUTextureFormat surface_format = engine->surface_config.format;
+    WGPUTextureFormat desired_format = engine->hdr_color_format;
+    if (desired_format == WGPUTextureFormat_Undefined) {
+        desired_format = surface_format;
+    }
+
+    if (impl->effect_target_count >= effect_count) {
+        if (impl->effect_target_textures && impl->effect_target_views) {
+            if (impl->effect_target_width == width &&
+                impl->effect_target_height == height &&
+                impl->effect_target_format == desired_format)
+            {
+                return 0;
+            }
+        }
+    }
+
+    flecsEngineReleaseViewTargets(impl);
+
+    if (flecsEngineCreateViewTargets(
+        engine, impl, effect_count, desired_format))
+    {
+        goto error;
+    }
+
+    if (desired_format != surface_format &&
+        flecsEngineCreateViewTargets(engine, impl, effect_count, surface_format))
+    {
+        engine->hdr_color_format = surface_format;
+        ecs_warn("falling back to LDR targets: HDR format unavailable");
+        goto error;
+    }
+
+    return 0;
+error:
+    return -1;
+}
+
+static void flecsEngineRenderView(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    ecs_entity_t view_entity,
+    const FlecsRenderView *view,
+    FlecsRenderViewImpl *impl,
+    WGPUCommandEncoder encoder,
+    WGPUTextureView view_texture)
+{
     engine->last_pipeline = NULL;
 
-    flecsEngineRenderBatchSet(
-        world,
-        engine,
-        pass,
-        view,
-        batch_set);
+    if (flecsEngineEnsureViewTargets(engine, impl, ecs_vec_count(&view->effects))) {
+        ecs_err("failed to allocate effect render targets");
+        return;
+    }
+
+    flecsEngineRenderView_renderBatches(
+        world, view_entity, engine, view, impl, view_texture, encoder);
+
+    flecsEngineRenderView_renderEffects(
+        world, view_entity, engine, view, impl, view_texture, encoder);
+}
+
+void flecsEngineRenderViews(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    WGPUTextureView view_texture,
+    WGPUCommandEncoder encoder)
+{
+    ecs_iter_t it = ecs_query_iter(world, engine->view_query);
+    while (ecs_query_next(&it)) {
+        FlecsRenderView *views = ecs_field(&it, FlecsRenderView, 0);
+        FlecsRenderViewImpl *viewImpls = ecs_field(&it, FlecsRenderViewImpl, 1);
+        for (int32_t i = 0; i < it.count; i ++) {
+            flecsEngineRenderView(world, engine, it.entities[i], 
+                &views[i], &viewImpls[i],
+                encoder, view_texture);
+        }
+    }
 }
 
 void flecsEngine_renderView_register(
     ecs_world_t *world)
 {
     ECS_COMPONENT_DEFINE(world, FlecsRenderView);
+    ECS_COMPONENT_DEFINE(world, FlecsRenderViewImpl);
 
     ecs_set_hooks(world, FlecsRenderView, {
         .ctor = ecs_ctor(FlecsRenderView),
@@ -95,6 +227,14 @@ void flecsEngine_renderView_register(
         .copy = ecs_copy(FlecsRenderView),
         .dtor = ecs_dtor(FlecsRenderView)
     });
+
+    ecs_set_hooks(world, FlecsRenderViewImpl, {
+        .ctor = flecs_default_ctor,
+        .move = ecs_move(FlecsRenderViewImpl),
+        .dtor = ecs_dtor(FlecsRenderViewImpl)
+    });
+
+    ecs_add_pair(world, ecs_id(FlecsRenderView), EcsWith, ecs_id(FlecsRenderViewImpl));
 
     ecs_entity_t entity_vector_t = ecs_vector(world, {
         .type = ecs_id(ecs_entity_t)

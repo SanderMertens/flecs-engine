@@ -72,6 +72,166 @@ static bool flecsRenderEffectCreateInputSampler(
     return impl->input_sampler != NULL;
 }
 
+static WGPURenderPassEncoder flecsEngineBeginEffectPass(
+    const FlecsEngineImpl *impl,
+    WGPUCommandEncoder encoder,
+    WGPUTextureView color_view,
+    WGPULoadOp color_load_op)
+{
+    WGPUColor clear_color = flecsEngineGetClearColor(impl);
+
+    WGPURenderPassColorAttachment color_attachment = {
+        .view = color_view,
+        .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
+        .loadOp = color_load_op,
+        .storeOp = WGPUStoreOp_Store,
+        .clearValue = clear_color
+    };
+
+    WGPURenderPassDescriptor pass_desc = {
+        .colorAttachmentCount = 1,
+        .colorAttachments = &color_attachment
+    };
+
+    return wgpuCommandEncoderBeginRenderPass(encoder, &pass_desc);
+}
+
+void flecsEngineRenderEffect(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const WGPURenderPassEncoder pass,
+    ecs_entity_t effect_entity,
+    const FlecsRenderEffect *effect,
+    const FlecsRenderEffectImpl *impl,
+    WGPUTextureView input_view,
+    WGPUTextureFormat output_format)
+{
+    ecs_assert(effect != NULL, ECS_INVALID_PARAMETER, NULL);
+    ecs_assert(impl != NULL, ECS_INVALID_PARAMETER, NULL);
+    ecs_assert(input_view != NULL, ECS_INVALID_PARAMETER, NULL);
+
+    WGPUBindGroupEntry entries[8] = {
+        { .binding = 0, .textureView = input_view },
+        { .binding = 1, .sampler = impl->input_sampler }
+    };
+
+    uint32_t entry_count = 2;
+    if (effect->bind_callback) {
+        bool bind_ok = effect->bind_callback(
+            world,
+            engine,
+            effect_entity,
+            effect,
+            impl,
+            entries,
+            &entry_count);
+        ecs_assert(bind_ok, ECS_INTERNAL_ERROR, NULL);
+    }
+    ecs_assert(entry_count > 0, ECS_INTERNAL_ERROR, NULL);
+    ecs_assert(entry_count <= 8, ECS_INTERNAL_ERROR, NULL);
+
+    WGPUBindGroupDescriptor bind_group_desc = {
+        .layout = impl->bind_layout,
+        .entryCount = entry_count,
+        .entries = entries
+    };
+
+    WGPUBindGroup bind_group = wgpuDeviceCreateBindGroup(
+        engine->device, &bind_group_desc);
+    ecs_assert(bind_group != NULL, ECS_INTERNAL_ERROR, NULL);
+
+    WGPURenderPipeline pipeline = output_format == engine->surface_config.format
+        ? impl->pipeline_surface
+        : impl->pipeline_hdr;
+    ecs_assert(pipeline != NULL, ECS_INTERNAL_ERROR, NULL);
+
+    wgpuRenderPassEncoderSetPipeline(pass, pipeline);
+    wgpuRenderPassEncoderSetBindGroup(pass, 0, bind_group, 0, NULL);
+    wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
+
+    wgpuBindGroupRelease(bind_group);
+}
+
+void flecsEngineRenderView_renderEffects(
+    ecs_world_t *world,
+    ecs_entity_t view_entity,
+    FlecsEngineImpl *engine,
+    const FlecsRenderView *view,
+    const FlecsRenderViewImpl *viewImpl,
+    WGPUTextureView view_texture,
+    WGPUCommandEncoder encoder)
+{
+    int32_t effect_count = ecs_vec_count(&view->effects);
+    if (!effect_count) {
+        return;
+    }
+
+    ecs_entity_t *effect_entities = ecs_vec_first(&view->effects);
+    for (int32_t i = 0; i < effect_count; i ++) {
+        ecs_entity_t entity = effect_entities[i];
+        const FlecsRenderEffect *effect = ecs_get(
+            world, entity, FlecsRenderEffect);
+        FlecsRenderEffectImpl *effect_impl = ecs_get_mut(
+            world, entity, FlecsRenderEffectImpl);
+
+        ecs_assert(effect != NULL, ECS_INVALID_PARAMETER, NULL);
+        ecs_assert(effect_impl != NULL, ECS_INVALID_PARAMETER, NULL);
+
+        ecs_assert(effect->input >= 0, ECS_INVALID_PARAMETER, NULL);
+        ecs_assert(effect->input <= i, ECS_INVALID_PARAMETER, NULL);
+
+        bool is_last = (i + 1) == effect_count;
+        WGPUTextureView output_view = is_last
+            ? view_texture
+            : viewImpl->effect_target_views[i + 1];
+        WGPUTextureFormat output_format = is_last
+            ? engine->surface_config.format
+            : viewImpl->effect_target_format;
+
+        WGPUTextureView input_view = viewImpl->effect_target_views[effect->input];
+        WGPULoadOp load_op = is_last ? WGPULoadOp_Load : WGPULoadOp_Clear;
+
+        if (effect->render_callback) {
+            bool render_ok = effect->render_callback(
+                world,
+                engine,
+                encoder,
+                entity,
+                effect,
+                effect_impl,
+                input_view,
+                viewImpl->effect_target_format,
+                output_view,
+                output_format,
+                load_op);
+            if (!render_ok) {
+                ecs_err("failed to render effect");
+                return;
+            }
+            continue;
+        }
+
+        WGPURenderPassEncoder effect_pass = flecsEngineBeginEffectPass(
+            engine,
+            encoder,
+            output_view,
+            load_op);
+
+        flecsEngineRenderEffect(
+            world,
+            engine,
+            effect_pass,
+            entity,
+            effect,
+            effect_impl,
+            input_view,
+            output_format);
+
+        wgpuRenderPassEncoderEnd(effect_pass);
+        wgpuRenderPassEncoderRelease(effect_pass);
+    }
+}
+
 static WGPURenderPipeline flecsCreateRenderEffectPipeline(
     const FlecsEngineImpl *engine,
     const FlecsShader *shader,
@@ -272,62 +432,6 @@ static void FlecsRenderEffect_on_set(
 
         ecs_set_ptr(world, e, FlecsRenderEffectImpl, &impl);
     }
-}
-
-void flecsEngineRenderEffect(
-    const ecs_world_t *world,
-    const FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
-    ecs_entity_t effect_entity,
-    const FlecsRenderEffect *effect,
-    const FlecsRenderEffectImpl *impl,
-    WGPUTextureView input_view,
-    WGPUTextureFormat output_format)
-{
-    ecs_assert(effect != NULL, ECS_INVALID_PARAMETER, NULL);
-    ecs_assert(impl != NULL, ECS_INVALID_PARAMETER, NULL);
-    ecs_assert(input_view != NULL, ECS_INVALID_PARAMETER, NULL);
-
-    WGPUBindGroupEntry entries[8] = {
-        { .binding = 0, .textureView = input_view },
-        { .binding = 1, .sampler = impl->input_sampler }
-    };
-
-    uint32_t entry_count = 2;
-    if (effect->bind_callback) {
-        bool bind_ok = effect->bind_callback(
-            world,
-            engine,
-            effect_entity,
-            effect,
-            impl,
-            entries,
-            &entry_count);
-        ecs_assert(bind_ok, ECS_INTERNAL_ERROR, NULL);
-    }
-    ecs_assert(entry_count > 0, ECS_INTERNAL_ERROR, NULL);
-    ecs_assert(entry_count <= 8, ECS_INTERNAL_ERROR, NULL);
-
-    WGPUBindGroupDescriptor bind_group_desc = {
-        .layout = impl->bind_layout,
-        .entryCount = entry_count,
-        .entries = entries
-    };
-
-    WGPUBindGroup bind_group = wgpuDeviceCreateBindGroup(
-        engine->device, &bind_group_desc);
-    ecs_assert(bind_group != NULL, ECS_INTERNAL_ERROR, NULL);
-
-    WGPURenderPipeline pipeline = output_format == engine->surface_config.format
-        ? impl->pipeline_surface
-        : impl->pipeline_hdr;
-    ecs_assert(pipeline != NULL, ECS_INTERNAL_ERROR, NULL);
-
-    wgpuRenderPassEncoderSetPipeline(pass, pipeline);
-    wgpuRenderPassEncoderSetBindGroup(pass, 0, bind_group, 0, NULL);
-    wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
-
-    wgpuBindGroupRelease(bind_group);
 }
 
 void flecsEngine_renderEffect_register(

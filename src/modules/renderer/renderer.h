@@ -150,25 +150,21 @@ void flecsEngineGetClearColorVec4(
     const FlecsEngineImpl *impl,
     float out[4]);
 
-void flecsEngineRenderViewsWithEffects(
-    ecs_world_t *world,
-    FlecsEngineImpl *impl,
-    WGPUTextureView view_texture,
-    WGPUCommandEncoder encoder);
-
-void flecsEngineRenderView(
-    ecs_world_t *world,
-    FlecsEngineImpl *impl,
-    const WGPURenderPassEncoder pass,
-    ecs_entity_t view_entity,
-    const FlecsRenderView *view);
-
 void flecsEngineRenderBatch(
     ecs_world_t *world,
     FlecsEngineImpl *impl,
     const WGPURenderPassEncoder pass,
     const FlecsRenderView *view,
     ecs_entity_t batch_entity);
+
+void flecsEngineRenderView_renderBatches(
+    ecs_world_t *world,
+    ecs_entity_t view_entity,
+    FlecsEngineImpl *engine,
+    const FlecsRenderView *view,
+    const FlecsRenderViewImpl *viewImpl,
+    WGPUTextureView view_texture,
+    WGPUCommandEncoder encoder);
 
 void flecsEngineRenderEffect(
     const ecs_world_t *world,
@@ -180,12 +176,22 @@ void flecsEngineRenderEffect(
     WGPUTextureView input_view,
     WGPUTextureFormat output_format);
 
+void flecsEngineRenderView_renderEffects(
+    ecs_world_t *world,
+    ecs_entity_t view_entity,
+    FlecsEngineImpl *engine,
+    const FlecsRenderView *view,
+    const FlecsRenderViewImpl *viewImpl,
+    WGPUTextureView view_texture,
+    WGPUCommandEncoder encoder);
+
 const FlecsShaderImpl* flecsEngine_shader_ensureImpl(
     ecs_world_t *world,
     ecs_entity_t shader_entity);
 
 FlecsDefaultAttrCache* flecsEngine_defaultAttrCache_create(void);
 
+// Instance attr cache for default values (if entity doesn't have component)
 void flecsEngine_defaultAttrCache_free(
     FlecsDefaultAttrCache *ptr);
 
@@ -201,6 +207,7 @@ FlecsRgba* flecsEngine_defaultAttrCache_getColor(
     const FlecsEngineImpl *engine,
     int32_t count);
 
+// Import renderer module
 void FlecsEngineRendererImport(
     ecs_world_t *world);
 

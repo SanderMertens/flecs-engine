@@ -54,14 +54,6 @@ typedef struct {
     ecs_entity_t fallback_hdri;
     WGPUBindGroupLayout ibl_bind_layout;
 
-    /* Reusable intermediate color targets for post-processing passes. */
-    WGPUTexture *effect_target_textures;
-    WGPUTextureView *effect_target_views;
-    int32_t effect_target_count;
-    uint32_t effect_target_width;
-    uint32_t effect_target_height;
-    WGPUTextureFormat effect_target_format;
-
     WGPUBuffer material_buffer;
     FlecsGpuMaterial *cpu_materials;
     uint32_t material_buffer_capacity;
@@ -105,6 +97,17 @@ typedef struct {
 } FlecsShaderImpl;
 
 extern ECS_COMPONENT_DECLARE(FlecsShaderImpl);
+
+typedef struct {
+    WGPUTexture *effect_target_textures;
+    WGPUTextureView *effect_target_views;
+    int32_t effect_target_count;
+    uint32_t effect_target_width;
+    uint32_t effect_target_height;
+    WGPUTextureFormat effect_target_format;
+} FlecsRenderViewImpl;
+
+extern ECS_COMPONENT_DECLARE(FlecsRenderViewImpl);
 
 typedef struct {
     WGPUBindGroupLayout bind_layout;

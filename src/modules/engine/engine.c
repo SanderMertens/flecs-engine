@@ -109,7 +109,8 @@ static void flecsEngineCleanup(
         impl->surface_impl->cleanup(impl, terminate_runtime);
     }
 
-    flecsEngineReleaseEffectTargets(impl);
+    ecs_delete_with(world, ecs_id(FlecsRenderView));
+    ecs_delete_with(world, ecs_id(FlecsRenderBatch));
 
     if (impl->depth_texture_view) {
         wgpuTextureViewRelease(impl->depth_texture_view);

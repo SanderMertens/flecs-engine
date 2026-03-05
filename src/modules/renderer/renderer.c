@@ -117,31 +117,43 @@ static int flecsEngineEnsureDepthResources(
     return 0;
 }
 
-static float flecsEngineColorChannelToFloat(
-    uint8_t value)
+int flecsEngine_initRenderer(
+    ecs_world_t *world,
+    FlecsEngineImpl *impl)
 {
-    return (float)value / 255.0f;
-}
+    impl->hdr_color_format = WGPUTextureFormat_RGBA16Float;
 
-WGPUColor flecsEngineGetClearColor(
-    const FlecsEngineImpl *impl)
-{
-    return (WGPUColor){
-        .r = (double)flecsEngineColorChannelToFloat(impl->clear_color.r),
-        .g = (double)flecsEngineColorChannelToFloat(impl->clear_color.g),
-        .b = (double)flecsEngineColorChannelToFloat(impl->clear_color.b),
-        .a = (double)flecsEngineColorChannelToFloat(impl->clear_color.a)
-    };
-}
+    if (flecsEngineEnsureDepthResources(impl)) {
+        goto error;
+    }
 
-void flecsEngineGetClearColorVec4(
-    const FlecsEngineImpl *impl,
-    float out[4])
-{
-    out[0] = flecsEngineColorChannelToFloat(impl->clear_color.r);
-    out[1] = flecsEngineColorChannelToFloat(impl->clear_color.g);
-    out[2] = flecsEngineColorChannelToFloat(impl->clear_color.b);
-    out[3] = flecsEngineColorChannelToFloat(impl->clear_color.a);
+    ecs_entity_t engine_parent = ecs_lookup(world, "flecs.engine");
+
+    impl->view_query = ecs_query(world, {
+        .entity = ecs_entity(world, {
+            .parent = engine_parent
+        }),
+        .terms = {{ ecs_id(FlecsRenderView) }, { ecs_id(FlecsRenderViewImpl) }},
+        .cache_kind = EcsQueryCacheAuto
+    });
+
+    impl->material_query = ecs_query(world, {
+        .entity = ecs_entity(world, {
+            .parent = engine_parent
+        }),
+        .terms = {
+            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsMaterialId), .src.id = EcsSelf },
+            { .id = ecs_id(FlecsEmissive), .src.id = EcsSelf, .oper = EcsOptional },
+            { .id = EcsPrefab, .src.id = EcsSelf }
+        },
+        .cache_kind = EcsQueryCacheAuto
+    });
+
+    return 0;
+error:
+    return -1;
 }
 
 static void FlecsEngineRender(
@@ -190,6 +202,11 @@ static void FlecsEngineRender(
         goto cleanup;
     }
 
+    // Make sure materials are up to date with GPU materials buffer
+    //   TODO: don't upload each frame
+    flecsEngineUploadMaterialBuffer(it->world, impl);
+
+    // Render all views
     flecsEngineRenderViews(it->world, impl, frame_target.view_texture, encoder);
 
     if (impl->surface_impl->encode_frame(impl, encoder, &frame_target)) {
@@ -224,66 +241,6 @@ cleanup:
     if (failed) {
         impl->surface_impl->on_frame_failed(it->world, impl);
     }
-}
-
-void flecsEngineRenderViews(
-    ecs_world_t *world,
-    FlecsEngineImpl *impl,
-    WGPUTextureView view_texture,
-    WGPUCommandEncoder encoder)
-{
-    flecsEngineUploadMaterialBuffer(world, impl);
-
-    flecsEngineRenderViewsWithEffects(
-        world,
-        impl,
-        view_texture,
-        encoder);
-    impl->last_pipeline = NULL;
-}
-
-int flecsEngine_initRenderer(
-    ecs_world_t *world,
-    FlecsEngineImpl *impl)
-{
-    impl->hdr_color_format = WGPUTextureFormat_RGBA16Float;
-
-    if (flecsEngineEnsureDepthResources(impl)) {
-        goto error;
-    }
-
-    ecs_entity_t engine_parent = ecs_lookup(world, "flecs.engine");
-
-    impl->view_query = ecs_query(world, {
-        .entity = ecs_entity(world, {
-            .parent = engine_parent
-        }),
-        .terms = {{ ecs_id(FlecsRenderView) }},
-        .cache_kind = EcsQueryCacheAuto
-    });
-
-    if (!impl->view_query) {
-        ecs_err("Failed to create render view query\n");
-        goto error;
-    }
-
-    impl->material_query = ecs_query(world, {
-        .entity = ecs_entity(world, {
-            .parent = engine_parent
-        }),
-        .terms = {
-            { .id = ecs_id(FlecsRgba), .src.id = EcsSelf },
-            { .id = ecs_id(FlecsPbrMaterial), .src.id = EcsSelf },
-            { .id = ecs_id(FlecsMaterialId), .src.id = EcsSelf },
-            { .id = ecs_id(FlecsEmissive), .src.id = EcsSelf, .oper = EcsOptional },
-            { .id = EcsPrefab, .src.id = EcsSelf }
-        },
-        .cache_kind = EcsQueryCacheAuto
-    });
-
-    return 0;
-error:
-    return -1;
 }
 
 void FlecsEngineRendererImport(
