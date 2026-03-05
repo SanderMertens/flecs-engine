@@ -1,0 +1,16 @@
+using flecs.engine.*
+using flecs.script
+
+{
+    Position3: {}
+    Quad: {2000, 2000}
+    Rotation3: {-math.PI / 2}
+}
+
+
+{
+    Position3: {0, 2, -10}
+    Box: {3, 3, 3}
+    Rgba: {255, 0, 0}
+    Rotation3: {0, 1}
+}

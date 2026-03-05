@@ -130,6 +130,12 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsRenderEffectImpl);
 
 typedef struct {
+    WGPUBuffer uniform_buffer;
+} FlecsExponentialHeightFogImpl;
+
+extern ECS_COMPONENT_DECLARE(FlecsExponentialHeightFogImpl);
+
+typedef struct {
     WGPUTexture tony_lut_texture;
     WGPUTextureView tony_lut_texture_view;
     WGPUSampler tony_lut_sampler;

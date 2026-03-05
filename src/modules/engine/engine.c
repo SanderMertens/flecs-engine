@@ -97,7 +97,7 @@ static void flecsEngineCreateDepthResources(
     }
 
     WGPUTextureDescriptor depth_desc = {
-        .usage = WGPUTextureUsage_RenderAttachment,
+        .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding,
         .dimension = WGPUTextureDimension_2D,
         .size = (WGPUExtent3D){
             .width = width,

@@ -19,6 +19,16 @@ typedef struct {
 
 extern ECS_COMPONENT_DECLARE(FlecsBloom);
 
+ECS_STRUCT(FlecsExponentialHeightFog, {
+    float density;
+    float falloff;
+    float base_height;
+    float max_opacity;
+    flecs_rgba_t color;
+});
+
+extern ECS_COMPONENT_DECLARE(FlecsExponentialHeightFog);
+
 ecs_entity_t flecsEngine_createEffect_tonyMcMapFace(
     ecs_world_t *world,
     ecs_entity_t parent,
@@ -39,5 +49,14 @@ ecs_entity_t flecsEngine_createEffect_bloom(
     const char *name,
     int32_t input,
     const FlecsBloom *settings);
+
+FlecsExponentialHeightFog flecsEngine_exponentialHeightFogSettingsDefault(void);
+
+ecs_entity_t flecsEngine_createEffect_exponentialHeightFog(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name,
+    int32_t input,
+    const FlecsExponentialHeightFog *settings);
 
 #endif

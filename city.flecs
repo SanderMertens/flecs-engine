@@ -1,0 +1,152 @@
+// Script that creates a city
+//
+// For C/C++ examples and docs go to:
+//  https://github.com/SanderMertens/flecs
+
+using flecs.script.*
+using flecs.engine.*
+
+const rng = Rng: {} // Random number generator
+
+@tree Parent
+template Tree {
+  prop height: 1
+
+  const trunkY = 0.5
+  const canopyY = height - trunkY
+
+  {
+    Position3: {0, trunkY / 2, 0}
+    Rgba: {20.4, 7.65, 0}
+    Box: {0.1, trunkY, 0.1}
+  } {
+    Position3: {0, trunkY + canopyY / 2, 0}
+    Rgba: {25.5, 51, 15.3}
+    Box: {0.5, canopyY, 0.5}
+  }
+}
+
+@tree Parent
+template Pavement {
+  prop width: 5.0
+
+  Box: {width, 0.1, width}
+  Rgba: {51, 51, 51}
+  
+  const trees = 3
+  const spacing = width / trees
+  const offset = (width/2) - 0.2
+
+  for i in 0..trees {
+    const x = (i + 0.5) * spacing - width / 2
+    Tree(height: rng.f(2) + 2) {Position3: {-offset, 0, x}}
+    Tree(height: rng.f(2) + 2) {Position3: {offset, 0, x}}
+    Tree(height: rng.f(2) + 2) {Position3: {x, 0, -offset}}
+    Tree(height: rng.f(2) + 1) {Position3: {x, 0, offset}}
+  }
+}
+
+@tree Parent
+template Building {
+  prop width: 4
+  prop floors: 8
+  prop windows: 3
+  prop windowSpacing: 0.4
+  prop floorThickness: 0.6
+  prop color = Rgba: {76.5, 76.5, 76.5}
+
+  // Single blue box for the windows
+  {
+    Position3: {0, floors, 0}
+    Box: {width - 0.2, floors * 2, width - 0.2}
+    Rgba: {2.55, 5.1, 12.75}
+    PbrMaterial: {roughness: 0}
+  }
+
+  const pillars = windows + 2
+  const wallW: width - windowSpacing
+  const wallWH: wallW / 2
+  const spacing: wallW / (pillars - 1)
+
+  with $color {
+    // Floors
+    for i in 0..floors {{
+      Position3: {0, y: 2 * i + 2, 0}
+      Box: {width, floorThickness, width}
+    }}
+
+    // Separation between windows
+    for p in 1..(pillars - 1) {{
+      Position3: {
+        p * spacing - wallWH, floors
+      }
+      Box: {windowSpacing, floors * 2, width}
+    }{
+      Position3: {
+        0, floors, p * spacing - wallWH
+      }
+      Box: {width, floors * 2, windowSpacing}
+    }}
+
+    // Create boxes on the corners
+    with Box(windowSpacing, floors * 2, windowSpacing) {
+     {Position3: {-wallWH, floors, -wallWH}}
+     {Position3: {-wallWH, floors, wallWH}} 
+     {Position3: {wallWH, floors, wallWH}} 
+     {Position3: {wallWH, floors, -wallWH}}
+    }
+  }
+}
+
+// City template
+template City {
+  prop gridSize: 15
+  prop blockWidth: 15
+  prop pavementWidth: 12
+  prop buildingWidth: 8
+  prop maxFloors: 26
+  prop varFloors: 4
+
+  const gridSizeH = gridSize / 2
+
+  // Street plane
+  {
+    Position3: {0, 0.1 / 2, 0}
+    Box: {2000, 0.1, 2000}
+    Rgba: {20.4, 20.4, 20.4}
+  }
+
+  // The city grid
+  for x in 0 .. gridSize {
+    for y in 0 .. gridSize {
+      const xR: x - gridSizeH
+      const yR: y - gridSizeH
+      const xS: 1.0 - (abs(xR + 0.5) / gridSizeH)
+      const yS: 1.0 - (abs(yR + 0.5) / gridSizeH)
+      const baseY: pow(xS, 2) * pow(yS, 2) * maxFloors
+      const xP: xR * blockWidth + blockWidth / 2
+      const yP: yR * blockWidth + blockWidth / 2
+      const rgb: rng.f(127.5) + 12.75
+
+      // Pavement
+      Pavement(pavementWidth) {
+        Position3: {xP, 0.1, yP} 
+      }
+  
+      // Building
+      Building(
+        width: buildingWidth
+        floors: baseY + rng.u(varFloors) + 1
+        windows: rng.u(5) + 1
+        floorThickness: rng.f(0.2) + 0.4
+        windowSpacing: rng.f(0.6) + 0.2
+        color: {rgb + rng.f(38.25), rgb, rgb}
+      ) {
+        Position3: {xP, 0.1, yP} 
+      }
+    }
+  }
+}
+
+// Create the city with default values
+City city()

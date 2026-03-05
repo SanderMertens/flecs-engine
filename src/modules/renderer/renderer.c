@@ -122,4 +122,5 @@ void FlecsEngineRendererImport(
     flecsEngine_ibl_register(world);
     flecsEngine_tonyMcMapFace_register(world);
     flecsEngine_bloom_register(world);
+    flecsEngine_exponentialHeightFog_register(world);
 }
