@@ -16,7 +16,7 @@ static flecs_engine_skybox_ctx_t* flecsEngine_skybox_createCtx(
     flecs_engine_skybox_ctx_t *result =
         ecs_os_calloc_t(flecs_engine_skybox_ctx_t);
     flecsEngine_batch_init(
-        &result->batch, world, flecsEngine_quad_getAsset(world), 0, false, 0, NULL);
+        &result->batch, world, flecsEngine_quad_getAsset(world), 0, true, 0, NULL);
     glm_mat4_identity(result->transform.m);
     result->color = (FlecsRgba){255, 255, 255, 255};
     return result;
@@ -52,12 +52,14 @@ static void flecsEngine_skybox_prepareInstance(
         ctx->batch.cpu_transforms,
         sizeof(FlecsInstanceTransform));
 
+    ctx->batch.cpu_colors[0] = ctx->color;
+
     wgpuQueueWriteBuffer(
         engine->queue,
         ctx->batch.instance_color,
         0,
-        &ctx->color,
-        sizeof(ctx->color));
+        ctx->batch.cpu_colors,
+        sizeof(FlecsRgba));
 
     ctx->batch.count = 1;
 }

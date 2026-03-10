@@ -14,11 +14,12 @@ typedef struct {
     WGPUBuffer instance_emissive;
     WGPUBuffer instance_material_id;
     FlecsInstanceTransform *cpu_transforms;
+    FlecsRgba *cpu_colors;
+    FlecsPbrMaterial *cpu_pbr_materials;
+    FlecsEmissive *cpu_emissives;
+    FlecsMaterialId *cpu_material_ids;
     int32_t count;
     int32_t capacity;
-
-    FlecsMaterialId *cpu_material_ids;
-    int32_t material_id_capacity;
     FlecsMesh3Impl mesh;
 
     ecs_entity_t component;
