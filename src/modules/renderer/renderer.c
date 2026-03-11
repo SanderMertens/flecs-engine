@@ -157,6 +157,18 @@ error:
     return -1;
 }
 
+static void FlecsEngineExtract(
+    ecs_iter_t *it)
+{
+    FlecsEngineImpl *impl = ecs_field(it, FlecsEngineImpl, 0);
+
+    if (!impl->device || !impl->queue) {
+        return;
+    }
+
+    flecsEngine_renderView_extractAll(it->world, impl);
+}
+
 static void FlecsEngineRender(
     ecs_iter_t *it)
 {
@@ -209,8 +221,7 @@ static void FlecsEngineRender(
         goto cleanup;
     }
 
-    // Make sure materials are up to date with GPU materials buffer
-    //   TODO: don't upload each frame
+    // Sync materials
     flecsEngine_material_uploadBuffer(it->world, impl);
 
     // Render all views
@@ -322,5 +333,11 @@ void FlecsEngineRendererImport(
     flecsEngine_bloom_register(world);
     flecsEngine_exponentialHeightFog_register(world);
 
-    ECS_SYSTEM(world, FlecsEngineRender, EcsOnStore, flecs.engine.EngineImpl);
+    ecs_set_name_prefix(world, "FlecsEngine");
+
+    ECS_SYSTEM(world, FlecsEngineExtract, EcsOnStore,
+        flecs.engine.EngineImpl);
+
+    ECS_SYSTEM(world, FlecsEngineRender, EcsOnStore, 
+        flecs.engine.EngineImpl);
 }

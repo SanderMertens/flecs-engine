@@ -4,14 +4,25 @@
 #include "batches.h"
 #include "flecs_engine.h"
 
-static void flecsEngine_primitive_callback(
+static void flecsEngine_primitive_extract(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const FlecsRenderBatch *batch)
+{
+    flecsEngine_batch_t *ctx = batch->ctx;
+    flecsEngine_batch_extractInstances(world, engine, batch, ctx);
+}
+
+static void flecsEngine_primitive_render(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
+    (void)world;
+    (void)engine;
+
     flecsEngine_batch_t *ctx = batch->ctx;
-    flecsEngine_batch_prepareInstances(world, engine, batch, ctx);
     flecsEngine_batch_draw(pass, ctx);
 }
 
@@ -47,7 +58,8 @@ static ecs_entity_t flecsEngine_createBatch_primitive_materialIndex(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_primitive_callback,
+        .extract_callback = flecsEngine_primitive_extract,
+        .callback = flecsEngine_primitive_render,
         .ctx = flecsEngine_batch_create(world, mesh, 0, false, component, scale_callback),
         .free_ctx = flecsEngine_batch_delete
     });

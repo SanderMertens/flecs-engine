@@ -58,7 +58,7 @@ void flecsEngine_batch_ensureCapacity(
     flecsEngine_batch_t *ctx,
     int32_t count);
 
-void flecsEngine_batch_prepareInstances(
+void flecsEngine_batch_extractInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,

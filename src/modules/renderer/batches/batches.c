@@ -206,12 +206,52 @@ void flecsEngine_batch_ensureCapacity(
     }
 }
 
-static void flecsEngine_batch_upload(
+static void flecsEngine_batch_copyMaterialData(
     const FlecsEngineImpl *engine,
     flecsEngine_batch_t *ctx,
-    ecs_iter_t *it)
+    int32_t offset,
+    int32_t count,
+    const FlecsRgba *colors,
+    const FlecsPbrMaterial *materials,
+    const FlecsEmissive *emissives)
 {
-    int32_t count = it->count, offset = ctx->count;
+    FlecsRgba *cpu_colors = &ctx->cpu_colors[offset];
+    FlecsPbrMaterial *cpu_materials = &ctx->cpu_pbr_materials[offset];
+    FlecsEmissive *cpu_emissives = &ctx->cpu_emissives[offset];
+
+    memcpy(
+        cpu_colors,
+        colors ? colors : flecsEngine_defaultAttrCache_getColor(engine, count),
+        (size_t)count * sizeof(FlecsRgba));
+
+    memcpy(
+        cpu_materials,
+        materials ? materials : flecsEngine_defaultAttrCache_getMaterial(engine, count),
+        (size_t)count * sizeof(FlecsPbrMaterial));
+
+    memcpy(
+        cpu_emissives,
+        emissives ? emissives : flecsEngine_defaultAttrCache_getEmissive(engine, count),
+        (size_t)count * sizeof(FlecsEmissive));
+}
+
+static void flecsEngine_batch_copyMaterialIds(
+    flecsEngine_batch_t *ctx,
+    int32_t offset,
+    int32_t count,
+    const FlecsMaterialId *material_id)
+{
+    FlecsMaterialId *mat_ids = &ctx->cpu_material_ids[offset];
+    for (int32_t i = 0; i < count; i ++) {
+        mat_ids[i] = material_id[0];
+    }
+}
+
+static void flecsEngine_batch_upload(
+    const FlecsEngineImpl *engine,
+    const flecsEngine_batch_t *ctx)
+{
+    int32_t count = ctx->count;
     if (!count) {
         return;
     }
@@ -219,70 +259,42 @@ static void flecsEngine_batch_upload(
     wgpuQueueWriteBuffer(
         engine->queue,
         ctx->instance_transform,
-        (uint64_t)offset * sizeof(FlecsInstanceTransform),
-        &ctx->cpu_transforms[offset],
+        0,
+        ctx->cpu_transforms,
         (uint64_t)count * sizeof(FlecsInstanceTransform));
 
     if (ctx->owns_material_data) {
-        FlecsRgba *colors = ecs_field(it, FlecsRgba, 2);
-        FlecsPbrMaterial *materials = ecs_field(it, FlecsPbrMaterial, 3);
-        FlecsEmissive *emissives = ecs_field(it, FlecsEmissive, 4);
-        FlecsRgba *cpu_colors = &ctx->cpu_colors[offset];
-        FlecsPbrMaterial *cpu_materials = &ctx->cpu_pbr_materials[offset];
-        FlecsEmissive *cpu_emissives = &ctx->cpu_emissives[offset];
-
-        memcpy(
-            cpu_colors,
-            colors ? colors : flecsEngine_defaultAttrCache_getColor(engine, count),
-            (size_t)count * sizeof(FlecsRgba));
-
-        memcpy(
-            cpu_materials,
-            materials ? materials : flecsEngine_defaultAttrCache_getMaterial(engine, count),
-            (size_t)count * sizeof(FlecsPbrMaterial));
-
-        memcpy(
-            cpu_emissives,
-            emissives ? emissives : flecsEngine_defaultAttrCache_getEmissive(engine, count),
-            (size_t)count * sizeof(FlecsEmissive));
-
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_color,
-            (uint64_t)offset * sizeof(FlecsRgba),
-            cpu_colors,
+            0,
+            ctx->cpu_colors,
             (uint64_t)count * sizeof(FlecsRgba));
 
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_pbr,
-            (uint64_t)offset * sizeof(FlecsPbrMaterial),
-            cpu_materials,
+            0,
+            ctx->cpu_pbr_materials,
             (uint64_t)count * sizeof(FlecsPbrMaterial));
 
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_emissive,
-            (uint64_t)offset * sizeof(FlecsEmissive),
-            cpu_emissives,
+            0,
+            ctx->cpu_emissives,
             (uint64_t)count * sizeof(FlecsEmissive));
     } else {
-        FlecsMaterialId *material_id = ecs_field(it, FlecsMaterialId, 2);
-        FlecsMaterialId *matIds = &ctx->cpu_material_ids[offset];
-        for (int i = 0; i < count; i ++) {
-            matIds[i] = material_id[0];
-        }
-
         wgpuQueueWriteBuffer(
             engine->queue,
             ctx->instance_material_id,
-            (uint64_t)offset * sizeof(FlecsMaterialId),
-            matIds,
+            0,
+            ctx->cpu_material_ids,
             (uint64_t)count * sizeof(FlecsMaterialId));
     }
 }
 
-void flecsEngine_batch_prepareInstances(
+void flecsEngine_batch_extractInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch,
@@ -320,7 +332,22 @@ redo: {
                     }
                 }
 
-                flecsEngine_batch_upload(engine, ctx, &it);
+                if (ctx->owns_material_data) {
+                    flecsEngine_batch_copyMaterialData(
+                        engine,
+                        ctx,
+                        ctx->count,
+                        it.count,
+                        ecs_field(&it, FlecsRgba, 2),
+                        ecs_field(&it, FlecsPbrMaterial, 3),
+                        ecs_field(&it, FlecsEmissive, 4));
+                } else {
+                    flecsEngine_batch_copyMaterialIds(
+                        ctx,
+                        ctx->count,
+                        it.count,
+                        ecs_field(&it, FlecsMaterialId, 2));
+                }
             }
 
             ctx->count += it.count;
@@ -331,6 +358,8 @@ redo: {
             ecs_assert(ctx->count <= ctx->capacity, ECS_INTERNAL_ERROR, NULL);
             goto redo;
         }
+
+        flecsEngine_batch_upload(engine, ctx);
     }
 }
 

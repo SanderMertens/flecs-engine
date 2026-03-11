@@ -30,7 +30,7 @@ static void flecsEngine_skybox_deleteCtx(
     ecs_os_free(ctx);
 }
 
-static void flecsEngine_skybox_prepareInstance(
+static void flecsEngine_skybox_extract(
     const FlecsEngineImpl *engine,
     flecs_engine_skybox_ctx_t *ctx)
 {
@@ -64,16 +64,27 @@ static void flecsEngine_skybox_prepareInstance(
     ctx->batch.count = 1;
 }
 
-static void flecsEngine_skybox_callback(
+static void flecsEngine_skybox_extractCallback(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const FlecsRenderBatch *batch)
+{
+    (void)world;
+
+    flecs_engine_skybox_ctx_t *ctx = batch->ctx;
+    flecsEngine_skybox_extract(engine, ctx);
+}
+
+static void flecsEngine_skybox_renderCallback(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
     (void)world;
+    (void)engine;
 
     flecs_engine_skybox_ctx_t *ctx = batch->ctx;
-    flecsEngine_skybox_prepareInstance(engine, ctx);
     flecsEngine_batch_draw(pass, &ctx->batch);
 }
 
@@ -95,7 +106,8 @@ ecs_entity_t flecsEngine_createBatch_skybox(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_skybox_callback,
+        .extract_callback = flecsEngine_skybox_extractCallback,
+        .callback = flecsEngine_skybox_renderCallback,
         .ctx = flecsEngine_skybox_createCtx((ecs_world_t*)world),
         .free_ctx = flecsEngine_skybox_deleteCtx
     });

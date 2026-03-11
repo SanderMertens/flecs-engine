@@ -200,6 +200,37 @@ static void flecsEngine_renderView_render(
         world, view_entity, engine, view, impl, view_texture, encoder);
 }
 
+static void flecsEngine_renderView_extract(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    ecs_entity_t view_entity,
+    const FlecsRenderView *view,
+    FlecsRenderViewImpl *impl)
+{
+    (void)impl;
+
+    flecsEngine_renderView_extractBatches(world, view_entity, engine, view);
+}
+
+void flecsEngine_renderView_extractAll(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine)
+{
+    ecs_iter_t it = ecs_query_iter(world, engine->view_query);
+    while (ecs_query_next(&it)) {
+        FlecsRenderView *views = ecs_field(&it, FlecsRenderView, 0);
+        FlecsRenderViewImpl *viewImpls = ecs_field(&it, FlecsRenderViewImpl, 1);
+        for (int32_t i = 0; i < it.count; i ++) {
+            flecsEngine_renderView_extract(
+                world,
+                engine,
+                it.entities[i],
+                &views[i],
+                &viewImpls[i]);
+        }
+    }
+}
+
 void flecsEngine_renderView_renderAll(
     ecs_world_t *world,
     FlecsEngineImpl *engine,

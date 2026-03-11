@@ -19,6 +19,11 @@ typedef void (*flecs_render_batch_callback)(
     const WGPURenderPassEncoder pass,
     const struct FlecsRenderBatch *batch);
 
+typedef void (*flecs_render_batch_extract_callback)(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const struct FlecsRenderBatch *batch);
+
 typedef bool (*flecs_render_effect_setup_callback)(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
@@ -58,6 +63,7 @@ ECS_STRUCT(FlecsRenderBatch, {
     ecs_entity_t instance_types[FLECS_ENGINE_INSTANCE_TYPES_MAX];
     ecs_entity_t uniforms[FLECS_ENGINE_UNIFORMS_MAX];
 ECS_PRIVATE
+    flecs_render_batch_extract_callback extract_callback;
     flecs_render_batch_callback callback;
     void *ctx;
     void (*free_ctx)(void *ctx);
@@ -112,6 +118,10 @@ ecs_entity_t flecsEngine_shader_ensure(
     const char *name,
     const FlecsShader *shader);
 
+void flecsEngine_renderView_extractAll(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine);
+
 void flecsEngine_renderView_renderAll(
     ecs_world_t *world,
     FlecsEngineImpl *impl,
@@ -145,6 +155,11 @@ void flecsEngine_renderBatch_render(
     const FlecsRenderView *view,
     ecs_entity_t batch_entity);
 
+void flecsEngine_renderBatch_extract(
+    ecs_world_t *world,
+    FlecsEngineImpl *impl,
+    ecs_entity_t batch_entity);
+
 void flecsEngine_renderView_renderBatches(
     ecs_world_t *world,
     ecs_entity_t view_entity,
@@ -153,6 +168,12 @@ void flecsEngine_renderView_renderBatches(
     const FlecsRenderViewImpl *viewImpl,
     WGPUTextureView view_texture,
     WGPUCommandEncoder encoder);
+
+void flecsEngine_renderView_extractBatches(
+    ecs_world_t *world,
+    ecs_entity_t view_entity,
+    FlecsEngineImpl *engine,
+    const FlecsRenderView *view);
 
 void flecsEngine_renderEffect_render(
     const ecs_world_t *world,

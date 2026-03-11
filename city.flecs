@@ -149,4 +149,6 @@ template City {
 }
 
 // Create the city with default values
-City city()
+City city() {
+  Position3: {z: -150}
+}

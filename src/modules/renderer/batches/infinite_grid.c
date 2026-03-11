@@ -34,7 +34,7 @@ static void flecsEngine_infinite_grid_deleteCtx(
     ecs_os_free(ctx);
 }
 
-static void flecsEngine_infinite_grid_prepareInstance(
+static void flecsEngine_infinite_grid_extract(
     const FlecsEngineImpl *engine,
     flecs_engine_infinite_grid_ctx_t *ctx)
 {
@@ -68,16 +68,27 @@ static void flecsEngine_infinite_grid_prepareInstance(
     ctx->batch.count = 1;
 }
 
-static void flecsEngine_infinite_grid_callback(
+static void flecsEngine_infinite_grid_extractCallback(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const FlecsRenderBatch *batch)
+{
+    (void)world;
+
+    flecs_engine_infinite_grid_ctx_t *ctx = batch->ctx;
+    flecsEngine_infinite_grid_extract(engine, ctx);
+}
+
+static void flecsEngine_infinite_grid_renderCallback(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
     (void)world;
+    (void)engine;
 
     flecs_engine_infinite_grid_ctx_t *ctx = batch->ctx;
-    flecsEngine_infinite_grid_prepareInstance(engine, ctx);
     flecsEngine_batch_draw(pass, &ctx->batch);
 }
 
@@ -99,7 +110,8 @@ ecs_entity_t flecsEngine_createBatch_infiniteGrid(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_infinite_grid_callback,
+        .extract_callback = flecsEngine_infinite_grid_extractCallback,
+        .callback = flecsEngine_infinite_grid_renderCallback,
         .ctx = flecsEngine_infinite_grid_createCtx((ecs_world_t*)world),
         .free_ctx = flecsEngine_infinite_grid_deleteCtx
     });

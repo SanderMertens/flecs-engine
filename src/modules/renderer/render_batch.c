@@ -687,6 +687,20 @@ void flecsEngine_renderBatch_render(
     batch->callback(world, engine, pass, batch);
 }
 
+void flecsEngine_renderBatch_extract(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    ecs_entity_t batch_entity)
+{
+    const FlecsRenderBatch *batch = ecs_get(
+        world, batch_entity, FlecsRenderBatch);
+    if (!batch || !batch->extract_callback) {
+        return;
+    }
+
+    batch->extract_callback(world, engine, batch);
+}
+
 void flecsEngine_renderBatch_register(
     ecs_world_t *world)
 {

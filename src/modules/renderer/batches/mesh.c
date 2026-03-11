@@ -63,10 +63,9 @@ static void flecsEngine_mesh_onGroupDelete(
     flecsEngine_batch_delete(group_ptr);
 }
 
-static void flecsEngine_mesh_renderGroup(
+static void flecsEngine_mesh_extractGroup(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch,
     uint64_t group_id)
 {
@@ -81,6 +80,8 @@ static void flecsEngine_mesh_renderGroup(
     const FlecsMesh3Impl *mesh = ecs_get(
         world, (ecs_entity_t)group_id, FlecsMesh3Impl);
     if (!mesh) {
+        ctx->count = 0;
+        ecs_os_zeromem(&ctx->mesh);
         char *path = ecs_get_path(world, group_id);
         ecs_err("missing Mesh3Impl component for geometry group '%s'", path);
         ecs_os_free(path);
@@ -88,21 +89,36 @@ static void flecsEngine_mesh_renderGroup(
     }
 
     if (!mesh->vertex_buffer || !mesh->index_buffer || !mesh->index_count) {
+        ctx->count = 0;
+        ecs_os_zeromem(&ctx->mesh);
         char *path = ecs_get_path(world, group_id);
         ecs_err("missing GPU buffers for geometry group '%s'", path);
         ecs_os_free(path);
         return;
     }
 
-    flecsEngine_batch_prepareInstances(world, engine, batch, ctx);
     ctx->mesh = *mesh;
+    flecsEngine_batch_extractInstances(world, engine, batch, ctx);
+}
+
+static void flecsEngine_mesh_renderGroup(
+    const FlecsRenderBatch *batch,
+    const WGPURenderPassEncoder pass,
+    uint64_t group_id)
+{
+    if (!group_id) {
+        return;
+    }
+
+    flecsEngine_batch_t *ctx =
+        ecs_query_get_group_ctx(batch->query, group_id);
+    ecs_assert(ctx != NULL, ECS_INTERNAL_ERROR, NULL);
     flecsEngine_batch_draw(pass, ctx);
 }
 
-static void flecsEngine_mesh_callback(
+static void flecsEngine_mesh_extract(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
     const FlecsRenderBatch *batch)
 {
     const ecs_map_t *groups = ecs_query_get_groups(batch->query);
@@ -111,7 +127,26 @@ static void flecsEngine_mesh_callback(
     ecs_map_iter_t git = ecs_map_iter(groups);
     while (ecs_map_next(&git)) {
         uint64_t group = ecs_map_key(&git);
-        flecsEngine_mesh_renderGroup(world, engine, pass, batch, group);
+        flecsEngine_mesh_extractGroup(world, engine, batch, group);
+    }
+}
+
+static void flecsEngine_mesh_render(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const WGPURenderPassEncoder pass,
+    const FlecsRenderBatch *batch)
+{
+    (void)world;
+    (void)engine;
+
+    const ecs_map_t *groups = ecs_query_get_groups(batch->query);
+    ecs_assert(groups != NULL, ECS_INTERNAL_ERROR, NULL);
+
+    ecs_map_iter_t git = ecs_map_iter(groups);
+    while (ecs_map_next(&git)) {
+        uint64_t group = ecs_map_key(&git);
+        flecsEngine_mesh_renderGroup(batch, pass, group);
     }
 }
 
@@ -148,7 +183,8 @@ ecs_entity_t flecsEngine_createBatch_mesh_materialIndex(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_mesh_callback
+        .extract_callback = flecsEngine_mesh_extract,
+        .callback = flecsEngine_mesh_render
     });
 
     return batch;
@@ -192,7 +228,8 @@ ecs_entity_t flecsEngine_createBatch_mesh_materialData(
         .uniforms = {
             ecs_id(FlecsUniform)
         },
-        .callback = flecsEngine_mesh_callback
+        .extract_callback = flecsEngine_mesh_extract,
+        .callback = flecsEngine_mesh_render
     });
 
     return batch;
