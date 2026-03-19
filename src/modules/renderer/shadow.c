@@ -38,18 +38,8 @@ int flecsEngine_shadow_init(
 
     /* Compile shadow depth shader directly (bypasses ECS shader system
      * to avoid deferred context issues during batch setup) */
-    WGPUShaderSourceWGSL wgsl_desc = {
-        .chain = { .sType = WGPUSType_ShaderSourceWGSL },
-        .code = (WGPUStringView){
-            .data = kShadowDepthShaderSource,
-            .length = WGPU_STRLEN
-        }
-    };
-
-    impl->shadow_shader_module = wgpuDeviceCreateShaderModule(
-        impl->device, &(WGPUShaderModuleDescriptor){
-            .nextInChain = (WGPUChainedStruct *)&wgsl_desc
-        });
+    impl->shadow_shader_module = flecsEngine_createShaderModule(
+        impl->device, kShadowDepthShaderSource);
     if (!impl->shadow_shader_module) {
         ecs_err("failed to compile shadow depth shader");
         return -1;
@@ -322,20 +312,10 @@ void flecsEngine_shadow_computeCascades(
         return;
     }
 
-    float pitch = rotation->x;
-    float yaw = rotation->y;
-    vec3 ray_dir = {
-        sinf(yaw) * cosf(pitch),
-        sinf(pitch),
-        cosf(yaw) * cosf(pitch)
-    };
-
-    float ray_len = glm_vec3_norm(ray_dir);
-    if (ray_len <= 1e-6f) {
+    vec3 ray_dir;
+    if (!flecsEngine_lightDirFromRotation(rotation, ray_dir)) {
         return;
     }
-
-    glm_vec3_scale(ray_dir, 1.0f / ray_len, ray_dir);
 
     /* Choose an up vector that isn't parallel to the light direction */
     vec3 up = {0.0f, 1.0f, 0.0f};

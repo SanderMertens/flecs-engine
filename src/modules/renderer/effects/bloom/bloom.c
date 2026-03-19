@@ -18,21 +18,7 @@ typedef struct FlecsBloomUniform {
 } FlecsBloomUniform;
 
 static const char *kPlaceholderShaderSource =
-    "struct VertexOutput {\n"
-    "  @builtin(position) pos : vec4<f32>,\n"
-    "  @location(0) uv : vec2<f32>\n"
-    "};\n"
-    "@vertex fn vs_main(@builtin(vertex_index) vid : u32) -> VertexOutput {\n"
-    "  var out : VertexOutput;\n"
-    "  var pos = array<vec2<f32>, 3>(\n"
-    "      vec2<f32>(-1.0, -1.0),\n"
-    "      vec2<f32>(3.0, -1.0),\n"
-    "      vec2<f32>(-1.0, 3.0));\n"
-    "  let p = pos[vid];\n"
-    "  out.pos = vec4<f32>(p, 0.0, 1.0);\n"
-    "  out.uv = vec2<f32>((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);\n"
-    "  return out;\n"
-    "}\n"
+    FLECS_ENGINE_FULLSCREEN_VS_WGSL
     "@group(0) @binding(0) var input_texture : texture_2d<f32>;\n"
     "@group(0) @binding(1) var input_sampler : sampler;\n"
     "@fragment fn fs_main(in : VertexOutput) -> @location(0) vec4<f32> {\n"
@@ -40,10 +26,7 @@ static const char *kPlaceholderShaderSource =
     "}\n";
 
 static const char *kBloomShaderSource =
-    "struct VertexOutput {\n"
-    "  @builtin(position) pos : vec4<f32>,\n"
-    "  @location(0) uv : vec2<f32>\n"
-    "};\n"
+    FLECS_ENGINE_FULLSCREEN_VS_WGSL
     "struct BloomUniforms {\n"
     "  threshold_precomputations : vec4<f32>,\n"
     "  viewport : vec4<f32>,\n"
@@ -54,17 +37,6 @@ static const char *kBloomShaderSource =
     "@group(0) @binding(0) var input_texture : texture_2d<f32>;\n"
     "@group(0) @binding(1) var bloom_sampler : sampler;\n"
     "@group(0) @binding(2) var<uniform> uniforms : BloomUniforms;\n"
-    "@vertex fn vs_main(@builtin(vertex_index) vid : u32) -> VertexOutput {\n"
-    "  var out : VertexOutput;\n"
-    "  var pos = array<vec2<f32>, 3>(\n"
-    "      vec2<f32>(-1.0, -1.0),\n"
-    "      vec2<f32>(3.0, -1.0),\n"
-    "      vec2<f32>(-1.0, 3.0));\n"
-    "  let p = pos[vid];\n"
-    "  out.pos = vec4<f32>(p, 0.0, 1.0);\n"
-    "  out.uv = vec2<f32>((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);\n"
-    "  return out;\n"
-    "}\n"
     "fn soft_threshold(color : vec3<f32>) -> vec3<f32> {\n"
     "  let brightness = max(color.r, max(color.g, color.b));\n"
     "  var softness = brightness - uniforms.threshold_precomputations.y;\n"
@@ -190,16 +162,6 @@ static const char *kBloomShaderSource =
     "  return vec4<f32>(sample_input_3x3_tent(uv), 1.0);\n"
     "}\n";
 
-static WGPUTextureFormat flecsBloomChooseWorkingFormat(
-    const FlecsEngineImpl *engine)
-{
-    if (engine->hdr_color_format != WGPUTextureFormat_Undefined) {
-        return engine->hdr_color_format;
-    }
-
-    return engine->surface_config.format;
-}
-
 FlecsBloom flecsEngine_bloomSettingsDefault(void)
 {
     return (FlecsBloom){
@@ -217,7 +179,7 @@ FlecsBloom flecsEngine_bloomSettingsDefault(void)
     };
 }
 
-static uint32_t flecsBloomIlog2(
+static uint32_t flecsEngine_bloom_ilog2(
     uint32_t value)
 {
     uint32_t result = 0;
@@ -228,17 +190,17 @@ static uint32_t flecsBloomIlog2(
     return result;
 }
 
-static uint32_t flecsBloomComputeMipCount(
+static uint32_t flecsEngine_bloom_computeMipCount(
     const FlecsBloom *settings)
 {
-    uint32_t ilog = flecsBloomIlog2(settings->max_mip_dimension);
+    uint32_t ilog = flecsEngine_bloom_ilog2(settings->max_mip_dimension);
     if (ilog < 2u) {
         ilog = 2u;
     }
     return ilog - 1u;
 }
 
-static void flecsBloomComputeTextureSize(
+static void flecsEngine_bloom_computeTextureSize(
     const FlecsEngineImpl *engine,
     const FlecsBloom *settings,
     uint32_t *out_width,
@@ -264,7 +226,7 @@ static void flecsBloomComputeTextureSize(
     *out_height = height;
 }
 
-static void flecsBloomReleaseTexture(
+static void flecsEngine_bloom_releaseTexture(
     FlecsBloomImpl *bloom)
 {
     if (bloom->mip_views) {
@@ -288,10 +250,10 @@ static void flecsBloomReleaseTexture(
     bloom->texture_format = WGPUTextureFormat_Undefined;
 }
 
-static void flecsBloomReleaseResources(
+static void flecsEngine_bloom_releaseResources(
     FlecsBloomImpl *bloom)
 {
-    flecsBloomReleaseTexture(bloom);
+    flecsEngine_bloom_releaseTexture(bloom);
 
     if (bloom->uniform_buffer) {
         wgpuBufferRelease(bloom->uniform_buffer);
@@ -335,16 +297,16 @@ static void flecsBloomReleaseResources(
 }
 
 ECS_DTOR(FlecsBloomImpl, ptr, {
-    flecsBloomReleaseResources(ptr);
+    flecsEngine_bloom_releaseResources(ptr);
 })
 
 ECS_MOVE(FlecsBloomImpl, dst, src, {
-    flecsBloomReleaseResources(dst);
+    flecsEngine_bloom_releaseResources(dst);
     *dst = *src;
     ecs_os_zeromem(src);
 })
 
-static bool flecsBloomCreateTexture(
+static bool flecsEngine_bloom_createTexture(
     const FlecsEngineImpl *engine,
     FlecsBloomImpl *bloom,
     uint32_t width,
@@ -372,7 +334,7 @@ static bool flecsBloomCreateTexture(
 
     bloom->mip_views = ecs_os_calloc_n(WGPUTextureView, mip_count);
     if (!bloom->mip_views) {
-        flecsBloomReleaseTexture(bloom);
+        flecsEngine_bloom_releaseTexture(bloom);
         return false;
     }
 
@@ -390,7 +352,7 @@ static bool flecsBloomCreateTexture(
         bloom->mip_views[i] = wgpuTextureCreateView(
             bloom->texture, &view_desc);
         if (!bloom->mip_views[i]) {
-            flecsBloomReleaseTexture(bloom);
+            flecsEngine_bloom_releaseTexture(bloom);
             return false;
         }
     }
@@ -402,31 +364,31 @@ static bool flecsBloomCreateTexture(
     return true;
 }
 
-static bool flecsBloomEnsureTexture(
+static bool flecsEngine_bloom_ensureTexture(
     const FlecsEngineImpl *engine,
     const FlecsBloom *bloom,
     FlecsBloomImpl *impl)
 {
     uint32_t width = 0;
     uint32_t height = 0;
-    flecsBloomComputeTextureSize(engine, bloom, &width, &height);
-    uint32_t mip_count = flecsBloomComputeMipCount(bloom);
+    flecsEngine_bloom_computeTextureSize(engine, bloom, &width, &height);
+    uint32_t mip_count = flecsEngine_bloom_computeMipCount(bloom);
 
     if (impl->texture &&
         impl->mip_views &&
         impl->texture_width == width &&
         impl->texture_height == height &&
         impl->mip_count == mip_count &&
-        impl->texture_format == flecsBloomChooseWorkingFormat(engine))
+        impl->texture_format == flecsEngine_getHdrFormat(engine))
     {
         return true;
     }
 
-    flecsBloomReleaseTexture(impl);
+    flecsEngine_bloom_releaseTexture(impl);
 
-    WGPUTextureFormat working_format = flecsBloomChooseWorkingFormat(engine);
+    WGPUTextureFormat working_format = flecsEngine_getHdrFormat(engine);
 
-    if (flecsBloomCreateTexture(
+    if (flecsEngine_bloom_createTexture(
         engine,
         impl,
         width,
@@ -440,7 +402,7 @@ static bool flecsBloomEnsureTexture(
     return false;
 }
 
-static ecs_entity_t flecsRenderEffect_bloom_shader(
+static ecs_entity_t flecsEngine_bloom_shader(
     ecs_world_t *world)
 {
     return flecsEngine_shader_ensure(world, "BloomEffectPlaceholderShader",
@@ -451,26 +413,7 @@ static ecs_entity_t flecsRenderEffect_bloom_shader(
         });
 }
 
-static WGPUShaderModule flecsBloomCreateShaderModule(
-    const FlecsEngineImpl *engine,
-    const char *source)
-{
-    WGPUShaderSourceWGSL wgsl_desc = {
-        .chain = { .sType = WGPUSType_ShaderSourceWGSL },
-        .code = (WGPUStringView){
-            .data = source,
-            .length = WGPU_STRLEN
-        }
-    };
-
-    WGPUShaderModuleDescriptor shader_desc = {
-        .nextInChain = (WGPUChainedStruct*)&wgsl_desc
-    };
-
-    return wgpuDeviceCreateShaderModule(engine->device, &shader_desc);
-}
-
-static WGPURenderPipeline flecsBloomCreatePipeline(
+static WGPURenderPipeline flecsEngine_bloom_createPipeline(
     const FlecsEngineImpl *engine,
     WGPUShaderModule shader_module,
     WGPUBindGroupLayout bind_layout,
@@ -533,7 +476,7 @@ static WGPURenderPipeline flecsBloomCreatePipeline(
     return pipeline;
 }
 
-static WGPUBlendState flecsBloomGetBlendState(void)
+static WGPUBlendState flecsEngine_bloom_getBlendState(void)
 {
     WGPUBlendComponent color = {
         .srcFactor = WGPUBlendFactor_Constant,
@@ -553,7 +496,7 @@ static WGPUBlendState flecsBloomGetBlendState(void)
     };
 }
 
-static bool flecsBloomRunPass(
+static bool flecsEngine_bloom_runPass(
     const FlecsEngineImpl *engine,
     const FlecsBloomImpl *bloom,
     WGPUCommandEncoder encoder,
@@ -623,7 +566,7 @@ static bool flecsBloomRunPass(
     return true;
 }
 
-static float flecsBloomComputeBlendFactor(
+static float flecsEngine_bloom_computeBlendFactor(
     const FlecsBloom *bloom,
     float mip,
     float max_mip)
@@ -648,7 +591,7 @@ static float flecsBloomComputeBlendFactor(
     return (bloom->intensity + lf_boost) * high_pass_lq;
 }
 
-static void flecsBloomFillUniform(
+static void flecsEngine_bloom_fillUniform(
     const FlecsEngineImpl *engine,
     const FlecsBloom *settings,
     FlecsBloomUniform *uniform)
@@ -674,7 +617,7 @@ static void flecsBloomFillUniform(
     uniform->_padding = 0.0f;
 }
 
-static bool flecsRenderEffect_bloom_setup(
+static bool flecsEngine_bloom_setup(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     ecs_entity_t effect_entity,
@@ -716,7 +659,7 @@ static bool flecsRenderEffect_bloom_setup(
 
     bloom.uniform_buffer = wgpuDeviceCreateBuffer(engine->device, &uniform_desc);
     if (!bloom.uniform_buffer) {
-        flecsBloomReleaseResources(&bloom);
+        flecsEngine_bloom_releaseResources(&bloom);
         return false;
     }
 
@@ -755,55 +698,52 @@ static bool flecsRenderEffect_bloom_setup(
     bloom.bind_layout = wgpuDeviceCreateBindGroupLayout(
         engine->device, &bloom_bind_layout_desc);
     if (!bloom.bind_layout) {
-        flecsBloomReleaseResources(&bloom);
+        flecsEngine_bloom_releaseResources(&bloom);
         return false;
     }
 
-    WGPUShaderModule bloom_shader = flecsBloomCreateShaderModule(
-        engine, kBloomShaderSource);
+    WGPUShaderModule bloom_shader = flecsEngine_createShaderModule(
+        engine->device, kBloomShaderSource);
     if (!bloom_shader) {
-        flecsBloomReleaseResources(&bloom);
+        flecsEngine_bloom_releaseResources(&bloom);
         return false;
     }
 
     WGPUTextureFormat surface_format = engine->surface_config.format;
-    WGPUTextureFormat hdr_format = engine->hdr_color_format;
-    if (hdr_format == WGPUTextureFormat_Undefined) {
-        hdr_format = surface_format;
-    }
-    WGPUTextureFormat bloom_format = flecsBloomChooseWorkingFormat(engine);
+    WGPUTextureFormat hdr_format = flecsEngine_getHdrFormat(engine);
+    WGPUTextureFormat bloom_format = hdr_format;
 
-    WGPUBlendState blend_state = flecsBloomGetBlendState();
+    WGPUBlendState blend_state = flecsEngine_bloom_getBlendState();
 
-    bloom.downsample_first_pipeline = flecsBloomCreatePipeline(
+    bloom.downsample_first_pipeline = flecsEngine_bloom_createPipeline(
         engine,
         bloom_shader,
         bloom.bind_layout,
         "downsample_first",
         bloom_format,
         NULL);
-    bloom.downsample_pipeline = flecsBloomCreatePipeline(
+    bloom.downsample_pipeline = flecsEngine_bloom_createPipeline(
         engine,
         bloom_shader,
         bloom.bind_layout,
         "downsample",
         bloom_format,
         NULL);
-    bloom.upsample_pipeline = flecsBloomCreatePipeline(
+    bloom.upsample_pipeline = flecsEngine_bloom_createPipeline(
         engine,
         bloom_shader,
         bloom.bind_layout,
         "upsample",
         bloom_format,
         &blend_state);
-    bloom.upsample_final_surface_pipeline = flecsBloomCreatePipeline(
+    bloom.upsample_final_surface_pipeline = flecsEngine_bloom_createPipeline(
         engine,
         bloom_shader,
         bloom.bind_layout,
         "upsample",
         surface_format,
         &blend_state);
-    bloom.upsample_final_hdr_pipeline = flecsBloomCreatePipeline(
+    bloom.upsample_final_hdr_pipeline = flecsEngine_bloom_createPipeline(
         engine,
         bloom_shader,
         bloom.bind_layout,
@@ -819,7 +759,7 @@ static bool flecsRenderEffect_bloom_setup(
         !bloom.upsample_final_surface_pipeline ||
         !bloom.upsample_final_hdr_pipeline)
     {
-        flecsBloomReleaseResources(&bloom);
+        flecsEngine_bloom_releaseResources(&bloom);
         return false;
     }
 
@@ -827,7 +767,7 @@ static bool flecsRenderEffect_bloom_setup(
     return true;
 }
 
-static bool flecsRenderEffect_bloom_renderPassthrough(
+static bool flecsEngine_bloom_renderPassthrough(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     ecs_entity_t effect_entity,
@@ -871,7 +811,7 @@ static bool flecsRenderEffect_bloom_renderPassthrough(
     return true;
 }
 
-static bool flecsRenderEffect_bloom_render(
+static bool flecsEngine_bloom_render(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     WGPUCommandEncoder encoder,
@@ -892,7 +832,7 @@ static bool flecsRenderEffect_bloom_render(
     ecs_assert(bloom != NULL, ECS_INVALID_OPERATION, NULL);
 
     if (bloom->intensity <= 0.0f) {
-        return flecsRenderEffect_bloom_renderPassthrough(
+        return flecsEngine_bloom_renderPassthrough(
             world,
             engine,
             effect_entity,
@@ -905,12 +845,12 @@ static bool flecsRenderEffect_bloom_render(
             output_load_op);
     }
 
-    if (!flecsBloomEnsureTexture(engine, bloom, impl)) {
+    if (!flecsEngine_bloom_ensureTexture(engine, bloom, impl)) {
         return false;
     }
 
     FlecsBloomUniform uniform = {0};
-    flecsBloomFillUniform(engine, bloom, &uniform);
+    flecsEngine_bloom_fillUniform(engine, bloom, &uniform);
     wgpuQueueWriteBuffer(
         engine->queue,
         impl->uniform_buffer,
@@ -918,7 +858,7 @@ static bool flecsRenderEffect_bloom_render(
         &uniform,
         sizeof(uniform));
 
-    if (!flecsBloomRunPass(
+    if (!flecsEngine_bloom_runPass(
         engine,
         impl,
         encoder,
@@ -933,7 +873,7 @@ static bool flecsRenderEffect_bloom_render(
     }
 
     for (uint32_t mip = 1; mip < impl->mip_count; mip ++) {
-        if (!flecsBloomRunPass(
+        if (!flecsEngine_bloom_runPass(
             engine,
             impl,
             encoder,
@@ -950,9 +890,9 @@ static bool flecsRenderEffect_bloom_render(
 
     float max_mip = (float)(impl->mip_count - 1u);
     for (uint32_t mip = impl->mip_count - 1u; mip > 0u; mip --) {
-        float blend = flecsBloomComputeBlendFactor(
+        float blend = flecsEngine_bloom_computeBlendFactor(
             bloom, mip, max_mip);
-        if (!flecsBloomRunPass(
+        if (!flecsEngine_bloom_runPass(
             engine,
             impl,
             encoder,
@@ -971,10 +911,10 @@ static bool flecsRenderEffect_bloom_render(
         ? impl->upsample_final_surface_pipeline
         : impl->upsample_final_hdr_pipeline;
 
-    float final_blend = flecsBloomComputeBlendFactor(
+    float final_blend = flecsEngine_bloom_computeBlendFactor(
         bloom, 0.0f, max_mip);
 
-    if (!flecsRenderEffect_bloom_renderPassthrough(
+    if (!flecsEngine_bloom_renderPassthrough(
         world,
         engine,
         effect_entity,
@@ -989,7 +929,7 @@ static bool flecsRenderEffect_bloom_render(
         return false;
     }
 
-    return flecsBloomRunPass(
+    return flecsEngine_bloom_runPass(
         engine,
         impl,
         encoder,
@@ -1012,10 +952,10 @@ ecs_entity_t flecsEngine_createEffect_bloom(
     ecs_set_ptr(world, effect, FlecsBloom, settings);
 
     ecs_set(world, effect, FlecsRenderEffect, {
-        .shader = flecsRenderEffect_bloom_shader(world),
+        .shader = flecsEngine_bloom_shader(world),
         .input = input,
-        .setup_callback = flecsRenderEffect_bloom_setup,
-        .render_callback = flecsRenderEffect_bloom_render
+        .setup_callback = flecsEngine_bloom_setup,
+        .render_callback = flecsEngine_bloom_render
     });
 
     return effect;

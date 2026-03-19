@@ -5,21 +5,7 @@
 ECS_COMPONENT_DECLARE(FlecsTonyImpl);
 
 static const char *kShaderSource =
-    "struct VertexOutput {\n"
-    "  @builtin(position) pos : vec4<f32>,\n"
-    "  @location(0) uv : vec2<f32>\n"
-    "};\n"
-    "@vertex fn vs_main(@builtin(vertex_index) vid : u32) -> VertexOutput {\n"
-    "  var out : VertexOutput;\n"
-    "  var pos = array<vec2<f32>, 3>(\n"
-    "      vec2<f32>(-1.0, -1.0),\n"
-    "      vec2<f32>(3.0, -1.0),\n"
-    "      vec2<f32>(-1.0, 3.0));\n"
-    "  let p = pos[vid];\n"
-    "  out.pos = vec4<f32>(p, 0.0, 1.0);\n"
-    "  out.uv = vec2<f32>((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);\n"
-    "  return out;\n"
-    "}\n"
+    FLECS_ENGINE_FULLSCREEN_VS_WGSL
     "@group(0) @binding(0) var input_texture : texture_2d<f32>;\n"
     "@group(0) @binding(1) var input_sampler : sampler;\n"
     "@group(0) @binding(2) var tony_lut : texture_3d<f32>;\n"
@@ -40,7 +26,7 @@ static const char *kShaderSource =
     "  return vec4<f32>(dithered, src.a);\n"
     "}\n";
 
-static ecs_entity_t flecsRenderEffect_tonyMcMapFace_shader(
+static ecs_entity_t flecsEngine_tony_shader(
     ecs_world_t *world)
 {
     return flecsEngine_shader_ensure(world, "TonyMcMapfaceShader",
@@ -51,7 +37,7 @@ static ecs_entity_t flecsRenderEffect_tonyMcMapFace_shader(
         });
 }
 
-static void flecsTonyReleaseResources(
+static void flecsEngine_tony_releaseResources(
     FlecsTonyImpl *impl)
 {
     if (impl->tony_lut_sampler) {
@@ -71,16 +57,16 @@ static void flecsTonyReleaseResources(
 }
 
 ECS_DTOR(FlecsTonyImpl, ptr, {
-    flecsTonyReleaseResources(ptr);
+    flecsEngine_tony_releaseResources(ptr);
 })
 
 ECS_MOVE(FlecsTonyImpl, dst, src, {
-    flecsTonyReleaseResources(dst);
+    flecsEngine_tony_releaseResources(dst);
     *dst = *src;
     ecs_os_zeromem(src);
 })
 
-static bool flecsRenderEffect_tonyMcMapFace_setup(
+static bool flecsEngine_tony_setup(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     ecs_entity_t effect_entity,
@@ -130,7 +116,7 @@ static bool flecsRenderEffect_tonyMcMapFace_setup(
 
     tony.tony_lut_texture = wgpuDeviceCreateTexture(engine->device, &lut_desc);
     if (!tony.tony_lut_texture) {
-        flecsTonyReleaseResources(&tony);
+        flecsEngine_tony_releaseResources(&tony);
         return false;
     }
 
@@ -148,7 +134,7 @@ static bool flecsRenderEffect_tonyMcMapFace_setup(
     tony.tony_lut_texture_view = wgpuTextureCreateView(
         tony.tony_lut_texture, &lut_view_desc);
     if (!tony.tony_lut_texture_view) {
-        flecsTonyReleaseResources(&tony);
+        flecsEngine_tony_releaseResources(&tony);
         return false;
     }
 
@@ -203,7 +189,7 @@ static bool flecsRenderEffect_tonyMcMapFace_setup(
     return true;
 }
 
-static bool flecsRenderEffect_tonyMcMapFace_bind(
+static bool flecsEngine_tony_bind(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     ecs_entity_t effect_entity,
@@ -247,10 +233,10 @@ ecs_entity_t flecsEngine_createEffect_tonyMcMapFace(
 {
     ecs_entity_t effect = ecs_entity(world, { .parent = parent, .name = name });
     ecs_set(world, effect, FlecsRenderEffect, {
-        .shader = flecsRenderEffect_tonyMcMapFace_shader(world),
+        .shader = flecsEngine_tony_shader(world),
         .input = input,
-        .setup_callback = flecsRenderEffect_tonyMcMapFace_setup,
-        .bind_callback = flecsRenderEffect_tonyMcMapFace_bind
+        .setup_callback = flecsEngine_tony_setup,
+        .bind_callback = flecsEngine_tony_bind
     });
 
     return effect;

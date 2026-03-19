@@ -52,7 +52,7 @@ ECS_MOVE(FlecsRenderEffectImpl, dst, src, {
     ecs_os_zeromem(src);
 })
 
-static bool flecsRender_renderEffect_createInputSampler(
+static bool flecsEngine_renderEffect_createInputSampler(
     const FlecsEngineImpl *engine,
     FlecsRenderEffectImpl *impl)
 {
@@ -337,7 +337,7 @@ static void FlecsRenderEffect_on_set(
             continue;
         }
 
-        if (!flecsRender_renderEffect_createInputSampler(engine, &impl)) {
+        if (!flecsEngine_renderEffect_createInputSampler(engine, &impl)) {
             flecsEngine_renderEffect_release(&impl);
             continue;
         }
@@ -414,10 +414,7 @@ static void FlecsRenderEffect_on_set(
             continue;
         }
 
-        WGPUTextureFormat hdr_format = engine->hdr_color_format;
-        if (hdr_format == WGPUTextureFormat_Undefined) {
-            hdr_format = engine->surface_config.format;
-        }
+        WGPUTextureFormat hdr_format = flecsEngine_getHdrFormat(engine);
 
         impl.pipeline_hdr = flecsEngine_renderEffect_createPipeline(
             engine,

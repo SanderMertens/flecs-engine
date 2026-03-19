@@ -137,10 +137,7 @@ static int flecsEngine_renderView_ensureTargets(
     uint32_t width = (uint32_t)engine->width;
     uint32_t height = (uint32_t)engine->height;
     WGPUTextureFormat surface_format = engine->surface_config.format;
-    WGPUTextureFormat desired_format = engine->hdr_color_format;
-    if (desired_format == WGPUTextureFormat_Undefined) {
-        desired_format = surface_format;
-    }
+    WGPUTextureFormat desired_format = flecsEngine_getHdrFormat(engine);
 
     if (impl->effect_target_count >= effect_count) {
         if (impl->effect_target_textures && impl->effect_target_views) {
@@ -167,11 +164,9 @@ static int flecsEngine_renderView_ensureTargets(
     {
         engine->hdr_color_format = surface_format;
         ecs_warn("falling back to LDR targets: HDR format unavailable");
-        goto error;
+        return 0;
     }
 
-    return 0;
-error:
     return -1;
 }
 

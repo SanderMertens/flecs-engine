@@ -25,6 +25,17 @@ int32_t flecsEngine_vertexAttrFromType(
     int32_t attr_count,
     int32_t location_offset);
 
+/* Compute a normalized light ray direction from pitch/yaw rotation.
+ * Returns true if the direction is valid, false if degenerate. */
+bool flecsEngine_lightDirFromRotation(
+    const FlecsRotation3 *rotation,
+    float out_ray_dir[3]);
+
+/* Returns the effective HDR color format, falling back to the surface
+ * format when no HDR format is configured. */
+WGPUTextureFormat flecsEngine_getHdrFormat(
+    const FlecsEngineImpl *impl);
+
 ecs_entity_t flecsEngine_vecEntity(
     ecs_world_t *world);
 

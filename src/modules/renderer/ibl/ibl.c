@@ -3,7 +3,7 @@
 #include "flecs_engine.h"
 
 ECS_COMPONENT_DECLARE(FlecsHdri);
-ECS_COMPONENT_DECLARE(FlecHdriImpl);
+ECS_COMPONENT_DECLARE(FlecsHdriImpl);
 
 ECS_CTOR(FlecsHdri, ptr, {
     ptr->file = NULL;
@@ -37,12 +37,12 @@ ECS_DTOR(FlecsHdri, ptr, {
     }
 })
 
-ECS_DTOR(FlecHdriImpl, ptr, {
-    flecsEngie_ibl_releaseRuntimeResources(ptr);
+ECS_DTOR(FlecsHdriImpl, ptr, {
+    flecsEngine_ibl_releaseRuntimeResources(ptr);
 })
 
-ECS_MOVE(FlecHdriImpl, dst, src, {
-    flecsEngie_ibl_releaseRuntimeResources(dst);
+ECS_MOVE(FlecsHdriImpl, dst, src, {
+    flecsEngine_ibl_releaseRuntimeResources(dst);
     *dst = *src;
     ecs_os_zeromem(src);
 })
@@ -94,7 +94,7 @@ WGPUBindGroupLayout flecsEngine_ibl_ensureBindLayout(
 
 bool flecsEngine_ibl_createRuntimeBindGroup(
     const FlecsEngineImpl *engine,
-    FlecHdriImpl *ibl)
+    FlecsHdriImpl *ibl)
 {
     if (ibl->ibl_bind_group) {
         wgpuBindGroupRelease(ibl->ibl_bind_group);
@@ -130,8 +130,8 @@ bool flecsEngine_ibl_createRuntimeBindGroup(
     return ibl->ibl_bind_group != NULL;
 }
 
-void flecsEngie_ibl_releaseRuntimeResources(
-    FlecHdriImpl *ibl)
+void flecsEngine_ibl_releaseRuntimeResources(
+    FlecsHdriImpl *ibl)
 {
     if (!ibl) {
         return;
@@ -206,9 +206,9 @@ static void FlecsIbl_on_set(
 
     FlecsHdri *hdri = ecs_field(it, FlecsHdri, 0);
     for (int32_t i = 0; i < it->count; i ++) {
-        FlecHdriImpl *ibl_impl = ecs_ensure(
-            it->world, it->entities[i], FlecHdriImpl);
-        flecsEngie_ibl_releaseRuntimeResources(ibl_impl);
+        FlecsHdriImpl *ibl_impl = ecs_ensure(
+            it->world, it->entities[i], FlecsHdriImpl);
+        flecsEngine_ibl_releaseRuntimeResources(ibl_impl);
 
         if (!flecsEngine_ibl_initResources(
             engine,
@@ -221,7 +221,7 @@ static void FlecsIbl_on_set(
             continue;
         }
 
-        ecs_modified(it->world, it->entities[i], FlecHdriImpl);
+        ecs_modified(it->world, it->entities[i], FlecsHdriImpl);
     }
 }
 
@@ -251,7 +251,7 @@ void flecsEngine_ibl_register(
     ecs_world_t *world)
 {
     ECS_COMPONENT_DEFINE(world, FlecsHdri);
-    ECS_COMPONENT_DEFINE(world, FlecHdriImpl);
+    ECS_COMPONENT_DEFINE(world, FlecsHdriImpl);
 
     ecs_set_hooks(world, FlecsHdri, {
         .ctor = ecs_ctor(FlecsHdri),
@@ -261,10 +261,10 @@ void flecsEngine_ibl_register(
         .on_set = FlecsIbl_on_set
     });
 
-    ecs_set_hooks(world, FlecHdriImpl, {
+    ecs_set_hooks(world, FlecsHdriImpl, {
         .ctor = flecs_default_ctor,
-        .move = ecs_move(FlecHdriImpl),
-        .dtor = ecs_dtor(FlecHdriImpl)
+        .move = ecs_move(FlecsHdriImpl),
+        .dtor = ecs_dtor(FlecsHdriImpl)
     });
 
     ecs_struct(world, {

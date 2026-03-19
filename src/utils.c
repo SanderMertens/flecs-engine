@@ -147,6 +147,40 @@ int32_t flecsEngine_vertexAttrFromType(
     return attr;
 }
 
+bool flecsEngine_lightDirFromRotation(
+    const FlecsRotation3 *rotation,
+    float out_ray_dir[3])
+{
+    float pitch = rotation->x;
+    float yaw = rotation->y;
+    out_ray_dir[0] = sinf(yaw) * cosf(pitch);
+    out_ray_dir[1] = sinf(pitch);
+    out_ray_dir[2] = cosf(yaw) * cosf(pitch);
+
+    float len = sqrtf(
+        out_ray_dir[0] * out_ray_dir[0] +
+        out_ray_dir[1] * out_ray_dir[1] +
+        out_ray_dir[2] * out_ray_dir[2]);
+    if (len <= 1e-6f) {
+        return false;
+    }
+
+    float inv_len = 1.0f / len;
+    out_ray_dir[0] *= inv_len;
+    out_ray_dir[1] *= inv_len;
+    out_ray_dir[2] *= inv_len;
+    return true;
+}
+
+WGPUTextureFormat flecsEngine_getHdrFormat(
+    const FlecsEngineImpl *impl)
+{
+    if (impl->hdr_color_format != WGPUTextureFormat_Undefined) {
+        return impl->hdr_color_format;
+    }
+    return impl->surface_config.format;
+}
+
 ecs_entity_t flecsEngine_vecEntity(
     ecs_world_t *world) 
 {

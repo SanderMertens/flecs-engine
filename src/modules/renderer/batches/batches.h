@@ -99,6 +99,26 @@ void flecsEngine_right_triangle_prism_scale(
     const void *ptr,
     float *scale);
     
+void flecsEngine_primitive_extract(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const struct FlecsRenderBatch *batch);
+
+void flecsEngine_primitive_render(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const WGPURenderPassEncoder pass,
+    const struct FlecsRenderBatch *batch);
+
+void flecsEngine_batch_extractSingleInstance(
+    const FlecsEngineImpl *engine,
+    flecsEngine_batch_t *batch,
+    const FlecsWorldTransform3 *transform,
+    const FlecsRgba *color,
+    float scale_x,
+    float scale_y,
+    float scale_z);
+
 ecs_entity_t flecsEngine_createBatch_mesh_materialData(
     ecs_world_t *world,
     ecs_entity_t parent,

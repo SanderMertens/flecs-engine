@@ -94,9 +94,9 @@ typedef struct {
     WGPUSampler ibl_sampler;
     WGPUBindGroup ibl_bind_group;
     uint32_t ibl_prefilter_mip_count;
-} FlecHdriImpl;
+} FlecsHdriImpl;
 
-extern ECS_COMPONENT_DECLARE(FlecHdriImpl);
+extern ECS_COMPONENT_DECLARE(FlecsHdriImpl);
 
 typedef struct {
     WGPUBuffer vertex_buffer; /* vec<FlecsLitVertex> */

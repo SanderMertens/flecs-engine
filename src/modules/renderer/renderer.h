@@ -137,7 +137,7 @@ void flecsEngine_material_releaseBuffer(
 
 bool flecsEngine_ibl_initResources(
     FlecsEngineImpl *engine,
-    FlecHdriImpl *ibl,
+    FlecsHdriImpl *ibl,
     const char *hdri_path,
     uint32_t filter_sample_count,
     uint32_t lut_sample_count);
@@ -241,6 +241,30 @@ void flecsEngine_renderView_renderShadow(
     FlecsEngineImpl *engine,
     const FlecsRenderView *view,
     WGPUCommandEncoder encoder);
+
+/* Shared fullscreen-triangle vertex shader used by all post-process effects.
+ * Produces a single triangle covering clip space with correct UVs. */
+#define FLECS_ENGINE_FULLSCREEN_VS_WGSL \
+    "struct VertexOutput {\n" \
+    "  @builtin(position) pos : vec4<f32>,\n" \
+    "  @location(0) uv : vec2<f32>\n" \
+    "};\n" \
+    "@vertex fn vs_main(@builtin(vertex_index) vid : u32) -> VertexOutput {\n" \
+    "  var out : VertexOutput;\n" \
+    "  var pos = array<vec2<f32>, 3>(\n" \
+    "      vec2<f32>(-1.0, -1.0),\n" \
+    "      vec2<f32>(3.0, -1.0),\n" \
+    "      vec2<f32>(-1.0, 3.0));\n" \
+    "  let p = pos[vid];\n" \
+    "  out.pos = vec4<f32>(p, 0.0, 1.0);\n" \
+    "  out.uv = vec2<f32>((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);\n" \
+    "  return out;\n" \
+    "}\n"
+
+/* Create a WGPUShaderModule from a WGSL source string. */
+WGPUShaderModule flecsEngine_createShaderModule(
+    WGPUDevice device,
+    const char *wgsl_source);
 
 // Import renderer module
 void FlecsEngineRendererImport(

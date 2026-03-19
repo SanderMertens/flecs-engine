@@ -4,6 +4,26 @@
 ECS_COMPONENT_DECLARE(FlecsShader);
 ECS_COMPONENT_DECLARE(FlecsShaderImpl);
 
+WGPUShaderModule flecsEngine_createShaderModule(
+    WGPUDevice device,
+    const char *wgsl_source)
+{
+    WGPUShaderSourceWGSL wgsl_desc = {
+        .chain = {
+            .sType = WGPUSType_ShaderSourceWGSL
+        },
+        .code = (WGPUStringView){
+            .data = wgsl_source,
+            .length = WGPU_STRLEN
+        }
+    };
+
+    return wgpuDeviceCreateShaderModule(
+        device, &(WGPUShaderModuleDescriptor){
+            .nextInChain = (WGPUChainedStruct *)&wgsl_desc
+        });
+}
+
 static void flecsShaderImplRelease(
     FlecsShaderImpl *ptr)
 {
@@ -47,20 +67,8 @@ static bool flecsEngine_shader_compile(
 
     flecsShaderImplRelease(shader_impl);
 
-    WGPUShaderSourceWGSL wgsl_desc = {
-        .chain = {
-            .sType = WGPUSType_ShaderSourceWGSL
-        },
-        .code = (WGPUStringView){
-            .data = shader->source,
-            .length = WGPU_STRLEN
-        }
-    };
-
-    shader_impl->shader_module = wgpuDeviceCreateShaderModule(
-        engine->device, &(WGPUShaderModuleDescriptor){
-            .nextInChain = (WGPUChainedStruct *)&wgsl_desc
-        });
+    shader_impl->shader_module = flecsEngine_createShaderModule(
+        engine->device, shader->source);
 
     if (!shader_impl->shader_module) {
         char *name = ecs_get_path(world, shader_entity);
@@ -107,9 +115,9 @@ ecs_entity_t flecsEngine_shader_ensure(
 
     const FlecsShader *existing = ecs_get(world, shader_entity, FlecsShader);
     if (!existing ||
-        !ecs_os_strcmp(existing->source, shader->source) ||
-        !ecs_os_strcmp(existing->vertex_entry, shader->vertex_entry) ||
-        !ecs_os_strcmp(existing->fragment_entry, shader->fragment_entry))
+        ecs_os_strcmp(existing->source, shader->source) ||
+        ecs_os_strcmp(existing->vertex_entry, shader->vertex_entry) ||
+        ecs_os_strcmp(existing->fragment_entry, shader->fragment_entry))
     {
         ecs_set_ptr(world, shader_entity, FlecsShader, shader);
     }
@@ -135,8 +143,6 @@ static void FlecsShader_on_set(
 void flecsEngine_shader_register(
     ecs_world_t *world)
 {
-    ECS_COMPONENT_DEFINE(world, FlecsShader);
-
     ECS_COMPONENT_DEFINE(world, FlecsShader);
     ECS_COMPONENT_DEFINE(world, FlecsShaderImpl);
 

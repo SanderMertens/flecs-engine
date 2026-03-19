@@ -497,10 +497,7 @@ static void FlecsRenderBatch_on_set(
             continue;
         }
 
-        WGPUTextureFormat hdr_format = engine->hdr_color_format;
-        if (hdr_format == WGPUTextureFormat_Undefined) {
-            hdr_format = engine->surface_config.format;
-        }
+        WGPUTextureFormat hdr_format = flecsEngine_getHdrFormat(engine);
 
         impl.pipeline_hdr = flecsEngine_renderBatch_createPipeline(
             engine,
@@ -590,16 +587,8 @@ void flecsEngine_renderBatch_setupLight(
         return;
     }
 
-    float pitch = rotation->x;
-    float yaw = rotation->y;
-    vec3 ray_dir = {
-        sinf(yaw) * cosf(pitch),
-        sinf(pitch),
-        cosf(yaw) * cosf(pitch)
-    };
-
-    float ray_len = glm_vec3_norm(ray_dir);
-    if (ray_len <= 1e-6f) {
+    vec3 ray_dir;
+    if (!flecsEngine_lightDirFromRotation(rotation, ray_dir)) {
         char *light_name = ecs_get_path(world, entity);
         ecs_err(
             "directional light '%s' has invalid Rotation3", light_name);
@@ -607,7 +596,6 @@ void flecsEngine_renderBatch_setupLight(
         return;
     }
 
-    glm_vec3_scale(ray_dir, 1.0f / ray_len, ray_dir);
     uniforms->light_ray_dir[0] = ray_dir[0];
     uniforms->light_ray_dir[1] = ray_dir[1];
     uniforms->light_ray_dir[2] = ray_dir[2];
@@ -726,7 +714,7 @@ void flecsEngine_renderBatch_render(
 {
     const FlecsRenderBatch *batch = ecs_get(
         world, batch_entity, FlecsRenderBatch);
-    FlecsRenderBatchImpl *impl = (FlecsRenderBatchImpl*)ecs_get(
+    FlecsRenderBatchImpl *impl = ecs_get_mut(
         world, batch_entity, FlecsRenderBatchImpl);
     if (!batch || !impl) {
         return;
@@ -764,7 +752,7 @@ void flecsEngine_renderBatch_render(
             hdri = engine->fallback_hdri;
         }
 
-        const FlecHdriImpl *ibl = ecs_get(world, hdri, FlecHdriImpl);
+        const FlecsHdriImpl *ibl = ecs_get(world, hdri, FlecsHdriImpl);
         ecs_assert(ibl != NULL, ECS_INTERNAL_ERROR, NULL);
         wgpuRenderPassEncoderSetBindGroup(pass, 1, ibl->ibl_bind_group, 0, NULL);
     }

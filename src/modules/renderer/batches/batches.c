@@ -363,6 +363,28 @@ redo: {
     }
 }
 
+void flecsEngine_primitive_extract(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const FlecsRenderBatch *batch)
+{
+    flecsEngine_batch_t *ctx = batch->ctx;
+    flecsEngine_batch_extractInstances(world, engine, batch, ctx);
+}
+
+void flecsEngine_primitive_render(
+    const ecs_world_t *world,
+    const FlecsEngineImpl *engine,
+    const WGPURenderPassEncoder pass,
+    const FlecsRenderBatch *batch)
+{
+    (void)world;
+    (void)engine;
+
+    flecsEngine_batch_t *ctx = batch->ctx;
+    flecsEngine_batch_draw(pass, ctx);
+}
+
 void flecsEngine_batch_draw(
     const WGPURenderPassEncoder pass,
     const flecsEngine_batch_t *ctx)
@@ -406,6 +428,45 @@ void flecsEngine_batch_draw(
         pass, ctx->mesh.index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderDrawIndexed(
         pass, ctx->mesh.index_count, ctx->count, 0, 0, 0);
+}
+
+void flecsEngine_batch_extractSingleInstance(
+    const FlecsEngineImpl *engine,
+    flecsEngine_batch_t *batch,
+    const FlecsWorldTransform3 *transform,
+    const FlecsRgba *color,
+    float scale_x,
+    float scale_y,
+    float scale_z)
+{
+    if (batch->capacity < 1) {
+        flecsEngine_batch_ensureCapacity(engine, batch, 1);
+    }
+
+    flecsEngine_batch_transformInstance(
+        &batch->cpu_transforms[0],
+        transform,
+        scale_x,
+        scale_y,
+        scale_z);
+
+    wgpuQueueWriteBuffer(
+        engine->queue,
+        batch->instance_transform,
+        0,
+        batch->cpu_transforms,
+        sizeof(FlecsInstanceTransform));
+
+    batch->cpu_colors[0] = *color;
+
+    wgpuQueueWriteBuffer(
+        engine->queue,
+        batch->instance_color,
+        0,
+        batch->cpu_colors,
+        sizeof(FlecsRgba));
+
+    batch->count = 1;
 }
 
 void flecsEngine_batch_transformInstance(

@@ -38,10 +38,18 @@ static WGPURenderPassEncoder flecsEngine_renderBatch_beginPass(
     return wgpuCommandEncoderBeginRenderPass(encoder, &pass_desc);
 }
 
-static void flecsEngine_renderBatch_extractSet(
+typedef void (*flecsEngine_batchSetVisitor_t)(
     ecs_world_t *world,
     FlecsEngineImpl *engine,
-    const FlecsRenderBatchSet *batch_set)
+    ecs_entity_t batch_entity,
+    void *ctx);
+
+static void flecsEngine_renderBatch_visitSet(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    const FlecsRenderBatchSet *batch_set,
+    flecsEngine_batchSetVisitor_t visitor,
+    void *ctx)
 {
     int32_t i, count = ecs_vec_count(&batch_set->batches);
     ecs_entity_t *batches = ecs_vec_first(&batch_set->batches);
@@ -55,47 +63,50 @@ static void flecsEngine_renderBatch_extractSet(
         const FlecsRenderBatchSet *nested_batch_set = ecs_get(
             world, batch_entity, FlecsRenderBatchSet);
         if (nested_batch_set) {
-            flecsEngine_renderBatch_extractSet(
-                world,
-                engine,
-                nested_batch_set);
+            flecsEngine_renderBatch_visitSet(
+                world, engine, nested_batch_set, visitor, ctx);
             continue;
         }
 
-        flecsEngine_renderBatch_extract(world, engine, batch_entity);
+        visitor(world, engine, batch_entity, ctx);
     }
 }
 
-static void flecsEngine_renderBatch_renderSet(
+typedef struct {
+    const WGPURenderPassEncoder pass;
+    const FlecsRenderView *view;
+} flecsEngine_renderVisitorCtx_t;
+
+static void flecsEngine_renderBatch_renderVisitor(
     ecs_world_t *world,
     FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
-    const FlecsRenderView *view,
-    const FlecsRenderBatchSet *batch_set)
+    ecs_entity_t batch_entity,
+    void *ctx)
 {
-    int32_t i, count = ecs_vec_count(&batch_set->batches);
-    ecs_entity_t *batches = ecs_vec_first(&batch_set->batches);
+    flecsEngine_renderVisitorCtx_t *render_ctx = ctx;
+    flecsEngine_renderBatch_render(
+        world, engine, render_ctx->pass, render_ctx->view, batch_entity);
+}
 
-    for (i = 0; i < count; i ++) {
-        ecs_entity_t batch_entity = batches[i];
-        if (!batch_entity) {
-            continue;
-        }
+static void flecsEngine_renderBatch_extractVisitor(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    ecs_entity_t batch_entity,
+    void *ctx)
+{
+    (void)ctx;
+    flecsEngine_renderBatch_extract(world, engine, batch_entity);
+}
 
-        const FlecsRenderBatchSet *nested_batch_set = ecs_get(
-            world, batch_entity, FlecsRenderBatchSet);
-        if (nested_batch_set) {
-            flecsEngine_renderBatch_renderSet(
-                world,
-                engine,
-                pass,
-                view,
-                nested_batch_set);
-            continue;
-        }
-
-        flecsEngine_renderBatch_render(world, engine, pass, view, batch_entity);
-    }
+static void flecsEngine_renderBatch_shadowVisitor(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    ecs_entity_t batch_entity,
+    void *ctx)
+{
+    flecsEngine_renderVisitorCtx_t *render_ctx = ctx;
+    flecsEngine_renderBatch_renderShadow(
+        world, engine, render_ctx->pass, batch_entity);
 }
 
 void flecsEngine_renderView_extractBatches(
@@ -110,38 +121,8 @@ void flecsEngine_renderView_extractBatches(
         world, view_entity, FlecsRenderBatchSet);
     ecs_assert(batch_set != NULL, ECS_INTERNAL_ERROR, NULL);
 
-    flecsEngine_renderBatch_extractSet(world, engine, batch_set);
-}
-
-static void flecsEngine_renderBatch_renderSetShadow(
-    ecs_world_t *world,
-    FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
-    const FlecsRenderBatchSet *batch_set)
-{
-    int32_t i, count = ecs_vec_count(&batch_set->batches);
-    ecs_entity_t *batches = ecs_vec_first(&batch_set->batches);
-
-    for (i = 0; i < count; i ++) {
-        ecs_entity_t batch_entity = batches[i];
-        if (!batch_entity) {
-            continue;
-        }
-
-        const FlecsRenderBatchSet *nested_batch_set = ecs_get(
-            world, batch_entity, FlecsRenderBatchSet);
-        if (nested_batch_set) {
-            flecsEngine_renderBatch_renderSetShadow(
-                world,
-                engine,
-                pass,
-                nested_batch_set);
-            continue;
-        }
-
-        flecsEngine_renderBatch_renderShadow(
-            world, engine, pass, batch_entity);
-    }
+    flecsEngine_renderBatch_visitSet(
+        world, engine, batch_set, flecsEngine_renderBatch_extractVisitor, NULL);
 }
 
 void flecsEngine_renderView_renderShadow(
@@ -210,8 +191,13 @@ void flecsEngine_renderView_renderShadow(
 
         engine->last_pipeline = NULL;
 
-        flecsEngine_renderBatch_renderSetShadow(
-            world, engine, shadow_pass, batch_set);
+        flecsEngine_renderVisitorCtx_t shadow_ctx = {
+            .pass = shadow_pass
+        };
+
+        flecsEngine_renderBatch_visitSet(
+            world, engine, batch_set,
+            flecsEngine_renderBatch_shadowVisitor, &shadow_ctx);
 
         wgpuRenderPassEncoderEnd(shadow_pass);
         wgpuRenderPassEncoderRelease(shadow_pass);
@@ -231,21 +217,30 @@ void flecsEngine_renderView_renderBatches(
         world, view_entity, FlecsRenderBatchSet);
     ecs_assert(batch_set != NULL, ECS_INTERNAL_ERROR, NULL);
 
+    /* If there are effects, batches render into the first effect target.
+     * Otherwise, batches render directly to the final view texture. */
+    WGPUTextureView batch_target =
+        (viewImpl->effect_target_views && viewImpl->effect_target_count > 0)
+            ? viewImpl->effect_target_views[0]
+            : view_texture;
+
     WGPURenderPassEncoder batch_pass = flecsEngine_renderBatch_beginPass(
         engine,
         encoder,
-        viewImpl->effect_target_views[0],
+        batch_target,
         WGPULoadOp_Clear);
 
     /* Always set pipeline/uniforms for first batch in view */
     engine->last_pipeline = NULL;
 
-    flecsEngine_renderBatch_renderSet(
-        world,
-        engine,
-        batch_pass,
-        view,
-        batch_set);
+    flecsEngine_renderVisitorCtx_t batch_ctx = {
+        .pass = batch_pass,
+        .view = view
+    };
+
+    flecsEngine_renderBatch_visitSet(
+        world, engine, batch_set,
+        flecsEngine_renderBatch_renderVisitor, &batch_ctx);
 
     wgpuRenderPassEncoderEnd(batch_pass);
     wgpuRenderPassEncoderRelease(batch_pass);

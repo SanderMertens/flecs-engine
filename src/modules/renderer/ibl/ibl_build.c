@@ -446,7 +446,7 @@ static WGPUTextureView flecsIblCreateTexture2DView(
 
 static bool flecsIblCreateEquirectTexture(
     const FlecsEngineImpl *engine,
-    FlecHdriImpl *ibl,
+    FlecsHdriImpl *ibl,
     const FlecsHdriImage *image)
 {
     WGPUTextureDescriptor desc = {
@@ -552,7 +552,7 @@ static bool flecsIblCreateCubeTexture(
 
 static bool flecsIblCreateBrdfLutTexture(
     const FlecsEngineImpl *engine,
-    FlecHdriImpl *ibl)
+    FlecsHdriImpl *ibl)
 {
     WGPUTextureDescriptor desc = {
         .usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment,
@@ -584,7 +584,7 @@ static bool flecsIblCreateBrdfLutTexture(
 
 static bool flecsIblCreateSampler(
     const FlecsEngineImpl *engine,
-    FlecHdriImpl *ibl)
+    FlecsHdriImpl *ibl)
 {
     WGPUSamplerDescriptor sampler_desc = {
         .addressModeU = WGPUAddressMode_ClampToEdge,
@@ -668,7 +668,7 @@ static bool flecsIblSubmitFullscreenPass(
 
 static bool flecsIblRunPreprocessPasses(
     const FlecsEngineImpl *engine,
-    FlecHdriImpl *ibl,
+    FlecsHdriImpl *ibl,
     uint32_t filter_sample_count,
     uint32_t lut_sample_count)
 {
@@ -934,12 +934,12 @@ cleanup:
 
 bool flecsEngine_ibl_initResources(
     FlecsEngineImpl *engine,
-    FlecHdriImpl *ibl,
+    FlecsHdriImpl *ibl,
     const char *hdri_path,
     uint32_t filter_sample_count,
     uint32_t lut_sample_count)
 {
-    flecsEngie_ibl_releaseRuntimeResources(ibl);
+    flecsEngine_ibl_releaseRuntimeResources(ibl);
 
     if (!flecsEngine_ibl_ensureBindLayout(engine)) {
         return false;
@@ -1015,7 +1015,7 @@ bool flecsEngine_ibl_initResources(
 done:
     flecsHdriImageFree(&image);
     if (!ok) {
-        flecsEngie_ibl_releaseRuntimeResources(ibl);
+        flecsEngine_ibl_releaseRuntimeResources(ibl);
     }
     return ok;
 }

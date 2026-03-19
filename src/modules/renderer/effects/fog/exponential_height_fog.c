@@ -4,12 +4,6 @@
 ECS_COMPONENT_DECLARE(FlecsExponentialHeightFog);
 ECS_COMPONENT_DECLARE(FlecsExponentialHeightFogImpl);
 
-static float flecsFogChannelToFloat(
-    uint8_t value)
-{
-    return (float)value / 255.0f;
-}
-
 typedef struct FlecsExponentialHeightFogUniform {
     mat4 inv_vp;
     float camera_pos[4];
@@ -18,10 +12,7 @@ typedef struct FlecsExponentialHeightFogUniform {
 } FlecsExponentialHeightFogUniform;
 
 static const char *kShaderSource =
-    "struct VertexOutput {\n"
-    "  @builtin(position) pos : vec4<f32>,\n"
-    "  @location(0) uv : vec2<f32>\n"
-    "};\n"
+    FLECS_ENGINE_FULLSCREEN_VS_WGSL
     "struct FogUniforms {\n"
     "  inv_vp : mat4x4<f32>,\n"
     "  camera_pos : vec4<f32>,\n"
@@ -32,17 +23,6 @@ static const char *kShaderSource =
     "@group(0) @binding(1) var input_sampler : sampler;\n"
     "@group(0) @binding(2) var depth_texture : texture_depth_2d;\n"
     "@group(0) @binding(3) var<uniform> uniforms : FogUniforms;\n"
-    "@vertex fn vs_main(@builtin(vertex_index) vid : u32) -> VertexOutput {\n"
-    "  var out : VertexOutput;\n"
-    "  var pos = array<vec2<f32>, 3>(\n"
-    "      vec2<f32>(-1.0, -1.0),\n"
-    "      vec2<f32>(3.0, -1.0),\n"
-    "      vec2<f32>(-1.0, 3.0));\n"
-    "  let p = pos[vid];\n"
-    "  out.pos = vec4<f32>(p, 0.0, 1.0);\n"
-    "  out.uv = vec2<f32>((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);\n"
-    "  return out;\n"
-    "}\n"
     "fn reconstruct_world_pos(uv : vec2<f32>, depth : f32) -> vec3<f32> {\n"
     "  let ndc = vec4<f32>(\n"
     "    uv.x * 2.0 - 1.0,\n"
@@ -90,7 +70,7 @@ static const char *kShaderSource =
     "  return vec4<f32>(fogged, src.a);\n"
     "}\n";
 
-static ecs_entity_t flecsRenderEffect_exponentialHeightFog_shader(
+static ecs_entity_t flecsEngine_exponentialHeightFog_shader(
     ecs_world_t *world)
 {
     return flecsEngine_shader_ensure(world, "ExponentialHeightFogShader",
@@ -101,7 +81,7 @@ static ecs_entity_t flecsRenderEffect_exponentialHeightFog_shader(
         });
 }
 
-static void flecsExponentialHeightFogReleaseResources(
+static void flecsEngine_exponentialHeightFog_releaseResources(
     FlecsExponentialHeightFogImpl *impl)
 {
     if (impl->uniform_buffer) {
@@ -111,16 +91,16 @@ static void flecsExponentialHeightFogReleaseResources(
 }
 
 ECS_DTOR(FlecsExponentialHeightFogImpl, ptr, {
-    flecsExponentialHeightFogReleaseResources(ptr);
+    flecsEngine_exponentialHeightFog_releaseResources(ptr);
 })
 
 ECS_MOVE(FlecsExponentialHeightFogImpl, dst, src, {
-    flecsExponentialHeightFogReleaseResources(dst);
+    flecsEngine_exponentialHeightFog_releaseResources(dst);
     *dst = *src;
     ecs_os_zeromem(src);
 })
 
-static void flecsExponentialHeightFogFillUniform(
+static void flecsEngine_exponentialHeightFog_fillUniform(
     const ecs_world_t *world,
     ecs_entity_t effect_entity,
     const FlecsExponentialHeightFog *fog,
@@ -133,9 +113,9 @@ static void flecsExponentialHeightFogFillUniform(
     uniform->camera_pos[2] = 0.0f;
     uniform->camera_pos[3] = 1.0f;
 
-    uniform->fog_color_density[0] = flecsFogChannelToFloat(fog->color.r);
-    uniform->fog_color_density[1] = flecsFogChannelToFloat(fog->color.g);
-    uniform->fog_color_density[2] = flecsFogChannelToFloat(fog->color.b);
+    uniform->fog_color_density[0] = flecsEngine_colorChannelToFloat(fog->color.r);
+    uniform->fog_color_density[1] = flecsEngine_colorChannelToFloat(fog->color.g);
+    uniform->fog_color_density[2] = flecsEngine_colorChannelToFloat(fog->color.b);
     uniform->fog_color_density[3] = fog->density;
 
     uniform->fog_params[0] = fog->falloff;
@@ -171,7 +151,7 @@ static void flecsExponentialHeightFogFillUniform(
     }
 }
 
-static bool flecsRenderEffect_exponentialHeightFog_setup(
+static bool flecsEngine_exponentialHeightFog_setup(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     ecs_entity_t effect_entity,
@@ -226,7 +206,7 @@ static bool flecsRenderEffect_exponentialHeightFog_setup(
     return true;
 }
 
-static bool flecsRenderEffect_exponentialHeightFog_bind(
+static bool flecsEngine_exponentialHeightFog_bind(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
     ecs_entity_t effect_entity,
@@ -255,7 +235,7 @@ static bool flecsRenderEffect_exponentialHeightFog_bind(
     }
 
     FlecsExponentialHeightFogUniform uniform = {0};
-    flecsExponentialHeightFogFillUniform(world, effect_entity, fog, &uniform);
+    flecsEngine_exponentialHeightFog_fillUniform(world, effect_entity, fog, &uniform);
     wgpuQueueWriteBuffer(
         engine->queue,
         fog_impl->uniform_buffer,
@@ -305,10 +285,10 @@ ecs_entity_t flecsEngine_createEffect_exponentialHeightFog(
 
     ecs_set_ptr(world, effect, FlecsExponentialHeightFog, &fog);
     ecs_set(world, effect, FlecsRenderEffect, {
-        .shader = flecsRenderEffect_exponentialHeightFog_shader(world),
+        .shader = flecsEngine_exponentialHeightFog_shader(world),
         .input = input,
-        .setup_callback = flecsRenderEffect_exponentialHeightFog_setup,
-        .bind_callback = flecsRenderEffect_exponentialHeightFog_bind
+        .setup_callback = flecsEngine_exponentialHeightFog_setup,
+        .bind_callback = flecsEngine_exponentialHeightFog_bind
     });
 
     return effect;

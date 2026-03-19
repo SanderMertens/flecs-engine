@@ -4,28 +4,6 @@
 #include "batches.h"
 #include "flecs_engine.h"
 
-static void flecsEngine_primitive_extract(
-    const ecs_world_t *world,
-    const FlecsEngineImpl *engine,
-    const FlecsRenderBatch *batch)
-{
-    flecsEngine_batch_t *ctx = batch->ctx;
-    flecsEngine_batch_extractInstances(world, engine, batch, ctx);
-}
-
-static void flecsEngine_primitive_render(
-    const ecs_world_t *world,
-    const FlecsEngineImpl *engine,
-    const WGPURenderPassEncoder pass,
-    const FlecsRenderBatch *batch)
-{
-    (void)world;
-    (void)engine;
-
-    flecsEngine_batch_t *ctx = batch->ctx;
-    flecsEngine_batch_draw(pass, ctx);
-}
-
 ecs_entity_t flecsEngine_createBatch_primitive(
     ecs_world_t *world, 
     ecs_entity_t parent, 

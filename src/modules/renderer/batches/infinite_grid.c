@@ -38,34 +38,9 @@ static void flecsEngine_infinite_grid_extract(
     const FlecsEngineImpl *engine,
     flecs_engine_infinite_grid_ctx_t *ctx)
 {
-    if (ctx->batch.capacity < 1) {
-        flecsEngine_batch_ensureCapacity(engine, &ctx->batch, 1);
-    }
-
-    flecsEngine_batch_transformInstance(
-        &ctx->batch.cpu_transforms[0],
-        &ctx->transform,
-        ctx->size.x,
-        ctx->size.y,
-        ctx->size.z);
-
-    wgpuQueueWriteBuffer(
-        engine->queue,
-        ctx->batch.instance_transform,
-        0,
-        ctx->batch.cpu_transforms,
-        sizeof(FlecsInstanceTransform));
-
-    ctx->batch.cpu_colors[0] = ctx->color;
-
-    wgpuQueueWriteBuffer(
-        engine->queue,
-        ctx->batch.instance_color,
-        0,
-        ctx->batch.cpu_colors,
-        sizeof(FlecsRgba));
-
-    ctx->batch.count = 1;
+    flecsEngine_batch_extractSingleInstance(
+        engine, &ctx->batch, &ctx->transform, &ctx->color,
+        ctx->size.x, ctx->size.y, ctx->size.z);
 }
 
 static void flecsEngine_infinite_grid_extractCallback(
