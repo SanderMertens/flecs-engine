@@ -2,6 +2,7 @@
 #include "../renderer.h"
 #include "common/uniforms_wgsl.h"
 #include "common/shared_vertex_wgsl.h"
+#include "common/cluster_wgsl.h"
 #include "common/pbr_functions_wgsl.h"
 #include "common/shadow_wgsl.h"
 #include "common/pbr_lighting_wgsl.h"
@@ -12,6 +13,7 @@ static const char *kShaderSource =
     "@group(1) @binding(1) var ibl_sampler : sampler;\n"
     "@group(1) @binding(2) var ibl_brdf_lut : texture_2d<f32>;\n"
     FLECS_ENGINE_SHADER_COMMON_SHADOW_WGSL
+    FLECS_ENGINE_SHADER_COMMON_CLUSTER_WGSL
     "struct GpuMaterial {\n"
     "  color : u32,\n"
     "  metallic : f32,\n"
@@ -61,7 +63,8 @@ static const char *kShaderSource =
     "    material.roughness,\n"
     "    material.emissive_strength,\n"
     "    input.world_pos,\n"
-    "    input.normal);\n"
+    "    input.normal,\n"
+    "    input.pos);\n"
     "  return vec4<f32>(lit, color.a);\n"
     "}\n";
 

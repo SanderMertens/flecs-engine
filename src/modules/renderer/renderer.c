@@ -142,6 +142,10 @@ int flecsEngine_initRenderer(
         goto error;
     }
 
+    if (flecsEngine_cluster_init(impl)) {
+        goto error;
+    }
+
     impl->material_query = ecs_query(world, {
         .entity = ecs_entity(world, {
             .parent = engine_parent
@@ -342,10 +346,6 @@ void FlecsEngineRendererImport(
             { .name = "light_ray_dir", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "light_color", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "camera_pos", .type = ecs_id(ecs_f32_t), .count = 4 },
-            { .name = "point_light_info", .type = ecs_id(ecs_f32_t), .count = 4 },
-            { .name = "point_lights", .type = ecs_id(ecs_f32_t), .count = FLECS_ENGINE_POINT_LIGHTS_MAX * 8 },
-            { .name = "spot_light_info", .type = ecs_id(ecs_f32_t), .count = 4 },
-            { .name = "spot_lights", .type = ecs_id(ecs_f32_t), .count = FLECS_ENGINE_SPOT_LIGHTS_MAX * 12 },
         }
     });
 

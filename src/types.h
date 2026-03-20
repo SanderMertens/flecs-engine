@@ -81,6 +81,25 @@ typedef struct {
     mat4 current_light_vp[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
     float cascade_splits[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
 
+    FlecsGpuPointLight *cpu_point_lights;
+    int32_t point_light_count;
+    int32_t point_light_capacity;
+    WGPUBuffer point_light_buffer;
+
+    FlecsGpuSpotLight *cpu_spot_lights;
+    int32_t spot_light_count;
+    int32_t spot_light_capacity;
+    WGPUBuffer spot_light_buffer;
+
+    uint32_t *cpu_cluster_indices;
+    int32_t cluster_index_capacity;
+    WGPUBuffer cluster_info_buffer;
+    WGPUBuffer cluster_grid_buffer;
+    WGPUBuffer cluster_index_buffer;
+    WGPUBindGroupLayout cluster_bind_layout;
+    WGPUBindGroup cluster_bind_group;
+    bool cluster_bind_group_dirty;
+
     FlecsDefaultAttrCache *default_attr_cache;
 } FlecsEngineImpl;
 
@@ -138,6 +157,7 @@ typedef struct {
     bool uses_material;
     bool uses_ibl;
     bool uses_shadow;
+    bool uses_cluster;
 } FlecsRenderBatchImpl;
 
 extern ECS_COMPONENT_DECLARE(FlecsRenderBatchImpl);

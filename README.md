@@ -24,6 +24,10 @@ You should probably not use this, unless:
 - Instancing
 - PBR materials
 - Directional light
+- Pointlights
+- Spotlights
+- Clustered light rendering
+- Cascading shadow maps
 - Image based lighting
 - Skybox
 - Bloom

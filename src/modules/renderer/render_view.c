@@ -208,6 +208,10 @@ static void flecsEngine_renderView_render(
         }
     }
 
+    flecsEngine_setupPointLights(world, engine);
+    flecsEngine_setupSpotLights(world, engine);
+    flecsEngine_cluster_build(world, engine, view);
+
     flecsEngine_renderView_renderBatches(
         world, view_entity, engine, view, impl, view_texture, encoder);
 

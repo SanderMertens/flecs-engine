@@ -26,13 +26,9 @@
     "  return ndotv / max(ndotv * (1.0 - k) + k, 1e-4);\n" \
     "}\n" \
     "fn geometrySmith(\n" \
-    "  n : vec3<f32>,\n" \
-    "  v : vec3<f32>,\n" \
-    "  l : vec3<f32>,\n" \
+    "  ggx_v : f32,\n" \
+    "  ndotl : f32,\n" \
     "  roughness : f32) -> f32 {\n" \
-    "  let ndotv = max(dot(n, v), 0.0);\n" \
-    "  let ndotl = max(dot(n, l), 0.0);\n" \
-    "  let ggx_v = geometrySchlickGGX(ndotv, roughness);\n" \
     "  let ggx_l = geometrySchlickGGX(ndotl, roughness);\n" \
     "  return ggx_v * ggx_l;\n" \
     "}\n" \
@@ -65,15 +61,15 @@
     "}\n" \
     "fn computeSpecular(\n" \
     "  n : vec3<f32>,\n" \
-    "  v : vec3<f32>,\n" \
+    "  ndotv : f32,\n" \
+    "  ggx_v : f32,\n" \
     "  l : vec3<f32>,\n" \
     "  h : vec3<f32>,\n" \
     "  roughness : f32,\n" \
     "  f : vec3<f32>) -> vec3<f32> {\n" \
-    "  let ndotv = max(dot(n, v), 0.0);\n" \
     "  let ndotl = max(dot(n, l), 0.0);\n" \
     "  let d = distributionGGX(n, h, roughness);\n" \
-    "  let g = geometrySmith(n, v, l, roughness);\n" \
+    "  let g = geometrySmith(ggx_v, ndotl, roughness);\n" \
     "  let spec_num = d * g * f;\n" \
     "  let spec_denom = max(4.0 * ndotv * ndotl, 1e-4);\n" \
     "  return spec_num / spec_denom;\n" \
@@ -86,6 +82,9 @@
     "  albedo : vec3<f32>,\n" \
     "  metallic : f32,\n" \
     "  roughness : f32,\n" \
+    "  f0 : vec3<f32>,\n" \
+    "  ndotv : f32,\n" \
+    "  ggx_v : f32,\n" \
     "  light_active : bool) -> vec3<f32> {\n" \
     "  if (!light_active) {\n" \
     "    return vec3<f32>(0.0);\n" \
@@ -94,10 +93,9 @@
     "  if (ndotl <= 0.0) {\n" \
     "    return vec3<f32>(0.0);\n" \
     "  }\n" \
-    "  let f0 = computeF0(albedo, metallic);\n" \
     "  let f = fresnelSchlick(max(dot(h, v), 0.0), f0);\n" \
     "  let diffuse = computeDiffuse(albedo, metallic, f);\n" \
-    "  let specular = computeSpecular(n, v, l, h, roughness, f);\n" \
+    "  let specular = computeSpecular(n, ndotv, ggx_v, l, h, roughness, f);\n" \
     "  return (diffuse + specular) * uniforms.light_color.rgb * ndotl;\n" \
     "}\n" \
     "fn computeAmbientLighting(albedo : vec3<f32>, metallic : f32) -> vec3<f32> {\n" \
@@ -109,13 +107,18 @@
     "  world_pos : vec3<f32>,\n" \
     "  albedo : vec3<f32>,\n" \
     "  metallic : f32,\n" \
-    "  roughness : f32) -> vec3<f32> {\n" \
+    "  roughness : f32,\n" \
+    "  f0 : vec3<f32>,\n" \
+    "  ndotv : f32,\n" \
+    "  ggx_v : f32,\n" \
+    "  cluster_idx : u32) -> vec3<f32> {\n" \
     "  var result = vec3<f32>(0.0);\n" \
-    "  let count = i32(uniforms.point_light_info.x);\n" \
-    "  for (var i = 0; i < count; i++) {\n" \
-    "    let light_pos = uniforms.point_lights[i].position.xyz;\n" \
-    "    let light_range = uniforms.point_lights[i].position.w;\n" \
-    "    let light_color = uniforms.point_lights[i].color.rgb;\n" \
+    "  let entry = cluster_grid[cluster_idx];\n" \
+    "  for (var j = 0u; j < entry.point_count; j++) {\n" \
+    "    let i = light_indices[entry.point_offset + j];\n" \
+    "    let light_pos = point_lights[i].position.xyz;\n" \
+    "    let light_range = point_lights[i].position.w;\n" \
+    "    let light_color = point_lights[i].color.rgb;\n" \
     "    let to_light = light_pos - world_pos;\n" \
     "    let dist = length(to_light);\n" \
     "    if (dist > light_range || dist < 0.001) {\n" \
@@ -127,11 +130,12 @@
     "    if (ndotl <= 0.0) {\n" \
     "      continue;\n" \
     "    }\n" \
-    "    let attenuation = clamp(1.0 - pow(dist / light_range, 4.0), 0.0, 1.0) / (dist * dist + 1.0);\n" \
-    "    let f0 = computeF0(albedo, metallic);\n" \
+    "    let ratio = dist / light_range;\n" \
+    "    let r2 = ratio * ratio;\n" \
+    "    let attenuation = clamp(1.0 - r2 * r2, 0.0, 1.0) / (dist * dist + 1.0);\n" \
     "    let f = fresnelSchlick(max(dot(h, v), 0.0), f0);\n" \
     "    let diffuse = computeDiffuse(albedo, metallic, f);\n" \
-    "    let specular = computeSpecular(n, v, l, h, roughness, f);\n" \
+    "    let specular = computeSpecular(n, ndotv, ggx_v, l, h, roughness, f);\n" \
     "    result += (diffuse + specular) * light_color * ndotl * attenuation;\n" \
     "  }\n" \
     "  return result;\n" \
@@ -142,16 +146,21 @@
     "  world_pos : vec3<f32>,\n" \
     "  albedo : vec3<f32>,\n" \
     "  metallic : f32,\n" \
-    "  roughness : f32) -> vec3<f32> {\n" \
+    "  roughness : f32,\n" \
+    "  f0 : vec3<f32>,\n" \
+    "  ndotv : f32,\n" \
+    "  ggx_v : f32,\n" \
+    "  cluster_idx : u32) -> vec3<f32> {\n" \
     "  var result = vec3<f32>(0.0);\n" \
-    "  let count = i32(uniforms.spot_light_info.x);\n" \
-    "  for (var i = 0; i < count; i++) {\n" \
-    "    let light_pos = uniforms.spot_lights[i].position.xyz;\n" \
-    "    let light_range = uniforms.spot_lights[i].position.w;\n" \
-    "    let light_dir = uniforms.spot_lights[i].direction.xyz;\n" \
-    "    let outer_cos = uniforms.spot_lights[i].direction.w;\n" \
-    "    let light_color = uniforms.spot_lights[i].color.rgb;\n" \
-    "    let inner_cos = uniforms.spot_lights[i].color.w;\n" \
+    "  let entry = cluster_grid[cluster_idx];\n" \
+    "  for (var j = 0u; j < entry.spot_count; j++) {\n" \
+    "    let i = light_indices[entry.spot_offset + j];\n" \
+    "    let light_pos = spot_lights[i].position.xyz;\n" \
+    "    let light_range = spot_lights[i].position.w;\n" \
+    "    let light_dir = spot_lights[i].direction.xyz;\n" \
+    "    let outer_cos = spot_lights[i].direction.w;\n" \
+    "    let light_color = spot_lights[i].color.rgb;\n" \
+    "    let inner_cos = spot_lights[i].color.w;\n" \
     "    let to_light = light_pos - world_pos;\n" \
     "    let dist = length(to_light);\n" \
     "    if (dist > light_range || dist < 0.001) {\n" \
@@ -168,11 +177,12 @@
     "      continue;\n" \
     "    }\n" \
     "    let spot_effect = clamp((theta - outer_cos) / max(inner_cos - outer_cos, 1e-4), 0.0, 1.0);\n" \
-    "    let attenuation = clamp(1.0 - pow(dist / light_range, 4.0), 0.0, 1.0) / (dist * dist + 1.0);\n" \
-    "    let f0 = computeF0(albedo, metallic);\n" \
+    "    let ratio = dist / light_range;\n" \
+    "    let r2 = ratio * ratio;\n" \
+    "    let attenuation = clamp(1.0 - r2 * r2, 0.0, 1.0) / (dist * dist + 1.0);\n" \
     "    let f = fresnelSchlick(max(dot(h, v), 0.0), f0);\n" \
     "    let diffuse = computeDiffuse(albedo, metallic, f);\n" \
-    "    let specular = computeSpecular(n, v, l, h, roughness, f);\n" \
+    "    let specular = computeSpecular(n, ndotv, ggx_v, l, h, roughness, f);\n" \
     "    result += (diffuse + specular) * light_color * ndotl * attenuation * spot_effect;\n" \
     "  }\n" \
     "  return result;\n" \
