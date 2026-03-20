@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "flecs_engine.h"
 
+ECS_COMPONENT_DECLARE(flecs_engine_shadow_params_t);
 ECS_COMPONENT_DECLARE(FlecsRenderView);
 ECS_COMPONENT_DECLARE(FlecsRenderViewImpl);
 
@@ -9,8 +10,10 @@ ECS_CTOR(FlecsRenderView, ptr, {
     ptr->camera = 0;
     ptr->light = 0;
     ptr->hdri = 0;
-    ptr->shadows = true;
-    ptr->shadow_map_size = FLECS_ENGINE_SHADOW_MAP_SIZE_DEFAULT;
+    ptr->shadow.enabled = true;
+    ptr->shadow.map_size = FLECS_ENGINE_SHADOW_MAP_SIZE_DEFAULT;
+    ptr->shadow.pcf_samples = 0;
+    ptr->shadow.bias = 0.0005f;
 })
 
 ECS_MOVE(FlecsRenderView, dst, src, {
@@ -24,8 +27,7 @@ ECS_COPY(FlecsRenderView, dst, src, {
     dst->camera = src->camera;
     dst->light = src->light;
     dst->hdri = src->hdri;
-    dst->shadows = src->shadows;
-    dst->shadow_map_size = src->shadow_map_size;
+    dst->shadow = src->shadow;
     dst->effects = ecs_vec_copy_t(NULL, &src->effects, ecs_entity_t);
 })
 
@@ -192,9 +194,9 @@ static void flecsEngine_renderView_render(
         return;
     }
 
-    if (view->shadows) {
+    if (view->shadow.enabled) {
         if (flecsEngine_shadow_ensureSize(
-            world, engine, (uint32_t)view->shadow_map_size))
+            world, engine, (uint32_t)view->shadow.map_size))
         {
             ecs_err("failed to resize shadow maps");
         }
@@ -271,6 +273,7 @@ void flecsEngine_renderView_renderAll(
 void flecsEngine_renderView_register(
     ecs_world_t *world)
 {
+    ECS_COMPONENT_DEFINE(world, flecs_engine_shadow_params_t);
     ECS_COMPONENT_DEFINE(world, FlecsRenderView);
     ECS_COMPONENT_DEFINE(world, FlecsRenderViewImpl);
 
@@ -290,14 +293,22 @@ void flecsEngine_renderView_register(
     ecs_add_pair(world, ecs_id(FlecsRenderView), EcsWith, ecs_id(FlecsRenderViewImpl));
 
     ecs_struct(world, {
+        .entity = ecs_id(flecs_engine_shadow_params_t),
+        .members = {
+            { .name = "enabled", .type = ecs_id(ecs_bool_t) },
+            { .name = "map_size", .type = ecs_id(ecs_i32_t) },
+            { .name = "pcf_samples", .type = ecs_id(ecs_i32_t) },
+            { .name = "bias", .type = ecs_id(ecs_f32_t) }
+        }
+    });
+
+    ecs_struct(world, {
         .entity = ecs_id(FlecsRenderView),
         .members = {
             { .name = "camera", .type = ecs_id(ecs_entity_t) },
             { .name = "light", .type = ecs_id(ecs_entity_t) },
             { .name = "hdri", .type = ecs_id(ecs_entity_t) },
-            { .name = "shadows", .type = ecs_id(ecs_bool_t) },
-            { .name = "shadow_map_size", .type = ecs_id(ecs_i32_t) },
-            { .name = "shadow_pcf_samples", .type = ecs_id(ecs_i32_t) },
+            { .name = "shadow", .type = ecs_id(flecs_engine_shadow_params_t) },
             { .name = "effects", .type = flecsEngine_vecEntity(world) }
         }
     });

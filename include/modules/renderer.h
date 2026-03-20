@@ -92,13 +92,18 @@ ECS_STRUCT(FlecsHdri, {
 
 extern ECS_COMPONENT_DECLARE(FlecsHdri);
 
+ECS_STRUCT(flecs_engine_shadow_params_t, {
+    ecs_bool_t enabled;
+    int32_t map_size;
+    int32_t pcf_samples;
+    float bias;
+});
+
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;
     ecs_entity_t light;
     ecs_entity_t hdri;
-    ecs_bool_t shadows;
-    int32_t shadow_map_size;
-    int32_t shadow_pcf_samples;
+    flecs_engine_shadow_params_t shadow;
     ecs_vec_t effects;
 });
 

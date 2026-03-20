@@ -701,9 +701,13 @@ static void flecsEngine_renderBatch_updateUniforms(
     memcpy(uniforms.cascade_splits, engine->cascade_splits,
         sizeof(float) * FLECS_ENGINE_SHADOW_CASCADE_COUNT);
 
-    int32_t pcf = view->shadow_pcf_samples;
+    int32_t pcf = view->shadow.pcf_samples;
     if (pcf <= 0) { pcf = 3; }
     uniforms.shadow_info[0] = (float)((pcf - 1) / 2);
+
+    float bias = view->shadow.bias;
+    if (bias <= 0) { bias = 0.0005f; }
+    uniforms.shadow_info[1] = bias;
 
     flecsEngine_getClearColorVec4(engine, uniforms.clear_color);
 

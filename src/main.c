@@ -121,8 +121,8 @@ void initEngine(
 {
   ecs_entity_t view_entity =  ecs_entity(world, { .name = "view" });
   FlecsRenderView view = {
-    .shadows = true,
-    .shadow_pcf_samples = 3
+    .shadow.enabled = true,
+    .shadow.pcf_samples = 3
   };
 
   FlecsRenderBatchSet batch_set = {};

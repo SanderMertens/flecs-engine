@@ -26,7 +26,7 @@
     "      light_ndc.z < 0.0 || light_ndc.z > 1.0) {\n" \
     "    return -1.0;\n" \
     "  }\n" \
-    "  let current_depth = light_ndc.z - 0.0005;\n" \
+    "  let current_depth = light_ndc.z - uniforms.shadow_info.y;\n" \
     "  let texel_size = 1.0 / vec2<f32>(textureDimensions(shadow_map));\n" \
     "  let pcf_half = i32(uniforms.shadow_info.x);\n" \
     "  var shadow = 0.0;\n" \
