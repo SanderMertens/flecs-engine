@@ -575,6 +575,198 @@ ground {
     }
 }
 
+// Spot lights
+{
+    const SLItems: 3
+    const SLSpacing: 4.5
+
+    Position3: {175}
+
+    // 0 degree tilt - Red (circle)
+    Display(items: SLItems) {
+        Position3: {0, 0, -10}
+    }
+    {
+        Position3: {-SLSpacing, 3, -10}
+        Rotation3: {-math.PI / 2, 0, 0}
+        SpotLight: {intensity: 20, range: 8, inner_angle: 15, outer_angle: 25}
+        Rgba: {255, 0, 0}
+    }
+    {
+        Position3: {0, 3, -10}
+        Rotation3: {-math.PI / 2, 0, 0}
+        SpotLight: {intensity: 50, range: 8, inner_angle: 15, outer_angle: 25}
+        Rgba: {255, 0, 0}
+    }
+    {
+        Position3: {SLSpacing, 3, -10}
+        Rotation3: {-math.PI / 2, 0, 0}
+        SpotLight: {intensity: 100, range: 8, inner_angle: 15, outer_angle: 25}
+        Rgba: {255, 0, 0}
+    }
+
+    // 10 degree tilt - Orange
+    Display(items: SLItems) {
+        Position3: {0, 0, -20}
+    }
+    {
+        Position3: {-SLSpacing, 3, -19.65}
+        Rotation3: {-math.PI / 2 + math.PI / 18, 0, 0}
+        SpotLight: {intensity: 20, range: 8, inner_angle: 15, outer_angle: 25}
+        Rgba: {255, 128, 0}
+    }
+    {
+        Position3: {0, 3, -19.65}
+        Rotation3: {-math.PI / 2 + math.PI / 18, 0, 0}
+        SpotLight: {intensity: 50, range: 8, inner_angle: 15, outer_angle: 25}
+        Rgba: {255, 128, 0}
+    }
+    {
+        Position3: {SLSpacing, 3, -19.65}
+        Rotation3: {-math.PI / 2 + math.PI / 18, 0, 0}
+        SpotLight: {intensity: 100, range: 8, inner_angle: 15, outer_angle: 25}
+        Rgba: {255, 128, 0}
+    }
+
+    // 20 degree tilt - Yellow
+    Display(items: SLItems) {
+        Position3: {0, 0, -30}
+    }
+    {
+        Position3: {-SLSpacing, 3, -29.27}
+        Rotation3: {-math.PI / 2 + math.PI / 9, 0, 0}
+        SpotLight: {intensity: 20, range: 8, inner_angle: 14, outer_angle: 24}
+        Rgba: {255, 255, 0}
+    }
+    {
+        Position3: {0, 3, -29.27}
+        Rotation3: {-math.PI / 2 + math.PI / 9, 0, 0}
+        SpotLight: {intensity: 50, range: 8, inner_angle: 14, outer_angle: 24}
+        Rgba: {255, 255, 0}
+    }
+    {
+        Position3: {SLSpacing, 3, -29.27}
+        Rotation3: {-math.PI / 2 + math.PI / 9, 0, 0}
+        SpotLight: {intensity: 100, range: 8, inner_angle: 14, outer_angle: 24}
+        Rgba: {255, 255, 0}
+    }
+
+    // 30 degree tilt - Green
+    Display(items: SLItems) {
+        Position3: {0, 0, -40}
+    }
+    {
+        Position3: {-SLSpacing, 3, -38.85}
+        Rotation3: {-math.PI / 2 + math.PI / 6, 0, 0}
+        SpotLight: {intensity: 25, range: 8, inner_angle: 13, outer_angle: 22}
+        Rgba: {0, 255, 0}
+    }
+    {
+        Position3: {0, 3, -38.85}
+        Rotation3: {-math.PI / 2 + math.PI / 6, 0, 0}
+        SpotLight: {intensity: 60, range: 8, inner_angle: 13, outer_angle: 22}
+        Rgba: {0, 255, 0}
+    }
+    {
+        Position3: {SLSpacing, 3, -38.85}
+        Rotation3: {-math.PI / 2 + math.PI / 6, 0, 0}
+        SpotLight: {intensity: 125, range: 8, inner_angle: 13, outer_angle: 22}
+        Rgba: {0, 255, 0}
+    }
+
+    // 40 degree tilt - Cyan
+    Display(items: SLItems) {
+        Position3: {0, 0, -50}
+    }
+    {
+        Position3: {-SLSpacing, 3, -48.32}
+        Rotation3: {-math.PI / 2 + 2 * math.PI / 9, 0, 0}
+        SpotLight: {intensity: 30, range: 8, inner_angle: 12, outer_angle: 20}
+        Rgba: {0, 255, 255}
+    }
+    {
+        Position3: {0, 3, -48.32}
+        Rotation3: {-math.PI / 2 + 2 * math.PI / 9, 0, 0}
+        SpotLight: {intensity: 75, range: 8, inner_angle: 12, outer_angle: 20}
+        Rgba: {0, 255, 255}
+    }
+    {
+        Position3: {SLSpacing, 3, -48.32}
+        Rotation3: {-math.PI / 2 + 2 * math.PI / 9, 0, 0}
+        SpotLight: {intensity: 150, range: 8, inner_angle: 12, outer_angle: 20}
+        Rgba: {0, 255, 255}
+    }
+
+    // 50 degree tilt - Blue
+    Display(items: SLItems) {
+        Position3: {0, 0, -60}
+    }
+    {
+        Position3: {-SLSpacing, 3, -57.62}
+        Rotation3: {-math.PI / 2 + 5 * math.PI / 18, 0, 0}
+        SpotLight: {intensity: 45, range: 10, inner_angle: 10, outer_angle: 17}
+        Rgba: {0, 0, 255}
+    }
+    {
+        Position3: {0, 3, -57.62}
+        Rotation3: {-math.PI / 2 + 5 * math.PI / 18, 0, 0}
+        SpotLight: {intensity: 110, range: 10, inner_angle: 10, outer_angle: 17}
+        Rgba: {0, 0, 255}
+    }
+    {
+        Position3: {SLSpacing, 3, -57.62}
+        Rotation3: {-math.PI / 2 + 5 * math.PI / 18, 0, 0}
+        SpotLight: {intensity: 220, range: 10, inner_angle: 10, outer_angle: 17}
+        Rgba: {0, 0, 255}
+    }
+
+    // 60 degree tilt - Indigo
+    Display(items: SLItems) {
+        Position3: {0, 0, -70}
+    }
+    {
+        Position3: {-SLSpacing, 3, -66.54}
+        Rotation3: {-math.PI / 2 + math.PI / 3, 0, 0}
+        SpotLight: {intensity: 70, range: 10, inner_angle: 8, outer_angle: 13}
+        Rgba: {75, 0, 130}
+    }
+    {
+        Position3: {0, 3, -66.54}
+        Rotation3: {-math.PI / 2 + math.PI / 3, 0, 0}
+        SpotLight: {intensity: 175, range: 10, inner_angle: 8, outer_angle: 13}
+        Rgba: {75, 0, 130}
+    }
+    {
+        Position3: {SLSpacing, 3, -66.54}
+        Rotation3: {-math.PI / 2 + math.PI / 3, 0, 0}
+        SpotLight: {intensity: 350, range: 10, inner_angle: 8, outer_angle: 13}
+        Rgba: {75, 0, 130}
+    }
+
+    // 70 degree tilt - White
+    Display(items: SLItems) {
+        Position3: {0, 0, -80}
+    }
+    {
+        Position3: {-SLSpacing, 3, -74.51}
+        Rotation3: {-math.PI / 2 + 7 * math.PI / 18, 0, 0}
+        SpotLight: {intensity: 150, range: 12, inner_angle: 5, outer_angle: 9}
+        Rgba: {255, 255, 255}
+    }
+    {
+        Position3: {0, 3, -74.51}
+        Rotation3: {-math.PI / 2 + 7 * math.PI / 18, 0, 0}
+        SpotLight: {intensity: 375, range: 12, inner_angle: 5, outer_angle: 9}
+        Rgba: {255, 255, 255}
+    }
+    {
+        Position3: {SLSpacing, 3, -74.51}
+        Rotation3: {-math.PI / 2 + 7 * math.PI / 18, 0, 0}
+        SpotLight: {intensity: 750, range: 12, inner_angle: 5, outer_angle: 9}
+        Rgba: {255, 255, 255}
+    }
+}
+
 materials {
     prefab dielectricRoughWhite {
         PbrMaterial: {metallic: 0, roughness: 1}

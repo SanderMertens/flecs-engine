@@ -62,6 +62,7 @@ typedef struct {
     ecs_query_t *view_query;
     ecs_query_t *material_query;
     ecs_query_t *point_light_query;
+    ecs_query_t *spot_light_query;
     uint32_t last_material_id;
     WGPURenderPipeline last_pipeline;
 

@@ -34,8 +34,10 @@
     "  let specular_ibl = prefiltered_color * computeSplitSumSpecularTerm(f0, brdf);\n" \
     "  let point = computePointLighting(\n" \
     "    n, v, world_pos, albedo, metallic, direct_roughness);\n" \
+    "  let spot = computeSpotLighting(\n" \
+    "    n, v, world_pos, albedo, metallic, direct_roughness);\n" \
     "  let emissive = albedo * max(emissive_strength, 0.0);\n" \
-    "  return ambient + direct + point + specular_ibl + emissive;\n" \
+    "  return ambient + direct + point + spot + specular_ibl + emissive;\n" \
     "}\n"
 
 #endif

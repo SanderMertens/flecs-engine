@@ -135,6 +135,47 @@
     "    result += (diffuse + specular) * light_color * ndotl * attenuation;\n" \
     "  }\n" \
     "  return result;\n" \
+    "}\n" \
+    "fn computeSpotLighting(\n" \
+    "  n : vec3<f32>,\n" \
+    "  v : vec3<f32>,\n" \
+    "  world_pos : vec3<f32>,\n" \
+    "  albedo : vec3<f32>,\n" \
+    "  metallic : f32,\n" \
+    "  roughness : f32) -> vec3<f32> {\n" \
+    "  var result = vec3<f32>(0.0);\n" \
+    "  let count = i32(uniforms.spot_light_info.x);\n" \
+    "  for (var i = 0; i < count; i++) {\n" \
+    "    let light_pos = uniforms.spot_lights[i].position.xyz;\n" \
+    "    let light_range = uniforms.spot_lights[i].position.w;\n" \
+    "    let light_dir = uniforms.spot_lights[i].direction.xyz;\n" \
+    "    let outer_cos = uniforms.spot_lights[i].direction.w;\n" \
+    "    let light_color = uniforms.spot_lights[i].color.rgb;\n" \
+    "    let inner_cos = uniforms.spot_lights[i].color.w;\n" \
+    "    let to_light = light_pos - world_pos;\n" \
+    "    let dist = length(to_light);\n" \
+    "    if (dist > light_range || dist < 0.001) {\n" \
+    "      continue;\n" \
+    "    }\n" \
+    "    let l = to_light / dist;\n" \
+    "    let theta = dot(l, -light_dir);\n" \
+    "    if (theta < outer_cos) {\n" \
+    "      continue;\n" \
+    "    }\n" \
+    "    let h = getHalfVector(v, l);\n" \
+    "    let ndotl = max(dot(n, l), 0.0);\n" \
+    "    if (ndotl <= 0.0) {\n" \
+    "      continue;\n" \
+    "    }\n" \
+    "    let spot_effect = clamp((theta - outer_cos) / max(inner_cos - outer_cos, 1e-4), 0.0, 1.0);\n" \
+    "    let attenuation = clamp(1.0 - pow(dist / light_range, 4.0), 0.0, 1.0) / (dist * dist + 1.0);\n" \
+    "    let f0 = computeF0(albedo, metallic);\n" \
+    "    let f = fresnelSchlick(max(dot(h, v), 0.0), f0);\n" \
+    "    let diffuse = computeDiffuse(albedo, metallic, f);\n" \
+    "    let specular = computeSpecular(n, v, l, h, roughness, f);\n" \
+    "    result += (diffuse + specular) * light_color * ndotl * attenuation * spot_effect;\n" \
+    "  }\n" \
+    "  return result;\n" \
     "}\n"
 
 #endif

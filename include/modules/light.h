@@ -15,4 +15,11 @@ ECS_STRUCT(FlecsPointLight, {
     float range;
 });
 
+ECS_STRUCT(FlecsSpotLight, {
+    float intensity;
+    float range;
+    float inner_angle; /* degrees, full-intensity cone half-angle */
+    float outer_angle; /* degrees, falloff cone half-angle */
+});
+
 #endif

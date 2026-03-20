@@ -30,11 +30,18 @@ extern ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
 
 #define FLECS_ENGINE_SHADOW_CASCADE_COUNT 4
 #define FLECS_ENGINE_POINT_LIGHTS_MAX 32
+#define FLECS_ENGINE_SPOT_LIGHTS_MAX 32
 
 typedef struct {
     float position[4]; /* xyz = position, w = range */
     float color[4];    /* rgb = color * intensity */
 } FlecsGpuPointLight;
+
+typedef struct {
+    float position[4];  /* xyz = position, w = range */
+    float direction[4]; /* xyz = direction, w = outer_cos */
+    float color[4];     /* rgb = color * intensity, w = inner_cos */
+} FlecsGpuSpotLight;
 
 typedef struct {
     flecs_mat4_t mvp;
@@ -47,6 +54,8 @@ typedef struct {
     float camera_pos[4];
     float point_light_info[4]; /* x = count */
     FlecsGpuPointLight point_lights[FLECS_ENGINE_POINT_LIGHTS_MAX];
+    float spot_light_info[4]; /* x = count */
+    FlecsGpuSpotLight spot_lights[FLECS_ENGINE_SPOT_LIGHTS_MAX];
 } FlecsUniform;
 
 extern ECS_COMPONENT_DECLARE(FlecsUniform);
