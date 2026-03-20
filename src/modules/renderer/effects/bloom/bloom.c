@@ -165,12 +165,12 @@ static const char *kBloomShaderSource =
 FlecsBloom flecsEngine_bloomSettingsDefault(void)
 {
     return (FlecsBloom){
-        .intensity = 0.2f,
+        .intensity = 0.3f,
         .low_frequency_boost = 0.7f,
         .low_frequency_boost_curvature = 0.95f,
         .high_pass_frequency = 1.0f,
         .prefilter = {
-            .threshold = 0.0f,
+            .threshold = 1.0f,
             .threshold_softness = 0.0f
         },
         .max_mip_dimension = 512u,
@@ -480,7 +480,7 @@ static WGPUBlendState flecsEngine_bloom_getBlendState(void)
 {
     WGPUBlendComponent color = {
         .srcFactor = WGPUBlendFactor_Constant,
-        .dstFactor = WGPUBlendFactor_OneMinusConstant,
+        .dstFactor = WGPUBlendFactor_One,
         .operation = WGPUBlendOperation_Add
     };
 
