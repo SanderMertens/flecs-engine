@@ -67,6 +67,7 @@ typedef struct {
     float light_ray_dir[4];
     float light_color[4];
     float camera_pos[4];
+    float shadow_info[4];
 } FlecsUniform;
 
 extern ECS_COMPONENT_DECLARE(FlecsUniform);
@@ -97,6 +98,7 @@ ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t hdri;
     ecs_bool_t shadows;
     int32_t shadow_map_size;
+    int32_t shadow_pcf_samples;
     ecs_vec_t effects;
 });
 

@@ -297,6 +297,7 @@ void flecsEngine_renderView_register(
             { .name = "hdri", .type = ecs_id(ecs_entity_t) },
             { .name = "shadows", .type = ecs_id(ecs_bool_t) },
             { .name = "shadow_map_size", .type = ecs_id(ecs_i32_t) },
+            { .name = "shadow_pcf_samples", .type = ecs_id(ecs_i32_t) },
             { .name = "effects", .type = flecsEngine_vecEntity(world) }
         }
     });

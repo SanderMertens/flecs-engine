@@ -28,16 +28,18 @@
     "  }\n" \
     "  let current_depth = light_ndc.z - 0.0005;\n" \
     "  let texel_size = 1.0 / vec2<f32>(textureDimensions(shadow_map));\n" \
+    "  let pcf_half = i32(uniforms.shadow_info.x);\n" \
     "  var shadow = 0.0;\n" \
-    "  for (var x = -1i; x <= 1i; x++) {\n" \
-    "    for (var y = -1i; y <= 1i; y++) {\n" \
+    "  for (var x = -pcf_half; x <= pcf_half; x++) {\n" \
+    "    for (var y = -pcf_half; y <= pcf_half; y++) {\n" \
     "      let offset = vec2<f32>(f32(x), f32(y)) * texel_size;\n" \
     "      shadow += textureSampleCompareLevel(\n" \
     "        shadow_map, shadow_sampler,\n" \
     "        shadow_uv + offset, cascade, current_depth);\n" \
     "    }\n" \
     "  }\n" \
-    "  return shadow / 9.0;\n" \
+    "  let pcf_width = f32(2 * pcf_half + 1);\n" \
+    "  return shadow / (pcf_width * pcf_width);\n" \
     "}\n" \
     "fn computeShadow(world_pos : vec3<f32>) -> ShadowResult {\n" \
     "  var result : ShadowResult;\n" \

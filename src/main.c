@@ -121,8 +121,10 @@ void initEngine(
 {
   ecs_entity_t view_entity =  ecs_entity(world, { .name = "view" });
   FlecsRenderView view = {
-    .shadows = true
+    .shadows = true,
+    .shadow_pcf_samples = 3
   };
+
   FlecsRenderBatchSet batch_set = {};
 
   if (options.frame_output_mode) {
@@ -166,15 +168,14 @@ void initEngine(
 
   // RenderBatches (what to render in scene)
   ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
-    flecsEngine_createBatch_skybox(world, view_entity, 
-      "skyboxBatch");
+    flecsEngine_createBatch_skybox(world, view_entity, "skybox");
   ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
     flecsEngine_createBatchSet_geometry(world, view_entity, "geometry");
 
   // Post process effects
   FlecsSSAO ssao_settings = flecsEngine_ssaoSettingsDefault();
   ssao_settings.radius = 1.0;
-  ssao_settings.blur = 0;
+  ssao_settings.blur = 2;
   FlecsBloom bloom_settings = flecsEngine_bloomSettingsDefault();
   FlecsExponentialHeightFog fog_settings =
     flecsEngine_exponentialHeightFogSettingsDefault();
