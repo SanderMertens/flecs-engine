@@ -102,6 +102,7 @@ template Building {
 @tree Parent
 template StreetLantern {
   prop poleHeight: 3
+  prop on: false
 
   // Pole
   {
@@ -127,20 +128,31 @@ template StreetLantern {
     PbrMaterial: {metallic: 1, roughness: 0.4}
   }
 
+  const onoff = match on {
+    true: 1.0
+    false: 0.0
+  }
+
   // Emissive lamp bulb
   {
     Position3: {1.1, poleHeight - 0.2, 0}
     Box: {0.5, 0.2, 0.2}
     Rgba: {255, 229.5, 178.5}
-    Emissive: {strength: 5}
+    Emissive: {strength: match on {
+        true: 5
+        false: 0
+      }
+    }
   }
 
   // Spotlight facing down
-  {
-    Position3: {1.1, poleHeight - 0.5, 0}
-    Rotation3: {-math.PI / 2, 0, 0}
-    SpotLight: {intensity: 20, range: 8, inner_angle: 5, outer_angle: 60}
-    Rgba: {255, 229.5, 178.5}
+  if on {
+    {
+      Position3: {1.1, poleHeight - 0.5, 0}
+      Rotation3: {-math.PI / 2, 0, 0}
+      SpotLight: {intensity: 20, range: 8, inner_angle: 5, outer_angle: 60}
+      Rgba: {255, 229.5, 178.5}
+    }
   }
 }
 
@@ -152,6 +164,7 @@ template City {
   prop buildingWidth: 8
   prop maxFloors: 26
   prop varFloors: 4
+  prop streetLights: false
 
   const gridSizeH = gridSize / 2
 
@@ -194,19 +207,19 @@ template City {
       // Street lanterns - one on each side of the block
       const edgeOff = pavementWidth / 2.3
 
-      StreetLantern() {
+      StreetLantern(on: streetLights) {
         Position3: {xP + edgeOff, 0.1, yP}
         Rotation3: {0, 0, 0}
       }
-      StreetLantern() {
+      StreetLantern(on: streetLights) {
         Position3: {xP - edgeOff, 0.1, yP}
         Rotation3: {0, math.PI, 0}
       }
-      StreetLantern() {
+      StreetLantern(on: streetLights) {
         Position3: {xP, 0.1, yP + edgeOff}
         Rotation3: {0, -math.PI / 2, 0}
       }
-      StreetLantern() {
+      StreetLantern(on: streetLights) {
         Position3: {xP, 0.1, yP - edgeOff}
         Rotation3: {0, math.PI / 2, 0}
       }

@@ -342,11 +342,17 @@ static bool flecsEngine_cluster_sphereRange(
     if (sz_max >= FLECS_ENGINE_CLUSTER_Z) sz_max = FLECS_ENGINE_CLUSTER_Z - 1;
 
     int tx_min, tx_max, ty_min, ty_max;
-    if (depth <= range) {
+    float dist_sq = vx * vx + vy * vy + vz * vz;
+    if (dist_sq <= range * range) {
+        /* Camera is inside the light's bounding sphere */
         tx_min = 0; tx_max = FLECS_ENGINE_CLUSTER_X - 1;
         ty_min = 0; ty_max = FLECS_ENGINE_CLUSTER_Y - 1;
     } else {
-        float half_y = depth * tan_half_fov;
+        /* Camera is outside the sphere – project to tile range.
+         * Clamp depth to the near plane so the projection math stays
+         * valid even when the sphere straddles or is behind the camera. */
+        float safe_depth = fmaxf(depth, near);
+        float half_y = safe_depth * tan_half_fov;
         float half_x = half_y * aspect;
         float ndc_cx = (half_x > 1e-6f) ? (vx / half_x) : 0.0f;
         float ndc_cy = (half_y > 1e-6f) ? (vy / half_y) : 0.0f;
