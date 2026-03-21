@@ -181,18 +181,22 @@ void initEngine(
     flecsEngine_exponentialHeightFogSettingsDefault();
   fog_settings.density = 0;
 
-  ecs_vec_append_t(NULL, &view.effects, ecs_entity_t)[0] =
-    flecsEngine_createEffect_ssao(world, view_entity,
-      "ssaoEffect", 0, &ssao_settings);
-  ecs_vec_append_t(NULL, &view.effects, ecs_entity_t)[0] =
-    flecsEngine_createEffect_bloom(world, view_entity,
-      "bloomEffect", 1, &bloom_settings);
-  ecs_vec_append_t(NULL, &view.effects, ecs_entity_t)[0] =
-    flecsEngine_createEffect_exponentialHeightFog(
-      world, view_entity, "heightFogEffect", 2, &fog_settings);
-  ecs_vec_append_t(NULL, &view.effects, ecs_entity_t)[0] =
-    flecsEngine_createEffect_tonyMcMapFace(world, view_entity,
-      "tonyMcMapFaceEffect", 3);
+  *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
+    (flecs_render_view_effect_t){ .enabled = true, .effect =
+      flecsEngine_createEffect_ssao(world, view_entity,
+        "ssaoEffect", 0, &ssao_settings) };
+  *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
+    (flecs_render_view_effect_t){ .enabled = true, .effect =
+      flecsEngine_createEffect_bloom(world, view_entity,
+        "bloomEffect", 1, &bloom_settings) };
+  *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
+    (flecs_render_view_effect_t){ .enabled = true, .effect =
+      flecsEngine_createEffect_exponentialHeightFog(
+        world, view_entity, "heightFogEffect", 2, &fog_settings) };
+  *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
+    (flecs_render_view_effect_t){ .enabled = true, .effect =
+      flecsEngine_createEffect_tonyMcMapFace(world, view_entity,
+        "tonyMcMapFaceEffect", 3) };
 
   ecs_set_ptr(world, view_entity, FlecsRenderView, &view);
   ecs_set_ptr(world, view_entity, FlecsRenderBatchSet, &batch_set);

@@ -195,7 +195,7 @@ void flecsEngine_renderView_renderEffects(
     ecs_entity_t view_entity,
     FlecsEngineImpl *engine,
     const FlecsRenderView *view,
-    const FlecsRenderViewImpl *viewImpl,
+    FlecsRenderViewImpl *viewImpl,
     WGPUTextureView view_texture,
     WGPUCommandEncoder encoder);
 

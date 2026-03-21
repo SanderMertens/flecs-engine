@@ -2,11 +2,12 @@
 #include "flecs_engine.h"
 
 ECS_COMPONENT_DECLARE(flecs_engine_shadow_params_t);
+ECS_COMPONENT_DECLARE(flecs_render_view_effect_t);
 ECS_COMPONENT_DECLARE(FlecsRenderView);
 ECS_COMPONENT_DECLARE(FlecsRenderViewImpl);
 
 ECS_CTOR(FlecsRenderView, ptr, {
-    ecs_vec_init_t(NULL, &ptr->effects, ecs_entity_t, 0);
+    ecs_vec_init_t(NULL, &ptr->effects, flecs_render_view_effect_t, 0);
     ptr->camera = 0;
     ptr->light = 0;
     ptr->hdri = 0;
@@ -17,22 +18,22 @@ ECS_CTOR(FlecsRenderView, ptr, {
 })
 
 ECS_MOVE(FlecsRenderView, dst, src, {
-    ecs_vec_fini_t(NULL, &dst->effects, ecs_entity_t);
+    ecs_vec_fini_t(NULL, &dst->effects, flecs_render_view_effect_t);
     *dst = *src;
     ecs_os_zeromem(src);
 })
 
 ECS_COPY(FlecsRenderView, dst, src, {
-    ecs_vec_fini_t(NULL, &dst->effects, ecs_entity_t);
+    ecs_vec_fini_t(NULL, &dst->effects, flecs_render_view_effect_t);
     dst->camera = src->camera;
     dst->light = src->light;
     dst->hdri = src->hdri;
     dst->shadow = src->shadow;
-    dst->effects = ecs_vec_copy_t(NULL, &src->effects, ecs_entity_t);
+    dst->effects = ecs_vec_copy_t(NULL, &src->effects, flecs_render_view_effect_t);
 })
 
 ECS_DTOR(FlecsRenderView, ptr, {
-    ecs_vec_fini_t(NULL, &ptr->effects, ecs_entity_t);
+    ecs_vec_fini_t(NULL, &ptr->effects, flecs_render_view_effect_t);
 })
 
 static void flecsEngine_renderView_releaseTargets(
@@ -68,14 +69,33 @@ static void flecsEngine_renderView_releaseTargets(
     impl->effect_target_format = WGPUTextureFormat_Undefined;
 }
 
+static void flecsEngine_renderView_releasePassthrough(
+    FlecsRenderViewImpl *impl)
+{
+    if (impl->passthrough_pipeline) {
+        wgpuRenderPipelineRelease(impl->passthrough_pipeline);
+        impl->passthrough_pipeline = NULL;
+    }
+    if (impl->passthrough_bind_layout) {
+        wgpuBindGroupLayoutRelease(impl->passthrough_bind_layout);
+        impl->passthrough_bind_layout = NULL;
+    }
+    if (impl->passthrough_sampler) {
+        wgpuSamplerRelease(impl->passthrough_sampler);
+        impl->passthrough_sampler = NULL;
+    }
+}
+
 ECS_MOVE(FlecsRenderViewImpl, dst, src, {
     flecsEngine_renderView_releaseTargets(dst);
+    flecsEngine_renderView_releasePassthrough(dst);
     *dst = *src;
     ecs_os_memset_t(src, 0, FlecsRenderViewImpl);
 })
 
 ECS_DTOR(FlecsRenderViewImpl, ptr, {
     flecsEngine_renderView_releaseTargets(ptr);
+    flecsEngine_renderView_releasePassthrough(ptr);
 })
 
 static bool flecsEngine_renderView_createTargets(
@@ -188,7 +208,7 @@ static void flecsEngine_renderView_render(
     engine->last_pipeline = NULL;
 
     if (flecsEngine_renderView_ensureTargets(
-        engine, impl, ecs_vec_count(&view->effects))) 
+        engine, impl, ecs_vec_count(&view->effects)))
     {
         ecs_err("failed to allocate effect render targets");
         return;
@@ -274,6 +294,7 @@ void flecsEngine_renderView_register(
     ecs_world_t *world)
 {
     ECS_COMPONENT_DEFINE(world, flecs_engine_shadow_params_t);
+    ECS_COMPONENT_DEFINE(world, flecs_render_view_effect_t);
     ECS_COMPONENT_DEFINE(world, FlecsRenderView);
     ECS_COMPONENT_DEFINE(world, FlecsRenderViewImpl);
 
@@ -303,13 +324,28 @@ void flecsEngine_renderView_register(
     });
 
     ecs_struct(world, {
+        .entity = ecs_id(flecs_render_view_effect_t),
+        .members = {
+            { .name = "enabled", .type = ecs_id(ecs_bool_t) },
+            { .name = "effect", .type = ecs_id(ecs_entity_t) }
+        }
+    });
+
+    ecs_entity_t vec_view_effect = ecs_vector(world, {
+        .entity = ecs_entity(world, {
+            .name = "::flecs.engine.types.vecViewEffect",
+        }),
+        .type = ecs_id(flecs_render_view_effect_t)
+    });
+
+    ecs_struct(world, {
         .entity = ecs_id(FlecsRenderView),
         .members = {
             { .name = "camera", .type = ecs_id(ecs_entity_t) },
             { .name = "light", .type = ecs_id(ecs_entity_t) },
             { .name = "hdri", .type = ecs_id(ecs_entity_t) },
             { .name = "shadow", .type = ecs_id(flecs_engine_shadow_params_t) },
-            { .name = "effects", .type = flecsEngine_vecEntity(world) }
+            { .name = "effects", .type = vec_view_effect }
         }
     });
 }

@@ -99,6 +99,11 @@ ECS_STRUCT(flecs_engine_shadow_params_t, {
     float bias;
 });
 
+ECS_STRUCT(flecs_render_view_effect_t, {
+    ecs_bool_t enabled;
+    ecs_entity_t effect;
+});
+
 ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t camera;
     ecs_entity_t light;
