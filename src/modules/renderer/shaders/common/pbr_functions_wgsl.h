@@ -99,7 +99,7 @@
     "  return (diffuse + specular) * uniforms.light_color.rgb * ndotl;\n" \
     "}\n" \
     "fn computeAmbientLighting(albedo : vec3<f32>, metallic : f32) -> vec3<f32> {\n" \
-    "  return albedo * 0.03 * (1.0 - metallic);\n" \
+    "  return albedo * uniforms.ambient_light.rgb * (1.0 - metallic);\n" \
     "}\n" \
     "fn computePointLighting(\n" \
     "  n : vec3<f32>,\n" \

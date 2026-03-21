@@ -3,10 +3,10 @@
 // For C/C++ examples and docs go to:
 //  https://github.com/SanderMertens/flecs
 
-using flecs.script.*
+using flecs.script
 using flecs.engine.*
 
-const rng = Rng: {} // Random number generator
+const rng = math.Rng: {} // Random number generator
 
 @tree Parent
 template Tree {
@@ -33,7 +33,7 @@ template Pavement {
   Box: {width, 0.1, width}
   Rgba: {51, 51, 51}
   
-  const trees = 3
+  const trees = 2
   const spacing = width / trees
   const offset = (width/2) - 0.2
 
@@ -60,7 +60,7 @@ template Building {
     Position3: {0, floors, 0}
     Box: {width - 0.2, floors * 2, width - 0.2}
     Rgba: {2.55, 5.1, 12.75}
-    PbrMaterial: {roughness: 0.05}
+    PbrMaterial: {roughness: 0.07}
   }
 
   const pillars = windows + 2
@@ -98,6 +98,52 @@ template Building {
   }
 }
 
+// Street lantern template - arm extends in +x direction, rotated when placed
+@tree Parent
+template StreetLantern {
+  prop poleHeight: 3
+
+  // Pole
+  {
+    Position3: {0, poleHeight / 2, 0}
+    Box: {0.12, poleHeight, 0.12}
+    Rgba: {20.4, 20.4, 20.4}
+    PbrMaterial: {metallic: 1, roughness: 0.4}
+  }
+
+  // Arm at top
+  {
+    Position3: {0.6, poleHeight - 0.1, 0}
+    Box: {1.2, 0.08, 0.08}
+    Rgba: {20.4, 20.4, 20.4}
+    PbrMaterial: {metallic: 1, roughness: 0.4}
+  }
+
+  // Lamp housing
+  {
+    Position3: {1.1, poleHeight - 0.1, 0}
+    Box: {0.6, 0.2, 0.3}
+    Rgba: {20.4, 20.4, 20.4}
+    PbrMaterial: {metallic: 1, roughness: 0.4}
+  }
+
+  // Emissive lamp bulb
+  {
+    Position3: {1.1, poleHeight - 0.2, 0}
+    Box: {0.5, 0.2, 0.2}
+    Rgba: {255, 229.5, 178.5}
+    Emissive: {strength: 5}
+  }
+
+  // Spotlight facing down
+  {
+    Position3: {1.1, poleHeight - 0.5, 0}
+    Rotation3: {-math.PI / 2, 0, 0}
+    SpotLight: {intensity: 20, range: 8, inner_angle: 5, outer_angle: 60}
+    Rgba: {255, 229.5, 178.5}
+  }
+}
+
 // City template
 template City {
   prop gridSize: 15
@@ -121,9 +167,9 @@ template City {
     for y in 0 .. gridSize {
       const xR: x - gridSizeH
       const yR: y - gridSizeH
-      const xS: 1.0 - (abs(xR + 0.5) / gridSizeH)
-      const yS: 1.0 - (abs(yR + 0.5) / gridSizeH)
-      const baseY: pow(xS, 2) * pow(yS, 2) * maxFloors
+      const xS: 1.0 - (math.abs(xR + 0.5) / gridSizeH)
+      const yS: 1.0 - (math.abs(yR + 0.5) / gridSizeH)
+      const baseY: math.pow(xS, 2) * math.pow(yS, 2) * maxFloors
       const xP: xR * blockWidth + blockWidth / 2
       const yP: yR * blockWidth + blockWidth / 2
       const rgb: rng.f(127.5) + 12.75
@@ -142,7 +188,27 @@ template City {
         windowSpacing: rng.f(0.6) + 0.2
         color: {rgb + rng.f(38.25), rgb, rgb}
       ) {
-        Position3: {xP, 0.1, yP} 
+        Position3: {xP, 0.1, yP}
+      }
+
+      // Street lanterns - one on each side of the block
+      const edgeOff = pavementWidth / 2.3
+
+      StreetLantern() {
+        Position3: {xP + edgeOff, 0.1, yP}
+        Rotation3: {0, 0, 0}
+      }
+      StreetLantern() {
+        Position3: {xP - edgeOff, 0.1, yP}
+        Rotation3: {0, math.PI, 0}
+      }
+      StreetLantern() {
+        Position3: {xP, 0.1, yP + edgeOff}
+        Rotation3: {0, -math.PI / 2, 0}
+      }
+      StreetLantern() {
+        Position3: {xP, 0.1, yP - edgeOff}
+        Rotation3: {0, math.PI / 2, 0}
       }
     }
   }

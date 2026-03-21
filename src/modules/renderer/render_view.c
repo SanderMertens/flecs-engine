@@ -11,6 +11,7 @@ ECS_CTOR(FlecsRenderView, ptr, {
     ptr->camera = 0;
     ptr->light = 0;
     ptr->hdri = 0;
+    ptr->ambient_light = (flecs_rgba_t){20, 20, 20, 255};
     ptr->shadow.enabled = true;
     ptr->shadow.map_size = FLECS_ENGINE_SHADOW_MAP_SIZE_DEFAULT;
     ptr->shadow.pcf_samples = 0;
@@ -28,6 +29,7 @@ ECS_COPY(FlecsRenderView, dst, src, {
     dst->camera = src->camera;
     dst->light = src->light;
     dst->hdri = src->hdri;
+    dst->ambient_light = src->ambient_light;
     dst->shadow = src->shadow;
     dst->effects = ecs_vec_copy_t(NULL, &src->effects, flecs_render_view_effect_t);
 })
@@ -344,6 +346,7 @@ void flecsEngine_renderView_register(
             { .name = "camera", .type = ecs_id(ecs_entity_t) },
             { .name = "light", .type = ecs_id(ecs_entity_t) },
             { .name = "hdri", .type = ecs_id(ecs_entity_t) },
+            { .name = "ambient_light", .type = ecs_id(flecs_rgba_t) },
             { .name = "shadow", .type = ecs_id(flecs_engine_shadow_params_t) },
             { .name = "effects", .type = vec_view_effect }
         }
