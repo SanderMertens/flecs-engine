@@ -229,7 +229,7 @@ int main(
     // .filename = "museum.flecs"
     .filename = "city.flecs"
     // .filename = "cube.flecs"
-    // .filename = "bevels.flecs"
+    // .filename = "empty.flecs"
   });
   if (!s) {
     printf("failed to load museum script\n");

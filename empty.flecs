@@ -1,0 +1,17 @@
+using flecs.engine.*
+using flecs.script
+
+{
+    Position3: {}
+    Quad: {10000, 10000}
+    Rotation3: {-math.PI / 2}
+}
+
+
+// for i in 0..100 {
+//     {
+//         Position3: {i * 10, 1, 1}
+//         PointLight: {intensity: 10, range: 5}
+//         Rgba: {100, 100, 100, 100}
+//     }
+// }
