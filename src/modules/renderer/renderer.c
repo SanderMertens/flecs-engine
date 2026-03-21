@@ -184,6 +184,9 @@ int flecsEngine_initRenderer(
         .cache_kind = EcsQueryCacheAuto
     });
 
+    impl->fallback_hdri = flecsEngine_createHdri(
+        world, 0, "FallbackHdri", NULL, 1, 1);
+
     return 0;
 error:
     return -1;

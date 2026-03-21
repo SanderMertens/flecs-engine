@@ -163,8 +163,8 @@ void initEngine(
   ecs_set(world, view.light, FlecsRgba, {255, 255, 255, 255});
 
   // HDRI (optional, for image based lighting)
-  view.hdri = flecsEngine_createHdri(
-    world, view_entity, "hdri", "industrial_sunset_puresky_4k.exr", 1024, 64);
+  // view.hdri = flecsEngine_createHdri(
+  //   world, view_entity, "hdri", "industrial_sunset_puresky_4k.exr", 1024, 64);
 
   // RenderBatches (what to render in scene)
   ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =

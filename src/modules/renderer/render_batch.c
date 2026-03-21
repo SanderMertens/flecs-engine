@@ -768,10 +768,6 @@ void flecsEngine_renderBatch_render(
     if (impl->uses_ibl) {
         ecs_entity_t hdri = view->hdri;
         if (!hdri) {
-            if (!engine->fallback_hdri) {
-                engine->fallback_hdri = flecsEngine_createHdri(
-                    world, 0, "hdri", NULL, 1, 1);
-            }
             hdri = engine->fallback_hdri;
         }
 
