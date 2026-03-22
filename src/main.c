@@ -136,14 +136,16 @@ void initEngine(
       .width = options.width,
       .height = options.height,
       .path = options.frame_output_path,
-      .clear_color = {0, 0, 0}
+      .sky_color = {0, 0, 0},
+      .ground_color = {0, 0, 0}
     });
   } else {
     ecs_singleton_set(world, FlecsWindow, {
       .title = "Hello World",
       .width = options.width,
       .height = options.height,
-      .clear_color = {40, 40, 80}
+      .sky_color = {110, 160, 235},
+      .ground_color = {20, 30, 40}
     });
   }
 
@@ -167,8 +169,8 @@ void initEngine(
   ecs_set(world, view.light, FlecsRgba, {255, 255, 255, 255});
 
   // HDRI (optional, for image based lighting)
-  view.hdri = flecsEngine_createHdri(
-    world, view_entity, "hdri", "industrial_sunset_puresky_4k.exr", 1024, 64);
+  // view.hdri = flecsEngine_createHdri(
+  //   world, view_entity, "hdri", "industrial_sunset_puresky_4k.exr", 1024, 64);
 
   // RenderBatches (what to render in scene)
   ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
@@ -188,19 +190,19 @@ void initEngine(
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
     (flecs_render_view_effect_t){ .enabled = false, .effect =
       flecsEngine_createEffect_ssao(world, view_entity,
-        "ssaoEffect", 0, &ssao_settings) };
+        "ssao", 0, &ssao_settings) };
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
     (flecs_render_view_effect_t){ .enabled = true, .effect =
       flecsEngine_createEffect_bloom(world, view_entity,
-        "bloomEffect", 1, &bloom_settings) };
+        "bloom", 1, &bloom_settings) };
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
     (flecs_render_view_effect_t){ .enabled = false, .effect =
       flecsEngine_createEffect_exponentialHeightFog(
-        world, view_entity, "heightFogEffect", 2, &fog_settings) };
+        world, view_entity, "heightFog", 2, &fog_settings) };
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
     (flecs_render_view_effect_t){ .enabled = true, .effect =
       flecsEngine_createEffect_tonyMcMapFace(world, view_entity,
-        "tonyMcMapFaceEffect", 3) };
+        "tonyMcMapFace", 3) };
 
   ecs_set_ptr(world, view_entity, FlecsRenderView, &view);
   ecs_set_ptr(world, view_entity, FlecsRenderBatchSet, &batch_set);

@@ -949,17 +949,27 @@ bool flecsEngine_ibl_initResources(
     }
 
     if (!image.pixels_rgba32f) {
-        image.width = (int32_t)FLECS_ENGINE_IBL_FALLBACK_IMAGE_SIZE;
-        image.height = (int32_t)FLECS_ENGINE_IBL_FALLBACK_IMAGE_SIZE;
-        image.pixels_rgba32f = malloc(sizeof(float) * 4u);
+        /* Build a 1x2 equirectangular fallback: top pixel = sky, bottom =
+         * ground. This gives objects something to reflect even without a
+         * real HDRI environment map. */
+        image.width = 1;
+        image.height = 2;
+        image.pixels_rgba32f = malloc(sizeof(float) * 4u * 2u);
         if (!image.pixels_rgba32f) {
             return false;
         }
 
-        image.pixels_rgba32f[0] = 0.0f;
-        image.pixels_rgba32f[1] = 0.0f;
-        image.pixels_rgba32f[2] = 0.0f;
+        /* Top row = sky (north pole) */
+        image.pixels_rgba32f[0] = flecsEngine_colorChannelToFloat(engine->sky_color.r);
+        image.pixels_rgba32f[1] = flecsEngine_colorChannelToFloat(engine->sky_color.g);
+        image.pixels_rgba32f[2] = flecsEngine_colorChannelToFloat(engine->sky_color.b);
         image.pixels_rgba32f[3] = 1.0f;
+
+        /* Bottom row = ground (south pole) */
+        image.pixels_rgba32f[4] = flecsEngine_colorChannelToFloat(engine->ground_color.r);
+        image.pixels_rgba32f[5] = flecsEngine_colorChannelToFloat(engine->ground_color.g);
+        image.pixels_rgba32f[6] = flecsEngine_colorChannelToFloat(engine->ground_color.b);
+        image.pixels_rgba32f[7] = 1.0f;
     }
 
     bool ok = false;

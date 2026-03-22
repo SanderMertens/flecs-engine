@@ -21,25 +21,25 @@ float flecsEngine_colorChannelToFloat(
     return (float)value / 255.0f;
 }
 
-WGPUColor flecsEngine_getClearColor(
+WGPUColor flecsEngine_getSkyColor(
     const FlecsEngineImpl *impl)
 {
     return (WGPUColor){
-        .r = (double)flecsEngine_colorChannelToFloat(impl->clear_color.r),
-        .g = (double)flecsEngine_colorChannelToFloat(impl->clear_color.g),
-        .b = (double)flecsEngine_colorChannelToFloat(impl->clear_color.b),
-        .a = (double)flecsEngine_colorChannelToFloat(impl->clear_color.a)
+        .r = (double)flecsEngine_colorChannelToFloat(impl->sky_color.r),
+        .g = (double)flecsEngine_colorChannelToFloat(impl->sky_color.g),
+        .b = (double)flecsEngine_colorChannelToFloat(impl->sky_color.b),
+        .a = (double)flecsEngine_colorChannelToFloat(impl->sky_color.a)
     };
 }
 
-void flecsEngine_getClearColorVec4(
+void flecsEngine_getSkyColorVec4(
     const FlecsEngineImpl *impl,
     float out[4])
 {
-    out[0] = flecsEngine_colorChannelToFloat(impl->clear_color.r);
-    out[1] = flecsEngine_colorChannelToFloat(impl->clear_color.g);
-    out[2] = flecsEngine_colorChannelToFloat(impl->clear_color.b);
-    out[3] = flecsEngine_colorChannelToFloat(impl->clear_color.a);
+    out[0] = flecsEngine_colorChannelToFloat(impl->sky_color.r);
+    out[1] = flecsEngine_colorChannelToFloat(impl->sky_color.g);
+    out[2] = flecsEngine_colorChannelToFloat(impl->sky_color.b);
+    out[3] = flecsEngine_colorChannelToFloat(impl->sky_color.a);
 }
 
 uint64_t flecsEngine_type_sizeof(

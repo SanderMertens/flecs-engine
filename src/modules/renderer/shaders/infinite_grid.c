@@ -61,7 +61,7 @@ static const char *kShaderSource =
     "  var color = input.color.rgb * grid;\n"
     "  color = max(color, vec3<f32>(0.90, 0.25, 0.25) * axis_x);\n"
     "  color = max(color, vec3<f32>(0.25, 0.45, 0.95) * axis_z);\n"
-    "  let bg = uniforms.clear_color.rgb;\n"
+    "  let bg = uniforms.sky_color.rgb;\n"
     "  color = mix(bg, color, fade);\n"
     "  return vec4<f32>(color, 1.0);\n"
     "}\n";

@@ -63,7 +63,7 @@ typedef struct {
     flecs_mat4_t inv_vp;
     flecs_mat4_t light_vp[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
     float cascade_splits[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
-    float clear_color[4];
+    float sky_color[4];
     float light_ray_dir[4];
     float light_color[4];
     float camera_pos[4];

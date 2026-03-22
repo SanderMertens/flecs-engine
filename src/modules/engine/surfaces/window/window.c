@@ -192,7 +192,8 @@ static void FlecsOnWindowCreate(
         .config = &output_cfg,
         .width = w,
         .height = h,
-        .clear_color = wnd->clear_color
+        .sky_color = wnd->sky_color,
+        .ground_color = wnd->ground_color
     };
 
     if (flecsEngine_init(it->world, &output_desc)) {

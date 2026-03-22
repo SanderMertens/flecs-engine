@@ -7,14 +7,14 @@ static WGPURenderPassEncoder flecsEngine_renderBatch_beginPass(
     WGPUTextureView color_view,
     WGPULoadOp color_load_op)
 {
-    WGPUColor clear_color = flecsEngine_getClearColor(impl);
+    WGPUColor sky_color = flecsEngine_getSkyColor(impl);
 
     WGPURenderPassColorAttachment color_attachment = {
         .view = color_view,
         WGPU_DEPTH_SLICE
         .loadOp = color_load_op,
         .storeOp = WGPUStoreOp_Store,
-        .clearValue = clear_color
+        .clearValue = sky_color
     };
 
     WGPURenderPassDepthStencilAttachment depth_attachment = {

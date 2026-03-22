@@ -185,7 +185,7 @@ int flecsEngine_initRenderer(
     });
 
     impl->fallback_hdri = flecsEngine_createHdri(
-        world, 0, "FallbackHdri", NULL, 1, 1);
+        world, 0, "FallbackHdri", NULL, 1014, 64);
 
     return 0;
 error:
@@ -351,7 +351,7 @@ void FlecsEngineRendererImport(
             { .name = "inv_vp", .type = ecs_id(flecs_mat4_t) },
             { .name = "light_vp", .type = ecs_id(flecs_mat4_t), .count = FLECS_ENGINE_SHADOW_CASCADE_COUNT },
             { .name = "cascade_splits", .type = ecs_id(ecs_f32_t), .count = FLECS_ENGINE_SHADOW_CASCADE_COUNT },
-            { .name = "clear_color", .type = ecs_id(ecs_f32_t), .count = 4 },
+            { .name = "sky_color", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "light_ray_dir", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "light_color", .type = ecs_id(ecs_f32_t), .count = 4 },
             { .name = "camera_pos", .type = ecs_id(ecs_f32_t), .count = 4 },

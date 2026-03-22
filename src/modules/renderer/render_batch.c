@@ -713,7 +713,7 @@ static void flecsEngine_renderBatch_updateUniforms(
     uniforms.ambient_light[2] = flecsEngine_colorChannelToFloat(view->ambient_light.b);
     uniforms.ambient_light[3] = flecsEngine_colorChannelToFloat(view->ambient_light.a);
 
-    flecsEngine_getClearColorVec4(engine, uniforms.clear_color);
+    flecsEngine_getSkyColorVec4(engine, uniforms.sky_color);
 
     wgpuQueueWriteBuffer(
         engine->queue,

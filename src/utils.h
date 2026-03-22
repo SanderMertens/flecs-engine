@@ -4,10 +4,10 @@ void flecsEngine_registerVec3Type(
     ecs_world_t *world,
     ecs_entity_t component);
 
-WGPUColor flecsEngine_getClearColor(
+WGPUColor flecsEngine_getSkyColor(
     const FlecsEngineImpl *impl);
 
-void flecsEngine_getClearColorVec4(
+void flecsEngine_getSkyColorVec4(
     const FlecsEngineImpl *impl,
     float out[4]);
 
