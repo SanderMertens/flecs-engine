@@ -149,7 +149,7 @@ void initEngine(
       .height = options.height,
       .sky_color = {50, 120, 255},
       .ground_color = {20, 30, 40},
-      .resolution_scale = 2,
+      .resolution_scale = 1,
       .msaa = true
     });
   }

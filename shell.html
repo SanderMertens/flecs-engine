@@ -8,13 +8,53 @@
   * { margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
   canvas { display: block; width: 100%; height: 100%; }
+  #error-canvas { position: absolute; top: 0; left: 0; display: none; }
 </style>
 </head>
 <body>
 <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+<canvas id="error-canvas"></canvas>
 <script>
+  var canvas = document.getElementById('canvas');
+
+  function showError(msg) {
+    var ec = document.getElementById('error-canvas');
+    ec.style.display = 'block';
+    ec.width = ec.clientWidth * devicePixelRatio;
+    ec.height = ec.clientHeight * devicePixelRatio;
+    var ctx = ec.getContext('2d');
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, ec.clientWidth, ec.clientHeight);
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg, ec.clientWidth / 2, ec.clientHeight / 2);
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#999';
+    ctx.fillText('Try using Chrome or Edge with WebGPU enabled.', ec.clientWidth / 2, ec.clientHeight / 2 + 30);
+  }
+
+  if (!navigator.gpu) {
+    showError('WebGPU is not supported in this browser.');
+  } else {
+    navigator.gpu.requestAdapter().then(function(adapter) {
+      if (!adapter) {
+        showError('WebGPU adapter not available.');
+        return;
+      }
+      return adapter.requestDevice();
+    }).then(function(device) {
+      if (!device) {
+        showError('WebGPU device not available.');
+      }
+    }).catch(function() {
+      showError('WebGPU is not supported in this browser.');
+    });
+  }
+
   var Module = {
-    canvas: document.getElementById('canvas'),
+    canvas: canvas,
     print: function(text) { console.log(text); },
     printErr: function(text) { console.error(text); }
   };
