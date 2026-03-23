@@ -87,8 +87,8 @@ static bool flecsEngine_renderView_createTargets(
     int32_t effect_count,
     WGPUTextureFormat format)
 {
-    uint32_t width = (uint32_t)engine->width;
-    uint32_t height = (uint32_t)engine->height;
+    uint32_t width = (uint32_t)engine->actual_width;
+    uint32_t height = (uint32_t)engine->actual_height;
 
     impl->effect_target_textures = ecs_os_calloc_n(WGPUTexture, effect_count);
     impl->effect_target_views = ecs_os_calloc_n(WGPUTextureView, effect_count);
@@ -143,8 +143,8 @@ static int flecsEngine_renderView_ensureTargets(
         return 0;
     }
 
-    uint32_t width = (uint32_t)engine->width;
-    uint32_t height = (uint32_t)engine->height;
+    uint32_t width = (uint32_t)engine->actual_width;
+    uint32_t height = (uint32_t)engine->actual_height;
     WGPUTextureFormat surface_format = engine->surface_config.format;
     WGPUTextureFormat desired_format = flecsEngine_getHdrFormat(engine);
 
@@ -192,6 +192,9 @@ static void flecsEngine_renderView_render(
 
     int32_t effect_count = ecs_vec_count(&view->effects);
     int32_t target_count = effect_count > 0 ? effect_count : 1;
+    if (effect_count > 0 && engine->resolution_scale > 1) {
+        target_count = effect_count + 1;
+    }
     if (flecsEngine_renderView_ensureTargets(engine, impl, target_count))
     {
         ecs_err("failed to allocate effect render targets");

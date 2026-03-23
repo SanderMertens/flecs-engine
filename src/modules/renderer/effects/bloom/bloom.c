@@ -197,14 +197,14 @@ static void flecsEngine_bloom_computeTextureSize(
     uint32_t *out_width,
     uint32_t *out_height)
 {
-    if (engine->height <= 0 || engine->width <= 0) {
+    if (engine->actual_height <= 0 || engine->actual_width <= 0) {
         *out_width = 1u;
         *out_height = 1u;
         return;
     }
 
-    uint32_t width = (uint32_t)engine->width / 2u;
-    uint32_t height = (uint32_t)engine->height / 2u;
+    uint32_t width = (uint32_t)engine->actual_width / 2u;
+    uint32_t height = (uint32_t)engine->actual_height / 2u;
     if (!width) {
         width = 1u;
     }
@@ -603,8 +603,8 @@ static void flecsEngine_bloom_fillUniform(
 
     uniform->scale[0] = settings->scale_x;
     uniform->scale[1] = settings->scale_y;
-    uniform->aspect = engine->height > 0
-        ? (float)engine->width / (float)engine->height
+    uniform->aspect = engine->actual_height > 0
+        ? (float)engine->actual_width / (float)engine->actual_height
         : 1.0f;
     uniform->_padding = 0.0f;
 }

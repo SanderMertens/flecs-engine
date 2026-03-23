@@ -29,6 +29,9 @@ typedef struct {
     GLFWwindow *window;
     int32_t width;
     int32_t height;
+    int32_t actual_width;
+    int32_t actual_height;
+    int32_t resolution_scale;
     const struct FlecsEngineSurfaceInterface *surface_impl;
     bool output_done;
     const char *frame_output_path;
@@ -277,6 +280,7 @@ typedef struct FlecsEngineOutputDesc {
     const void *config;
     int32_t width;
     int32_t height;
+    int32_t resolution_scale;
     flecs_rgba_t sky_color;
     flecs_rgba_t ground_color;
 } FlecsEngineOutputDesc;

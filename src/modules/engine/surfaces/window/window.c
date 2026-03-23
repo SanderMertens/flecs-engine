@@ -61,6 +61,12 @@ static int flecsEngine_window_prepareFrame(
         impl->height = height;
         impl->surface_config.width = (uint32_t)width;
         impl->surface_config.height = (uint32_t)height;
+
+        int32_t scale = impl->resolution_scale;
+        if (scale < 1) scale = 1;
+        impl->actual_width = width / scale;
+        impl->actual_height = height / scale;
+
         flecsEngine_reconfigureSurface(impl);
     }
 
@@ -150,7 +156,12 @@ const FlecsEngineSurfaceInterface flecsEngineWindowOutputOps = {
 static void FlecsOnWindowCreate(
     ecs_iter_t *it)
 {
-    if (ecs_singleton_get(it->world, FlecsEngineImpl)) {
+    FlecsEngineImpl *existing = ecs_singleton_ensure(it->world, FlecsEngineImpl);
+    if (existing && existing->device) {
+        FlecsWindow *wnd = ecs_field(it, FlecsWindow, 0);
+        int32_t scale = wnd->resolution_scale;
+        if (scale < 1) scale = 1;
+        existing->resolution_scale = scale;
         return;
     }
 
@@ -192,6 +203,7 @@ static void FlecsOnWindowCreate(
         .config = &output_cfg,
         .width = w,
         .height = h,
+        .resolution_scale = wnd->resolution_scale,
         .sky_color = wnd->sky_color,
         .ground_color = wnd->ground_color
     };

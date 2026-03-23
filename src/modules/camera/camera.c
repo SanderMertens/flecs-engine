@@ -16,8 +16,8 @@ static void FlecsCameraTransform(ecs_iter_t *it) {
     const FlecsEngineImpl *engine = ecs_singleton_get(it->world, FlecsEngineImpl);
 
     float window_aspect = 0.0f;
-    if (engine && engine->width > 0 && engine->height > 0) {
-        window_aspect = (float)engine->width / (float)engine->height;
+    if (engine && engine->actual_width > 0 && engine->actual_height > 0) {
+        window_aspect = (float)engine->actual_width / (float)engine->actual_height;
     }
 
     for (int32_t i = 0; i < it->count; i ++) {

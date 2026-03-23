@@ -131,8 +131,10 @@ void initEngine(
 
   FlecsRenderBatchSet batch_set = {};
 
+  ecs_entity_t window = ecs_entity(world, { .name = "window" });
+
   if (options.frame_output_mode) {
-    ecs_singleton_set(world, FlecsFrameOutput, {
+    ecs_set(world, window, FlecsFrameOutput, {
       .width = options.width,
       .height = options.height,
       .path = options.frame_output_path,
@@ -140,12 +142,13 @@ void initEngine(
       .ground_color = {0, 0, 0}
     });
   } else {
-    ecs_singleton_set(world, FlecsWindow, {
+    ecs_set(world, window, FlecsWindow, {
       .title = "Hello World",
       .width = options.width,
       .height = options.height,
       .sky_color = {110, 160, 235},
-      .ground_color = {20, 30, 40}
+      .ground_color = {20, 30, 40},
+      .resolution_scale = 4
     });
   }
 

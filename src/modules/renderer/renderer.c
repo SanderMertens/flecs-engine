@@ -86,12 +86,12 @@ static void flecsEngine_createDepthResources(
 static int flecsEngine_ensureDepthResources(
     FlecsEngineImpl *impl)
 {
-    if (impl->width <= 0 || impl->height <= 0) {
+    if (impl->actual_width <= 0 || impl->actual_height <= 0) {
         return 0;
     }
 
-    uint32_t width = (uint32_t)impl->width;
-    uint32_t height = (uint32_t)impl->height;
+    uint32_t width = (uint32_t)impl->actual_width;
+    uint32_t height = (uint32_t)impl->actual_height;
 
     if (impl->depth_texture &&
         impl->depth_texture_view &&
@@ -228,6 +228,16 @@ static void FlecsEngineRender(
 
     if (!impl->width || !impl->height) {
         return;
+    }
+
+    /* Recompute actual dimensions for runtime resolution_scale changes */
+    {
+        int32_t scale = impl->resolution_scale;
+        if (scale < 1) scale = 1;
+        impl->actual_width = impl->width / scale;
+        impl->actual_height = impl->height / scale;
+        if (impl->actual_width < 1) impl->actual_width = 1;
+        if (impl->actual_height < 1) impl->actual_height = 1;
     }
 
     if (flecsEngine_ensureDepthResources(impl)) {

@@ -405,8 +405,8 @@ void flecsEngine_cluster_build(
     if (near <= 0.0f) near = 0.1f;
     if (far <= near) far = near + 1.0f;
     float tan_half_fov = tanf(cam->fov * 0.5f);
-    float aspect = (engine->width > 0 && engine->height > 0)
-        ? (float)engine->width / (float)engine->height : 1.0f;
+    float aspect = (engine->actual_width > 0 && engine->actual_height > 0)
+        ? (float)engine->actual_width / (float)engine->actual_height : 1.0f;
     float log_ratio = logf(far / near);
     if (log_ratio < 1e-6f) return;
 
@@ -419,7 +419,7 @@ void flecsEngine_cluster_build(
     FlecsClusterInfo info = {
         .grid_size = { FLECS_ENGINE_CLUSTER_X, FLECS_ENGINE_CLUSTER_Y,
             FLECS_ENGINE_CLUSTER_Z, FLECS_ENGINE_CLUSTER_TOTAL },
-        .screen_info = { (float)engine->width, (float)engine->height,
+        .screen_info = { (float)engine->actual_width, (float)engine->actual_height,
             near, log_ratio }
     };
     wgpuQueueWriteBuffer(engine->queue, engine->cluster_info_buffer,

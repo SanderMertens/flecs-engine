@@ -223,6 +223,8 @@ void flecsEngine_renderView_renderEffects(
         return;
     }
 
+    bool needs_upscale = engine->resolution_scale > 1;
+
     for (int32_t i = 0; i < effect_count; i ++) {
         if (!effects[i].enabled) {
             continue;
@@ -241,10 +243,11 @@ void flecsEngine_renderView_renderEffects(
         ecs_assert(effect->input <= i, ECS_INVALID_PARAMETER, NULL);
 
         bool is_last = (i == last_enabled);
-        WGPUTextureView output_view = is_last
+        bool writes_to_final = is_last && !needs_upscale;
+        WGPUTextureView output_view = writes_to_final
             ? view_texture
             : viewImpl->effect_target_views[i + 1];
-        WGPUTextureFormat output_format = is_last
+        WGPUTextureFormat output_format = writes_to_final
             ? engine->surface_config.format
             : viewImpl->effect_target_format;
 
@@ -252,7 +255,7 @@ void flecsEngine_renderView_renderEffects(
             effects, effect->input);
         WGPUTextureView input_view =
             viewImpl->effect_target_views[resolved_input];
-        WGPULoadOp load_op = is_last ? WGPULoadOp_Load : WGPULoadOp_Clear;
+        WGPULoadOp load_op = writes_to_final ? WGPULoadOp_Load : WGPULoadOp_Clear;
 
         if (effect->render_callback) {
             bool render_ok = effect->render_callback(
@@ -292,6 +295,33 @@ void flecsEngine_renderView_renderEffects(
 
         wgpuRenderPassEncoderEnd(effect_pass);
         wgpuRenderPassEncoderRelease(effect_pass);
+    }
+
+    /* When upscaling is needed, passthrough blits from the last effect's
+     * intermediate target to the final view texture at window resolution. */
+    if (needs_upscale) {
+        WGPUTextureView upscale_input =
+            viewImpl->effect_target_views[last_enabled + 1];
+
+        WGPUBindGroupEntry entries[2] = {
+            { .binding = 0, .textureView = upscale_input },
+            { .binding = 1, .sampler = engine->passthrough_sampler }
+        };
+        WGPUBindGroup bg = wgpuDeviceCreateBindGroup(engine->device,
+            &(WGPUBindGroupDescriptor){
+                .layout = engine->passthrough_bind_layout,
+                .entryCount = 2,
+                .entries = entries
+            });
+
+        WGPURenderPassEncoder pass = flecsEngine_renderEffect_beginPass(
+            engine, encoder, view_texture, WGPULoadOp_Load);
+        wgpuRenderPassEncoderSetPipeline(pass, engine->passthrough_pipeline);
+        wgpuRenderPassEncoderSetBindGroup(pass, 0, bg, 0, NULL);
+        wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
+        wgpuRenderPassEncoderEnd(pass);
+        wgpuRenderPassEncoderRelease(pass);
+        wgpuBindGroupRelease(bg);
     }
 }
 

@@ -669,8 +669,8 @@ static bool flecsEngine_ssao_render(
     }
 
     /* Determine intermediate texture size */
-    uint32_t width = engine->width > 0 ? (uint32_t)engine->width : 1;
-    uint32_t height = engine->height > 0 ? (uint32_t)engine->height : 1;
+    uint32_t width = engine->actual_width > 0 ? (uint32_t)engine->actual_width : 1;
+    uint32_t height = engine->actual_height > 0 ? (uint32_t)engine->actual_height : 1;
 
     ecs_entity_t view_entity = ecs_get_target(
         world, effect_entity, EcsChildOf, 0);
