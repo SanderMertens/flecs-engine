@@ -138,7 +138,7 @@ static bool flecsEngine_gamma_ensureTexture(FlecsEngineImpl *impl)
                  WGPUTextureUsage_TextureBinding,
         .dimension = WGPUTextureDimension_2D,
         .size = { .width = w, .height = h, .depthOrArrayLayers = 1 },
-        .format = impl->surface_config.format,
+        .format = flecsEngine_getHdrFormat(impl),
         .mipLevelCount = 1,
         .sampleCount = 1
     };

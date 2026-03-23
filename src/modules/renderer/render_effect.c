@@ -147,9 +147,10 @@ void flecsEngine_renderEffect_render(
         engine->device, &bind_group_desc);
     ecs_assert(bind_group != NULL, ECS_INTERNAL_ERROR, NULL);
 
-    WGPURenderPipeline pipeline = output_format == engine->surface_config.format
-        ? impl->pipeline_surface
-        : impl->pipeline_hdr;
+    WGPURenderPipeline pipeline =
+        output_format == flecsEngine_getViewTargetFormat(engine)
+            ? impl->pipeline_surface
+            : impl->pipeline_hdr;
     ecs_assert(pipeline != NULL, ECS_INTERNAL_ERROR, NULL);
 
     wgpuRenderPassEncoderSetPipeline(pass, pipeline);
@@ -248,7 +249,7 @@ void flecsEngine_renderView_renderEffects(
             ? view_texture
             : viewImpl->effect_target_views[i + 1];
         WGPUTextureFormat output_format = writes_to_final
-            ? engine->surface_config.format
+            ? flecsEngine_getViewTargetFormat(engine)
             : viewImpl->effect_target_format;
 
         int32_t resolved_input = flecsEngine_resolveEffectInput(
@@ -493,7 +494,7 @@ static void FlecsRenderEffect_on_set(
             shader,
             shader_impl,
             impl.bind_layout,
-            engine->surface_config.format);
+            flecsEngine_getViewTargetFormat(engine));
         if (!impl.pipeline_surface) {
             flecsEngine_renderEffect_release(&impl);
             continue;

@@ -257,7 +257,9 @@ int main(
     printf("failed to load museum script\n");
   }
 
+#ifndef __EMSCRIPTEN__
   ecs_singleton_set(world, EcsRest, {0});
+#endif
 
 #ifdef __EMSCRIPTEN__
   emscripten_set_main_loop_arg(

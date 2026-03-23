@@ -701,7 +701,7 @@ static bool flecsEngine_bloom_setup(
         return false;
     }
 
-    WGPUTextureFormat surface_format = engine->surface_config.format;
+    WGPUTextureFormat view_target_format = flecsEngine_getViewTargetFormat(engine);
     WGPUTextureFormat hdr_format = flecsEngine_getHdrFormat(engine);
     WGPUTextureFormat bloom_format = hdr_format;
 
@@ -733,7 +733,7 @@ static bool flecsEngine_bloom_setup(
         bloom_shader,
         bloom.bind_layout,
         "upsample",
-        surface_format,
+        view_target_format,
         &blend_state);
     bloom.upsample_final_hdr_pipeline = flecsEngine_bloom_createPipeline(
         engine,
@@ -899,9 +899,10 @@ static bool flecsEngine_bloom_render(
         }
     }
 
-    WGPURenderPipeline final_pipeline = output_format == engine->surface_config.format
-        ? impl->upsample_final_surface_pipeline
-        : impl->upsample_final_hdr_pipeline;
+    WGPURenderPipeline final_pipeline =
+        output_format == flecsEngine_getViewTargetFormat(engine)
+            ? impl->upsample_final_surface_pipeline
+            : impl->upsample_final_hdr_pipeline;
 
     float final_blend = flecsEngine_bloom_computeBlendFactor(
         bloom, 0.0f, max_mip);

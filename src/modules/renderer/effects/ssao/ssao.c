@@ -505,11 +505,11 @@ static bool flecsEngine_ssao_setup(
         return false;
     }
 
-    WGPUTextureFormat surface_format = engine->surface_config.format;
+    WGPUTextureFormat view_target_format = flecsEngine_getViewTargetFormat(engine);
     WGPUTextureFormat hdr_format = flecsEngine_getHdrFormat(engine);
 
     ssao_impl.blur_pipeline_surface = flecsEngine_ssao_createBlurPipeline(
-        engine, blur_shader, ssao_impl.blur_bind_layout, surface_format);
+        engine, blur_shader, ssao_impl.blur_bind_layout, view_target_format);
     ssao_impl.blur_pipeline_hdr = flecsEngine_ssao_createBlurPipeline(
         engine, blur_shader, ssao_impl.blur_bind_layout, hdr_format);
 
@@ -772,7 +772,7 @@ static bool flecsEngine_ssao_render(
         }
 
         WGPURenderPipeline blur_pipeline =
-            output_format == engine->surface_config.format
+            output_format == flecsEngine_getViewTargetFormat(engine)
                 ? impl->blur_pipeline_surface
                 : impl->blur_pipeline_hdr;
 

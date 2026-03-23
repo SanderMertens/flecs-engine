@@ -72,7 +72,7 @@ int flecsEngine_initPassthrough(
     }
 
     WGPUColorTargetState color_target = {
-        .format = impl->surface_config.format,
+        .format = flecsEngine_getViewTargetFormat(impl),
         .writeMask = WGPUColorWriteMask_All
     };
 
