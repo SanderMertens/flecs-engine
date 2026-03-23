@@ -5,7 +5,10 @@
 #include "hdri_loader.h"
 
 bool flecsIblBuildDefaultImage(
-    const FlecsEngineImpl *engine,
+    const flecs_rgba_t *sky_color,
+    const flecs_rgba_t *ground_color,
+    const flecs_rgba_t *haze_color,
+    const flecs_rgba_t *horizon_color,
     FlecsHdriImage *image);
 
 bool flecsEngine_ibl_createRuntimeBindGroup(

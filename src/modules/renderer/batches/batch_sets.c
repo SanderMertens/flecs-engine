@@ -83,7 +83,10 @@ ecs_entity_t flecsEngine_createBatchSet_geometry(
     ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
         flecsEngine_createBatchSet_geometry_materialIndex(
             world, batch_set_entity, NULL);
-    
+    ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
+        flecsEngine_createBatch_textured_mesh(
+            world, batch_set_entity, NULL);
+
     ecs_set_ptr(world, batch_set_entity, FlecsRenderBatchSet, &batch_set);
     return batch_set_entity;
 }

@@ -182,7 +182,18 @@ WGPUDevice flecsEngine_requestDevice(
     WGPUInstance instance)
 {
     WGPUDevice device = NULL;
+
+#ifndef __EMSCRIPTEN__
+    WGPUFeatureName required_features[] = {
+        WGPUFeatureName_TextureCompressionBC
+    };
+    WGPUDeviceDescriptor desc = {
+        .requiredFeatures = required_features,
+        .requiredFeatureCount = 1
+    };
+#else
     WGPUDeviceDescriptor desc = {0};
+#endif
 
 #ifdef __EMSCRIPTEN__
     (void)instance;

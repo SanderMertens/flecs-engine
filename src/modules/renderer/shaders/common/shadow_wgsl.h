@@ -2,8 +2,8 @@
 #define FLECS_ENGINE_SHADER_COMMON_SHADOW_WGSL_H
 
 #define FLECS_ENGINE_SHADER_COMMON_SHADOW_WGSL \
-    "@group(2) @binding(0) var shadow_map : texture_depth_2d_array;\n" \
-    "@group(2) @binding(1) var shadow_sampler : sampler_comparison;\n" \
+    "@group(1) @binding(3) var shadow_map : texture_depth_2d_array;\n" \
+    "@group(1) @binding(4) var shadow_sampler : sampler_comparison;\n" \
     "struct ShadowResult {\n" \
     "  shadow : f32,\n" \
     "  debug_color : vec3<f32>\n" \

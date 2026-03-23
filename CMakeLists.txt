@@ -64,6 +64,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tinyexr)
 
+# -- cgltf (header-only) --
+FetchContent_Declare(
+  cgltf
+  GIT_REPOSITORY https://github.com/jkuhlmann/cgltf.git
+  GIT_TAG v1.15
+  EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(cgltf)
+
 # -- Sources --
 if(EMSCRIPTEN)
   # Exclude Objective-C (.m) files on emscripten
@@ -133,6 +142,7 @@ target_include_directories(flecs_engine PRIVATE
   ${stb_SOURCE_DIR}
   ${tinyexr_SOURCE_DIR}
   ${tinyexr_SOURCE_DIR}/deps/miniz
+  ${cgltf_SOURCE_DIR}
 )
 
 if(EMSCRIPTEN)

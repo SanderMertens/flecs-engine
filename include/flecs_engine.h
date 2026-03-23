@@ -5,6 +5,12 @@
 #include <cglm/cglm.h>
 
 typedef struct {
+    float x, y;
+} flecs_vec2_t;
+
+extern ECS_COMPONENT_DECLARE(flecs_vec2_t);
+
+typedef struct {
     float x, y, z;
 } flecs_vec3_t;
 
@@ -37,6 +43,7 @@ extern ECS_COMPONENT_DECLARE(flecs_rgba_t);
 #include "modules/geometry_mesh.h"
 #include "modules/geometry_primitives3.h"
 #include "modules/material.h"
+#include "modules/gltf.h"
 
 void FlecsEngineImport(
     ecs_world_t *world);

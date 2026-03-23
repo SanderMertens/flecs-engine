@@ -51,11 +51,11 @@ static void flecsEngine_ngon_generateMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     v[0] = (flecs_vec3_t){0.0f, 0.0f, 0.0f};
     vn[0] = (flecs_vec3_t){0.0f, 0.0f, 1.0f};
@@ -73,12 +73,12 @@ static void flecsEngine_ngon_generateMesh(
 
     int32_t ii = 0;
     for (int32_t i = 0; i < sides; i ++) {
-        uint16_t current = (uint16_t)(i + 1);
-        uint16_t next = (uint16_t)(((i + 1) % sides) + 1);
+        uint32_t current = (uint32_t)(i + 1);
+        uint32_t next = (uint32_t)(((i + 1) % sides) + 1);
 
         idx[ii ++] = 0;
-        idx[ii ++] = next;
         idx[ii ++] = current;
+        idx[ii ++] = next;
     }
 }
 

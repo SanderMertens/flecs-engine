@@ -83,11 +83,11 @@ static void flecsEngine_cylinder_generateSmoothMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     int32_t vi = 0;
 
@@ -141,36 +141,36 @@ static void flecsEngine_cylinder_generateSmoothMesh(
     int32_t ii = 0;
 
     for (int32_t s = 0; s < segments; s ++) {
-        uint16_t a = (uint16_t)(s * 2);
-        uint16_t b = (uint16_t)(a + 1);
-        uint16_t c = (uint16_t)(a + 2);
-        uint16_t d = (uint16_t)(a + 3);
+        uint32_t a = (uint32_t)(s * 2);
+        uint32_t b = (uint32_t)(a + 1);
+        uint32_t c = (uint32_t)(a + 2);
+        uint32_t d = (uint32_t)(a + 3);
 
         idx[ii ++] = a;
-        idx[ii ++] = b;
         idx[ii ++] = c;
+        idx[ii ++] = b;
 
         idx[ii ++] = b;
+        idx[ii ++] = c;
         idx[ii ++] = d;
-        idx[ii ++] = c;
     }
 
     for (int32_t s = 0; s < segments; s ++) {
-        uint16_t a = (uint16_t)(top_center + 1 + s);
-        uint16_t b = (uint16_t)(top_center + 1 + s + 1);
+        uint32_t a = (uint32_t)(top_center + 1 + s);
+        uint32_t b = (uint32_t)(top_center + 1 + s + 1);
 
-        idx[ii ++] = (uint16_t)top_center;
-        idx[ii ++] = a;
+        idx[ii ++] = (uint32_t)top_center;
         idx[ii ++] = b;
+        idx[ii ++] = a;
     }
 
     for (int32_t s = 0; s < segments; s ++) {
-        uint16_t a = (uint16_t)(bottom_center + 1 + s);
-        uint16_t b = (uint16_t)(bottom_center + 1 + s + 1);
+        uint32_t a = (uint32_t)(bottom_center + 1 + s);
+        uint32_t b = (uint32_t)(bottom_center + 1 + s + 1);
 
-        idx[ii ++] = (uint16_t)bottom_center;
-        idx[ii ++] = b;
+        idx[ii ++] = (uint32_t)bottom_center;
         idx[ii ++] = a;
+        idx[ii ++] = b;
     }
 }
 
@@ -191,11 +191,11 @@ static void flecsEngine_cylinder_generateFlatMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     int32_t vi = 0;
 
@@ -265,37 +265,37 @@ static void flecsEngine_cylinder_generateFlatMesh(
     int32_t ii = 0;
 
     for (int32_t s = 0; s < segments; s ++) {
-        uint16_t base = (uint16_t)(s * 4);
-        uint16_t a = base;
-        uint16_t b = (uint16_t)(base + 1);
-        uint16_t c = (uint16_t)(base + 2);
-        uint16_t d = (uint16_t)(base + 3);
+        uint32_t base = (uint32_t)(s * 4);
+        uint32_t a = base;
+        uint32_t b = (uint32_t)(base + 1);
+        uint32_t c = (uint32_t)(base + 2);
+        uint32_t d = (uint32_t)(base + 3);
 
         idx[ii ++] = a;
-        idx[ii ++] = b;
         idx[ii ++] = c;
+        idx[ii ++] = b;
 
         idx[ii ++] = b;
+        idx[ii ++] = c;
         idx[ii ++] = d;
-        idx[ii ++] = c;
     }
 
     for (int32_t s = 0; s < segments; s ++) {
-        uint16_t a = (uint16_t)(top_center + 1 + s);
-        uint16_t b = (uint16_t)(top_center + 1 + s + 1);
+        uint32_t a = (uint32_t)(top_center + 1 + s);
+        uint32_t b = (uint32_t)(top_center + 1 + s + 1);
 
-        idx[ii ++] = (uint16_t)top_center;
-        idx[ii ++] = a;
+        idx[ii ++] = (uint32_t)top_center;
         idx[ii ++] = b;
+        idx[ii ++] = a;
     }
 
     for (int32_t s = 0; s < segments; s ++) {
-        uint16_t a = (uint16_t)(bottom_center + 1 + s);
-        uint16_t b = (uint16_t)(bottom_center + 1 + s + 1);
+        uint32_t a = (uint32_t)(bottom_center + 1 + s);
+        uint32_t b = (uint32_t)(bottom_center + 1 + s + 1);
 
-        idx[ii ++] = (uint16_t)bottom_center;
-        idx[ii ++] = b;
+        idx[ii ++] = (uint32_t)bottom_center;
         idx[ii ++] = a;
+        idx[ii ++] = b;
     }
 }
 

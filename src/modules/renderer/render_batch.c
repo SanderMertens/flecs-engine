@@ -285,7 +285,7 @@ static WGPURenderPipeline flecsEngine_renderBatch_createShadowPipeline(
         .primitive = {
             .topology = WGPUPrimitiveTopology_TriangleList,
             .cullMode = WGPUCullMode_None,
-            .frontFace = WGPUFrontFace_CW
+            .frontFace = WGPUFrontFace_CCW
         },
         .multisample = WGPU_MULTISAMPLE_DEFAULT
     };
@@ -302,23 +302,29 @@ static WGPURenderPipeline flecsEngine_renderBatch_createPipeline(
     const FlecsShader *shader,
     const FlecsShaderImpl *shader_impl,
     WGPUBindGroupLayout bind_layout,
-    WGPUBindGroupLayout ibl_bind_layout,
     bool use_ibl,
     bool use_shadow,
     bool use_cluster,
+    bool use_textures,
     bool is_skybox,
     const WGPUVertexBufferLayout *vertex_buffers,
     uint32_t vertex_buffer_count,
     WGPUTextureFormat color_format,
     uint32_t sample_count)
 {
-    WGPUBindGroupLayout bind_layouts[4] = { bind_layout, ibl_bind_layout };
-    uint32_t bind_layout_count = use_ibl ? 2u : 1u;
-    if (use_shadow && engine->shadow_sample_bind_layout) {
-        bind_layouts[bind_layout_count++] = engine->shadow_sample_bind_layout;
+    WGPUBindGroupLayout bind_layouts[3] = { bind_layout };
+    uint32_t bind_layout_count = 1u;
+    if ((use_ibl || use_shadow || use_cluster) &&
+        engine->ibl_shadow_bind_layout)
+    {
+        bind_layouts[bind_layout_count++] = engine->ibl_shadow_bind_layout;
     }
-    if (use_cluster && engine->cluster_bind_layout) {
-        bind_layouts[bind_layout_count++] = engine->cluster_bind_layout;
+    if (use_textures) {
+        WGPUBindGroupLayout tex_layout =
+            flecsEngine_pbr_texture_ensureBindLayout((FlecsEngineImpl*)engine);
+        if (tex_layout) {
+            bind_layouts[bind_layout_count++] = tex_layout;
+        }
     }
 
     WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
@@ -372,7 +378,7 @@ static WGPURenderPipeline flecsEngine_renderBatch_createPipeline(
         .primitive = {
             .topology = WGPUPrimitiveTopology_TriangleList,
             .cullMode = WGPUCullMode_Back,
-            .frontFace = WGPUFrontFace_CW
+            .frontFace = WGPUFrontFace_CCW
         },
         .multisample = WGPU_MULTISAMPLE(sample_count)
     };
@@ -471,12 +477,15 @@ static void FlecsRenderBatch_on_set(
         impl.uses_ibl = flecsEngine_shader_usesIbl(shader);
         impl.uses_shadow = flecsEngine_shader_usesShadow(shader);
         impl.uses_cluster = flecsEngine_shader_usesCluster(shader);
+        impl.uses_textures = flecsEngine_shader_usesTextures(shader);
         bool is_skybox = ecs_has(world, e, FlecsSkyboxBatch);
 
-        if (impl.uses_ibl && !flecsEngine_ibl_ensureBindLayout(engine)) {
+        if ((impl.uses_ibl || impl.uses_shadow || impl.uses_cluster) &&
+            !flecsEngine_ibl_ensureBindLayout(engine))
+        {
             char *batch_name = ecs_get_path(world, e);
-            ecs_err("failed to create render batch '%s': IBL bind layout is not available",
-                batch_name);
+            ecs_err("failed to create render batch '%s': "
+                "scene bind layout is not available", batch_name);
             ecs_os_free(batch_name);
             flecsEngine_renderBatch_releaseImpl(&impl);
             continue;
@@ -503,10 +512,10 @@ static void FlecsRenderBatch_on_set(
             shader,
             shader_impl,
             impl.bind_layout,
-            engine->ibl_bind_layout,
             impl.uses_ibl,
             impl.uses_shadow,
             impl.uses_cluster,
+            impl.uses_textures,
             is_skybox,
             vertex_buffers,
             (uint32_t)vertex_buffer_count,
@@ -518,10 +527,40 @@ static void FlecsRenderBatch_on_set(
         }
 
         if (impl.uses_shadow && engine->shadow_pass_bind_layout) {
-            impl.pipeline_shadow = flecsEngine_renderBatch_createShadowPipeline(
-                engine,
-                vertex_buffers,
-                (uint32_t)vertex_buffer_count);
+            if (impl.uses_textures &&
+                rb[i].vertex_type == ecs_id(FlecsLitVertexUv))
+            {
+                /* For textured batches, build the shadow pipeline with
+                 * the non-UV vertex layout so that instance transform
+                 * locations match the shadow shader expectations. */
+                WGPUVertexAttribute shadow_vert_attrs[16];
+                WGPUVertexAttribute shadow_inst_attrs[256] = {0};
+                WGPUVertexBufferLayout shadow_vbufs[1 + FLECS_ENGINE_INSTANCE_TYPES_MAX] = {0};
+
+                int32_t sv_count = flecsEngine_vertexAttrFromType(
+                    world, ecs_id(FlecsLitVertex), shadow_vert_attrs, 16, 0);
+
+                shadow_vbufs[0] = (WGPUVertexBufferLayout){
+                    .arrayStride = flecsEngine_type_sizeof(world, ecs_id(FlecsLitVertex)),
+                    .stepMode = WGPUVertexStepMode_Vertex,
+                    .attributeCount = sv_count,
+                    .attributes = shadow_vert_attrs
+                };
+
+                int32_t shadow_vbuf_count = flecsEngine_renderBatch_setupInstanceBindings(
+                    world, &rb[i], sv_count,
+                    shadow_vbufs, 1, shadow_inst_attrs);
+
+                impl.pipeline_shadow = flecsEngine_renderBatch_createShadowPipeline(
+                    engine,
+                    shadow_vbufs,
+                    (uint32_t)shadow_vbuf_count);
+            } else {
+                impl.pipeline_shadow = flecsEngine_renderBatch_createShadowPipeline(
+                    engine,
+                    vertex_buffers,
+                    (uint32_t)vertex_buffer_count);
+            }
         }
 
         ecs_set_ptr(world, e, FlecsRenderBatchImpl, &impl);
@@ -718,7 +757,10 @@ static void flecsEngine_renderBatch_updateUniforms(
     uniforms.ambient_light[2] = flecsEngine_colorChannelToFloat(view->ambient_light.b);
     uniforms.ambient_light[3] = flecsEngine_colorChannelToFloat(view->ambient_light.a);
 
-    flecsEngine_getSkyColorVec4(engine, uniforms.sky_color);
+    uniforms.sky_color[0] = flecsEngine_colorChannelToFloat(view->background.sky_color.r);
+    uniforms.sky_color[1] = flecsEngine_colorChannelToFloat(view->background.sky_color.g);
+    uniforms.sky_color[2] = flecsEngine_colorChannelToFloat(view->background.sky_color.b);
+    uniforms.sky_color[3] = flecsEngine_colorChannelToFloat(view->background.sky_color.a);
 
     wgpuQueueWriteBuffer(
         engine->queue,
@@ -765,25 +807,26 @@ void flecsEngine_renderBatch_render(
 
     wgpuRenderPassEncoderSetBindGroup(pass, 0, bind_group, 0, NULL);
 
-    if (impl->uses_ibl) {
+    if (impl->uses_ibl || impl->uses_shadow || impl->uses_cluster) {
+        bool is_skybox = ecs_has(world, batch_entity, FlecsSkyboxBatch);
         ecs_entity_t hdri = view->hdri;
         if (!hdri) {
-            hdri = engine->fallback_hdri;
+            hdri = engine->sky_background_hdri;
+        }
+        if (!view->background.ibl && !is_skybox) {
+            hdri = engine->black_hdri;
         }
 
-        const FlecsHdriImpl *ibl = ecs_get(world, hdri, FlecsHdriImpl);
+        FlecsHdriImpl *ibl = ecs_get_mut(world, hdri, FlecsHdriImpl);
         ecs_assert(ibl != NULL, ECS_INTERNAL_ERROR, NULL);
-        wgpuRenderPassEncoderSetBindGroup(pass, 1, ibl->ibl_bind_group, 0, NULL);
-    }
 
-    if (impl->uses_shadow && engine->shadow_sample_bind_group) {
-        wgpuRenderPassEncoderSetBindGroup(
-            pass, 2, engine->shadow_sample_bind_group, 0, NULL);
-    }
+        /* Recreate combined bind group if scene resources changed */
+        if (ibl->scene_bind_version != engine->scene_bind_version) {
+            flecsEngine_ibl_createRuntimeBindGroup(engine, ibl);
+        }
 
-    if (impl->uses_cluster && engine->cluster_bind_group) {
         wgpuRenderPassEncoderSetBindGroup(
-            pass, 3, engine->cluster_bind_group, 0, NULL);
+            pass, 1, ibl->ibl_shadow_bind_group, 0, NULL);
     }
 
     batch->callback(world, engine, pass, batch);

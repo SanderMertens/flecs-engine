@@ -425,7 +425,7 @@ void flecsEngine_batch_draw(
     }
 
     wgpuRenderPassEncoderSetIndexBuffer(
-        pass, ctx->mesh.index_buffer, WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
+        pass, ctx->mesh.index_buffer, WGPUIndexFormat_Uint32, 0, WGPU_WHOLE_SIZE);
     wgpuRenderPassEncoderDrawIndexed(
         pass, ctx->mesh.index_count, ctx->count, 0, 0, 0);
 }

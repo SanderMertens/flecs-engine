@@ -50,11 +50,22 @@ ECS_MOVE(FlecsHdriImpl, dst, src, {
 WGPUBindGroupLayout flecsEngine_ibl_ensureBindLayout(
     FlecsEngineImpl *impl)
 {
-    if (impl->ibl_bind_layout) {
-        return impl->ibl_bind_layout;
+    if (impl->ibl_shadow_bind_layout) {
+        return impl->ibl_shadow_bind_layout;
     }
 
-    WGPUBindGroupLayoutEntry layout_entries[3] = {
+    /* Combined IBL + Shadow + Cluster bind group layout (group 1):
+     *   binding 0: IBL prefiltered env cubemap
+     *   binding 1: IBL sampler
+     *   binding 2: IBL BRDF LUT
+     *   binding 3: Shadow depth texture array
+     *   binding 4: Shadow comparison sampler
+     *   binding 5: Cluster info uniform
+     *   binding 6: Cluster grid storage
+     *   binding 7: Light indices storage
+     *   binding 8: Point lights storage
+     *   binding 9: Spot lights storage */
+    WGPUBindGroupLayoutEntry layout_entries[10] = {
         {
             .binding = 0,
             .visibility = WGPUShaderStage_Fragment,
@@ -79,39 +90,106 @@ WGPUBindGroupLayout flecsEngine_ibl_ensureBindLayout(
                 .viewDimension = WGPUTextureViewDimension_2D,
                 .multisampled = false
             }
+        },
+        {
+            .binding = 3,
+            .visibility = WGPUShaderStage_Fragment,
+            .texture = {
+                .sampleType = WGPUTextureSampleType_Depth,
+                .viewDimension = WGPUTextureViewDimension_2DArray,
+                .multisampled = false
+            }
+        },
+        {
+            .binding = 4,
+            .visibility = WGPUShaderStage_Fragment,
+            .sampler = {
+                .type = WGPUSamplerBindingType_Comparison
+            }
+        },
+        {
+            .binding = 5,
+            .visibility = WGPUShaderStage_Fragment,
+            .buffer = {
+                .type = WGPUBufferBindingType_Uniform,
+                .minBindingSize = sizeof(FlecsClusterInfo)
+            }
+        },
+        {
+            .binding = 6,
+            .visibility = WGPUShaderStage_Fragment,
+            .buffer = {
+                .type = WGPUBufferBindingType_ReadOnlyStorage,
+                .minBindingSize = sizeof(FlecsClusterEntry)
+            }
+        },
+        {
+            .binding = 7,
+            .visibility = WGPUShaderStage_Fragment,
+            .buffer = {
+                .type = WGPUBufferBindingType_ReadOnlyStorage,
+                .minBindingSize = sizeof(uint32_t)
+            }
+        },
+        {
+            .binding = 8,
+            .visibility = WGPUShaderStage_Fragment,
+            .buffer = {
+                .type = WGPUBufferBindingType_ReadOnlyStorage,
+                .minBindingSize = sizeof(FlecsGpuPointLight)
+            }
+        },
+        {
+            .binding = 9,
+            .visibility = WGPUShaderStage_Fragment,
+            .buffer = {
+                .type = WGPUBufferBindingType_ReadOnlyStorage,
+                .minBindingSize = sizeof(FlecsGpuSpotLight)
+            }
         }
     };
 
-    impl->ibl_bind_layout = wgpuDeviceCreateBindGroupLayout(
+    impl->ibl_shadow_bind_layout = wgpuDeviceCreateBindGroupLayout(
         impl->device,
         &(WGPUBindGroupLayoutDescriptor){
-            .entryCount = 3,
+            .entryCount = 10,
             .entries = layout_entries
         });
 
-    return impl->ibl_bind_layout;
+    return impl->ibl_shadow_bind_layout;
 }
 
 bool flecsEngine_ibl_createRuntimeBindGroup(
     const FlecsEngineImpl *engine,
     FlecsHdriImpl *ibl)
 {
-    if (ibl->ibl_bind_group) {
-        wgpuBindGroupRelease(ibl->ibl_bind_group);
-        ibl->ibl_bind_group = NULL;
+    if (ibl->ibl_shadow_bind_group) {
+        wgpuBindGroupRelease(ibl->ibl_shadow_bind_group);
+        ibl->ibl_shadow_bind_group = NULL;
     }
 
-    WGPUBindGroupLayout bind_layout = engine->ibl_bind_layout;
+    WGPUBindGroupLayout bind_layout = engine->ibl_shadow_bind_layout;
     if (!bind_layout) {
         return false;
     }
 
-    ibl->ibl_bind_group = wgpuDeviceCreateBindGroup(
+    if (!engine->shadow_texture_view || !engine->shadow_sampler) {
+        return false;
+    }
+
+    if (!engine->cluster_info_buffer || !engine->cluster_grid_buffer ||
+        !engine->cluster_index_buffer || !engine->point_light_buffer ||
+        !engine->spot_light_buffer)
+    {
+        return false;
+    }
+
+    ibl->ibl_shadow_bind_group = wgpuDeviceCreateBindGroup(
         engine->device,
         &(WGPUBindGroupDescriptor){
             .layout = bind_layout,
-            .entryCount = 3,
-            .entries = (WGPUBindGroupEntry[3]){
+            .entryCount = 10,
+            .entries = (WGPUBindGroupEntry[10]){
                 {
                     .binding = 0,
                     .textureView = ibl->ibl_prefiltered_cubemap_view
@@ -123,11 +201,50 @@ bool flecsEngine_ibl_createRuntimeBindGroup(
                 {
                     .binding = 2,
                     .textureView = ibl->ibl_brdf_lut_texture_view
+                },
+                {
+                    .binding = 3,
+                    .textureView = engine->shadow_texture_view
+                },
+                {
+                    .binding = 4,
+                    .sampler = engine->shadow_sampler
+                },
+                {
+                    .binding = 5,
+                    .buffer = engine->cluster_info_buffer,
+                    .size = sizeof(FlecsClusterInfo)
+                },
+                {
+                    .binding = 6,
+                    .buffer = engine->cluster_grid_buffer,
+                    .size = (uint64_t)FLECS_ENGINE_CLUSTER_TOTAL *
+                        sizeof(FlecsClusterEntry)
+                },
+                {
+                    .binding = 7,
+                    .buffer = engine->cluster_index_buffer,
+                    .size = (uint64_t)engine->cluster_index_capacity *
+                        sizeof(uint32_t)
+                },
+                {
+                    .binding = 8,
+                    .buffer = engine->point_light_buffer,
+                    .size = (uint64_t)engine->point_light_capacity *
+                        sizeof(FlecsGpuPointLight)
+                },
+                {
+                    .binding = 9,
+                    .buffer = engine->spot_light_buffer,
+                    .size = (uint64_t)engine->spot_light_capacity *
+                        sizeof(FlecsGpuSpotLight)
                 }
             }
         });
 
-    return ibl->ibl_bind_group != NULL;
+    ibl->scene_bind_version = engine->scene_bind_version;
+
+    return ibl->ibl_shadow_bind_group != NULL;
 }
 
 void flecsEngine_ibl_releaseRuntimeResources(
@@ -137,9 +254,9 @@ void flecsEngine_ibl_releaseRuntimeResources(
         return;
     }
 
-    if (ibl->ibl_bind_group) {
-        wgpuBindGroupRelease(ibl->ibl_bind_group);
-        ibl->ibl_bind_group = NULL;
+    if (ibl->ibl_shadow_bind_group) {
+        wgpuBindGroupRelease(ibl->ibl_shadow_bind_group);
+        ibl->ibl_shadow_bind_group = NULL;
     }
 
     if (ibl->ibl_sampler) {
@@ -183,9 +300,9 @@ void flecsEngine_ibl_releaseRuntimeResources(
 void flecsEngine_ibl_releaseResources(
     FlecsEngineImpl *impl)
 {
-    if (impl && impl->ibl_bind_layout) {
-        wgpuBindGroupLayoutRelease(impl->ibl_bind_layout);
-        impl->ibl_bind_layout = NULL;
+    if (impl && impl->ibl_shadow_bind_layout) {
+        wgpuBindGroupLayoutRelease(impl->ibl_shadow_bind_layout);
+        impl->ibl_shadow_bind_layout = NULL;
     }
 }
 
@@ -214,6 +331,7 @@ static void FlecsIbl_on_set(
             engine,
             ibl_impl,
             hdri[i].file,
+            NULL, NULL, NULL, NULL,
             hdri[i].filter_sample_count,
             hdri[i].lut_sample_count))
         {
@@ -223,6 +341,46 @@ static void FlecsIbl_on_set(
 
         ecs_modified(it->world, it->entities[i], FlecsHdriImpl);
     }
+}
+
+void flecsEngine_ibl_ensureSkyBackground(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    const flecs_engine_background_t *background)
+{
+    if (!engine->sky_background_hdri) {
+        return;
+    }
+
+    if (!memcmp(&engine->sky_bg_colors, background,
+        sizeof(flecs_engine_background_t)))
+    {
+        return;
+    }
+
+    engine->sky_bg_colors = *background;
+
+    FlecsHdriImpl *ibl = ecs_get_mut(
+        world, engine->sky_background_hdri, FlecsHdriImpl);
+    if (!ibl) {
+        return;
+    }
+
+    const FlecsHdri *hdri = ecs_get(
+        world, engine->sky_background_hdri, FlecsHdri);
+    if (!hdri) {
+        return;
+    }
+
+    flecsEngine_ibl_releaseRuntimeResources(ibl);
+    flecsEngine_ibl_initResources(
+        engine, ibl, NULL,
+        &background->sky_color,
+        &background->ground_color,
+        &background->haze_color,
+        &background->horizon_color,
+        hdri->filter_sample_count,
+        hdri->lut_sample_count);
 }
 
 ecs_entity_t flecsEngine_createHdri(

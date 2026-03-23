@@ -309,7 +309,7 @@ static void flecsEngine_icosphere_generateSmoothMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     const flecs_vec3_t *unit = ecs_vec_first_t(&unit_vertices, flecs_vec3_t);
     const flecsEngine_icosphere_icoTriangle *triangles = ecs_vec_first_t(
@@ -317,7 +317,7 @@ static void flecsEngine_icosphere_generateSmoothMesh(
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     for (int32_t i = 0; i < vert_count; i ++) {
         vn[i] = unit[i];
@@ -340,16 +340,9 @@ static void flecsEngine_icosphere_generateSmoothMesh(
             c = tmp;
         }
 
-        /* Invert face orientation by reversing winding. */
-        {
-            uint32_t tmp = b;
-            b = c;
-            c = tmp;
-        }
-
-        idx[ii ++] = (uint16_t)a;
-        idx[ii ++] = (uint16_t)b;
-        idx[ii ++] = (uint16_t)c;
+        idx[ii ++] = (uint32_t)a;
+        idx[ii ++] = (uint32_t)b;
+        idx[ii ++] = (uint32_t)c;
     }
 
     ecs_vec_fini_t(NULL, &unit_vertices, flecs_vec3_t);
@@ -371,7 +364,7 @@ static void flecsEngine_icosphere_generateFlatMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, vert_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, vert_count);
 
     const flecs_vec3_t *unit = ecs_vec_first_t(&unit_vertices, flecs_vec3_t);
     const flecsEngine_icosphere_icoTriangle *triangles = ecs_vec_first_t(
@@ -379,7 +372,7 @@ static void flecsEngine_icosphere_generateFlatMesh(
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     int32_t vi = 0;
     for (int32_t i = 0; i < tri_count; i ++) {
@@ -407,25 +400,19 @@ static void flecsEngine_icosphere_generateFlatMesh(
 
         flecs_vec3_t normal = flecsEngine_icosphere_triangleNormal(a, b, c);
 
-        {
-            flecs_vec3_t tmp = b;
-            b = c;
-            c = tmp;
-        }
-
         v[vi] = a;
         vn[vi] = normal;
-        idx[vi] = (uint16_t)vi;
+        idx[vi] = (uint32_t)vi;
         vi ++;
 
         v[vi] = b;
         vn[vi] = normal;
-        idx[vi] = (uint16_t)vi;
+        idx[vi] = (uint32_t)vi;
         vi ++;
 
         v[vi] = c;
         vn[vi] = normal;
-        idx[vi] = (uint16_t)vi;
+        idx[vi] = (uint32_t)vi;
         vi ++;
     }
 

@@ -3,11 +3,17 @@
 
 static WGPURenderPassEncoder flecsEngine_renderBatch_beginPass(
     const FlecsEngineImpl *impl,
+    const FlecsRenderView *view,
     WGPUCommandEncoder encoder,
     WGPUTextureView color_view,
     WGPULoadOp color_load_op)
 {
-    WGPUColor sky_color = flecsEngine_getSkyColor(impl);
+    WGPUColor sky_color = {
+        .r = (double)flecsEngine_colorChannelToFloat(view->background.sky_color.r),
+        .g = (double)flecsEngine_colorChannelToFloat(view->background.sky_color.g),
+        .b = (double)flecsEngine_colorChannelToFloat(view->background.sky_color.b),
+        .a = (double)flecsEngine_colorChannelToFloat(view->background.sky_color.a)
+    };
 
     bool msaa = impl->sample_count > 1 && impl->msaa_color_texture_view;
 
@@ -163,6 +169,8 @@ void flecsEngine_renderView_renderShadow(
             sizeof(mat4));
     }
 
+    engine->in_shadow_pass = true;
+
     /* Render each cascade into its own texture array layer */
     for (int c = 0; c < FLECS_ENGINE_SHADOW_CASCADE_COUNT; c++) {
         if (!engine->shadow_layer_views[c]) {
@@ -219,6 +227,8 @@ void flecsEngine_renderView_renderShadow(
         wgpuRenderPassEncoderEnd(shadow_pass);
         wgpuRenderPassEncoderRelease(shadow_pass);
     }
+
+    engine->in_shadow_pass = false;
 }
 
 void flecsEngine_renderView_renderBatches(
@@ -239,6 +249,7 @@ void flecsEngine_renderView_renderBatches(
 
     WGPURenderPassEncoder batch_pass = flecsEngine_renderBatch_beginPass(
         engine,
+        view,
         encoder,
         batch_target,
         WGPULoadOp_Clear);

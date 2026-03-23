@@ -13,11 +13,11 @@ static void flecsEngine_box_generateMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     /* -Z */
     v[0] = (flecs_vec3_t){-half, -half, -half};
@@ -62,14 +62,14 @@ static void flecsEngine_box_generateMesh(
     vn[20] = vn[21] = vn[22] = vn[23] = (flecs_vec3_t){0.0f, 1.0f, 0.0f};
 
     for (int32_t f = 0; f < face_count; f ++) {
-        uint16_t base = (uint16_t)(f * verts_per_face);
-        uint16_t i = (uint16_t)(f * idx_per_face);
+        uint32_t base = (uint32_t)(f * verts_per_face);
+        uint32_t i = (uint32_t)(f * idx_per_face);
         idx[i + 0] = base + 0;
-        idx[i + 1] = base + 1;
-        idx[i + 2] = base + 2;
+        idx[i + 1] = base + 2;
+        idx[i + 2] = base + 1;
         idx[i + 3] = base + 0;
-        idx[i + 4] = base + 2;
-        idx[i + 5] = base + 3;
+        idx[i + 4] = base + 3;
+        idx[i + 5] = base + 2;
     }
 }
 

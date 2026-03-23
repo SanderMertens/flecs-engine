@@ -379,7 +379,7 @@ static WGPURenderPipeline flecsEngine_ssao_createBlurPipeline(
         .primitive = {
             .topology = WGPUPrimitiveTopology_TriangleList,
             .cullMode = WGPUCullMode_None,
-            .frontFace = WGPUFrontFace_CW
+            .frontFace = WGPUFrontFace_CCW
         },
         .multisample = WGPU_MULTISAMPLE_DEFAULT
     };

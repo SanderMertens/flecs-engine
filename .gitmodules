@@ -1,0 +1,6 @@
+[submodule "etc/assets/glTF-Sample-Assets"]
+	path = etc/assets/glTF-Sample-Assets
+	url = https://github.com/KhronosGroup/glTF-Sample-Assets
+[submodule "etc/assets/niagara-bistro"]
+	path = etc/assets/niagara-bistro
+	url = https://github.com/zeux/niagara_bistro.git

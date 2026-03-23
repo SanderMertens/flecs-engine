@@ -136,6 +136,11 @@ ecs_entity_t flecsEngine_shader_ensure(
     const char *name,
     const FlecsShader *shader);
 
+void flecsEngine_ibl_ensureSkyBackground(
+    ecs_world_t *world,
+    FlecsEngineImpl *engine,
+    const flecs_engine_background_t *background);
+
 void flecsEngine_renderView_extractAll(
     ecs_world_t *world,
     FlecsEngineImpl *engine);
@@ -157,11 +162,19 @@ bool flecsEngine_ibl_initResources(
     FlecsEngineImpl *engine,
     FlecsHdriImpl *ibl,
     const char *hdri_path,
+    const flecs_rgba_t *sky_color,
+    const flecs_rgba_t *ground_color,
+    const flecs_rgba_t *haze_color,
+    const flecs_rgba_t *horizon_color,
     uint32_t filter_sample_count,
     uint32_t lut_sample_count);
 
 WGPUBindGroupLayout flecsEngine_ibl_ensureBindLayout(
     FlecsEngineImpl *impl);
+
+bool flecsEngine_ibl_createRuntimeBindGroup(
+    const FlecsEngineImpl *engine,
+    FlecsHdriImpl *ibl);
 
 void flecsEngine_ibl_releaseResources(
     FlecsEngineImpl *impl);
@@ -314,6 +327,32 @@ void flecsEngine_renderView_renderShadow(
 WGPUShaderModule flecsEngine_createShaderModule(
     WGPUDevice device,
     const char *wgsl_source);
+
+WGPUBindGroupLayout flecsEngine_pbr_texture_ensureBindLayout(
+    FlecsEngineImpl *impl);
+
+WGPUTexture flecsEngine_texture_loadFile(
+    WGPUDevice device,
+    WGPUQueue queue,
+    const char *path);
+
+WGPUTexture flecsEngine_texture_create1x1(
+    WGPUDevice device,
+    WGPUQueue queue,
+    uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
+bool flecsEngine_pbr_texture_createBindGroup(
+    FlecsEngineImpl *engine,
+    WGPUTextureView albedo_view,
+    WGPUTextureView emissive_view,
+    WGPUTextureView roughness_view,
+    WGPUTextureView normal_view,
+    WGPUBindGroup *out_bind_group);
+
+ecs_entity_t flecsEngine_createBatch_textured_mesh(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name);
 
 // Import renderer module
 void FlecsEngineRendererImport(

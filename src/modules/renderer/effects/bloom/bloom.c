@@ -457,7 +457,7 @@ static WGPURenderPipeline flecsEngine_bloom_createPipeline(
         .primitive = {
             .topology = WGPUPrimitiveTopology_TriangleList,
             .cullMode = WGPUCullMode_None,
-            .frontFace = WGPUFrontFace_CW
+            .frontFace = WGPUFrontFace_CCW
         },
         .multisample = WGPU_MULTISAMPLE_DEFAULT
     };

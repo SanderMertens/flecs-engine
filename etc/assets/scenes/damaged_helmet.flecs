@@ -1,0 +1,18 @@
+using flecs.engine.*
+using flecs.script
+
+{
+    Position3: {}
+    Quad: {10000, 10000}
+    Rotation3: {-math.PI / 2}
+    Rgba: {0, 0, 0}
+}
+
+prefab DamagedHelmet {
+    Gltf: {"etc/assets/gltf/DamagedHelmet/DamagedHelmet.gltf"}
+}
+
+_ : DamagedHelmet {
+    Position3: {y: 8}
+    Scale3: {3, 3, 3}
+}

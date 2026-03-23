@@ -90,11 +90,11 @@ static void flecsEngine_cone_generateFlatMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     v[base_center] = (flecs_vec3_t){0.0f, y_bottom, 0.0f};
     vn[base_center] = (flecs_vec3_t){0.0f, -1.0f, 0.0f};
@@ -156,19 +156,19 @@ static void flecsEngine_cone_generateFlatMesh(
     int32_t ii = 0;
 
     for (int32_t i = 0; i < sides; i ++) {
-        uint16_t current = (uint16_t)(base_ring_start + i);
-        uint16_t next = (uint16_t)(base_ring_start + ((i + 1) % sides));
+        uint32_t current = (uint32_t)(base_ring_start + i);
+        uint32_t next = (uint32_t)(base_ring_start + ((i + 1) % sides));
 
-        idx[ii ++] = (uint16_t)base_center;
-        idx[ii ++] = next;
+        idx[ii ++] = (uint32_t)base_center;
         idx[ii ++] = current;
+        idx[ii ++] = next;
     }
 
     for (int32_t i = 0; i < sides; i ++) {
-        uint16_t face = (uint16_t)(side_start + (i * 3));
+        uint32_t face = (uint32_t)(side_start + (i * 3));
         idx[ii ++] = face;
-        idx[ii ++] = (uint16_t)(face + 2);
-        idx[ii ++] = (uint16_t)(face + 1);
+        idx[ii ++] = (uint32_t)(face + 1);
+        idx[ii ++] = (uint32_t)(face + 2);
     }
 }
 
@@ -193,11 +193,11 @@ static void flecsEngine_cone_generateSmoothMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     flecs_vec3_t *side_normals = ecs_os_calloc_n(flecs_vec3_t, sides);
 
@@ -295,21 +295,21 @@ static void flecsEngine_cone_generateSmoothMesh(
     int32_t ii = 0;
 
     for (int32_t i = 0; i < sides; i ++) {
-        uint16_t current = (uint16_t)(base_ring_start + i);
-        uint16_t next = (uint16_t)(base_ring_start + ((i + 1) % sides));
+        uint32_t current = (uint32_t)(base_ring_start + i);
+        uint32_t next = (uint32_t)(base_ring_start + ((i + 1) % sides));
 
-        idx[ii ++] = (uint16_t)base_center;
-        idx[ii ++] = next;
+        idx[ii ++] = (uint32_t)base_center;
         idx[ii ++] = current;
+        idx[ii ++] = next;
     }
 
     for (int32_t i = 0; i < sides; i ++) {
-        uint16_t current = (uint16_t)(side_ring_start + i);
-        uint16_t next = (uint16_t)(side_ring_start + ((i + 1) % sides));
+        uint32_t current = (uint32_t)(side_ring_start + i);
+        uint32_t next = (uint32_t)(side_ring_start + ((i + 1) % sides));
 
         idx[ii ++] = current;
+        idx[ii ++] = (uint32_t)side_apex;
         idx[ii ++] = next;
-        idx[ii ++] = (uint16_t)side_apex;
     }
 }
 

@@ -112,11 +112,19 @@ redo: {
                     emissive = emissives[i];
                 }
 
+                flecs_rgba_t em_color = emissive.color;
+                if (em_color.r == 0 && em_color.g == 0 &&
+                    em_color.b == 0 && emissive.strength > 0.0f)
+                {
+                    em_color = (flecs_rgba_t){255, 255, 255, 255};
+                }
+
                 impl->cpu_materials[index] = (FlecsGpuMaterial){
                     .color = colors[i],
                     .metallic = materials[i].metallic,
                     .roughness = materials[i].roughness,
-                    .emissive_strength = emissive.strength
+                    .emissive_strength = emissive.strength,
+                    .emissive_color = em_color
                 };
             }
         }

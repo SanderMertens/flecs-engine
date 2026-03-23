@@ -12,7 +12,9 @@
 #include "../camera/camera.h"
 #include "../light/light.h"
 #include "../material/material.h"
+#include "../gltf/gltf.h"
 
+ECS_COMPONENT_DECLARE(flecs_vec2_t);
 ECS_COMPONENT_DECLARE(flecs_vec3_t);
 ECS_COMPONENT_DECLARE(flecs_mat4_t);
 ECS_COMPONENT_DECLARE(flecs_rgba_t);
@@ -25,22 +27,11 @@ static void flecsEngine_cleanup(
     FlecsEngineImpl *impl,
     bool terminate_runtime)
 {
-    if (impl->view_query) {
-        ecs_query_fini(impl->view_query);
-        impl->view_query = NULL;
-    }
+    // Queries do not have to be freed because they are automatically cleaned up
+    // when the world is deleted.
 
-    if (impl->point_light_query) {
-        ecs_query_fini(impl->point_light_query);
-        impl->point_light_query = NULL;
-    }
-
-    if (impl->spot_light_query) {
-        ecs_query_fini(impl->spot_light_query);
-        impl->spot_light_query = NULL;
-    }
-
-    impl->fallback_hdri = 0;
+    impl->sky_background_hdri = 0;
+    impl->black_hdri = 0;
 
     if (impl->passthrough_pipeline) {
         wgpuRenderPipelineRelease(impl->passthrough_pipeline);
@@ -148,8 +139,6 @@ int flecsEngine_init(
         .resolution_scale = resolution_scale,
         .sample_count = sample_count,
         .surface_impl = output->ops,
-        .sky_color = output->sky_color,
-        .ground_color = output->ground_color,
         .output_done = false,
         .depth_texture_width = 0,
         .depth_texture_height = 0,
@@ -216,6 +205,14 @@ void FlecsEngineImport(
 {
     ECS_MODULE(world, FlecsEngine);
 
+    ecs_id(flecs_vec2_t) = ecs_struct(world, {
+        .entity = ecs_entity(world, { .name = "vec2" }),
+        .members = {
+            { .name = "x", .type = ecs_id(ecs_f32_t) },
+            { .name = "y", .type = ecs_id(ecs_f32_t) },
+        }
+    });
+
     ecs_id(flecs_vec3_t) = ecs_struct(world, {
         .entity = ecs_entity(world, { .name = "vec3" }),
         .members = {
@@ -235,6 +232,7 @@ void FlecsEngineImport(
         }
     });
 
+    ecs_set_alias(world, ecs_id(flecs_vec2_t), "flecs_vec2_t");
     ecs_set_alias(world, ecs_id(flecs_vec3_t), "flecs_vec3_t");
     ecs_set_alias(world, ecs_id(flecs_rgba_t), "flecs_rgba_t");
 
@@ -271,4 +269,5 @@ void FlecsEngineImport(
     ECS_IMPORT(world, FlecsEngineCamera);
     ECS_IMPORT(world, FlecsEngineLight);
     ECS_IMPORT(world, FlecsEngineMaterial);
+    ECS_IMPORT(world, FlecsEngineGltf);
 }

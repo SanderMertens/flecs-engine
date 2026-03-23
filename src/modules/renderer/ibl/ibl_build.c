@@ -368,7 +368,7 @@ static WGPURenderPipeline flecsIblCreatePipeline(
         .primitive = {
             .topology = WGPUPrimitiveTopology_TriangleList,
             .cullMode = WGPUCullMode_None,
-            .frontFace = WGPUFrontFace_CW
+            .frontFace = WGPUFrontFace_CCW
         },
         .multisample = WGPU_MULTISAMPLE_DEFAULT
     };
@@ -925,6 +925,10 @@ bool flecsEngine_ibl_initResources(
     FlecsEngineImpl *engine,
     FlecsHdriImpl *ibl,
     const char *hdri_path,
+    const flecs_rgba_t *sky_color,
+    const flecs_rgba_t *ground_color,
+    const flecs_rgba_t *haze_color,
+    const flecs_rgba_t *horizon_color,
     uint32_t filter_sample_count,
     uint32_t lut_sample_count)
 {
@@ -949,8 +953,29 @@ bool flecsEngine_ibl_initResources(
     }
 
     if (!image.pixels_rgba32f) {
-        if (!flecsIblBuildDefaultImage(engine, &image)) {
-            return false;
+        if (sky_color || ground_color) {
+            static const flecs_rgba_t black = {0};
+            if (!flecsIblBuildDefaultImage(
+                sky_color ? sky_color : &black,
+                ground_color ? ground_color : &black,
+                haze_color,
+                horizon_color,
+                &image))
+            {
+                return false;
+            }
+        } else {
+            /* No colors provided — build a single black pixel. */
+            image.width = 1;
+            image.height = 1;
+            image.pixels_rgba32f = malloc(sizeof(float) * 4);
+            if (!image.pixels_rgba32f) {
+                return false;
+            }
+            image.pixels_rgba32f[0] = 0.0f;
+            image.pixels_rgba32f[1] = 0.0f;
+            image.pixels_rgba32f[2] = 0.0f;
+            image.pixels_rgba32f[3] = 1.0f;
         }
     }
 

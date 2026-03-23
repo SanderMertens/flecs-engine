@@ -190,62 +190,9 @@ int flecsEngine_shadow_init(
         }
     }
 
-    /* Shadow sample bind group layout: depth texture array + comparison sampler */
-    WGPUBindGroupLayoutEntry sample_layout_entries[2] = {
-        {
-            .binding = 0,
-            .visibility = WGPUShaderStage_Fragment,
-            .texture = (WGPUTextureBindingLayout){
-                .sampleType = WGPUTextureSampleType_Depth,
-                .viewDimension = WGPUTextureViewDimension_2DArray,
-                .multisampled = false
-            }
-        },
-        {
-            .binding = 1,
-            .visibility = WGPUShaderStage_Fragment,
-            .sampler = (WGPUSamplerBindingLayout){
-                .type = WGPUSamplerBindingType_Comparison
-            }
-        }
-    };
-
-    WGPUBindGroupLayoutDescriptor sample_layout_desc = {
-        .entryCount = 2,
-        .entries = sample_layout_entries
-    };
-
-    impl->shadow_sample_bind_layout = wgpuDeviceCreateBindGroupLayout(
-        impl->device, &sample_layout_desc);
-    if (!impl->shadow_sample_bind_layout) {
-        ecs_err("failed to create shadow sample bind group layout");
-        return -1;
-    }
-
-    /* Shadow sample bind group */
-    WGPUBindGroupEntry sample_entries[2] = {
-        {
-            .binding = 0,
-            .textureView = impl->shadow_texture_view
-        },
-        {
-            .binding = 1,
-            .sampler = impl->shadow_sampler
-        }
-    };
-
-    WGPUBindGroupDescriptor sample_group_desc = {
-        .layout = impl->shadow_sample_bind_layout,
-        .entryCount = 2,
-        .entries = sample_entries
-    };
-
-    impl->shadow_sample_bind_group = wgpuDeviceCreateBindGroup(
-        impl->device, &sample_group_desc);
-    if (!impl->shadow_sample_bind_group) {
-        ecs_err("failed to create shadow sample bind group");
-        return -1;
-    }
+    /* Bump shadow version so that combined IBL+shadow bind groups are
+     * recreated with the new shadow resources. */
+    impl->scene_bind_version++;
 
     return 0;
 }
@@ -253,14 +200,6 @@ int flecsEngine_shadow_init(
 void flecsEngine_shadow_cleanup(
     FlecsEngineImpl *impl)
 {
-    if (impl->shadow_sample_bind_group) {
-        wgpuBindGroupRelease(impl->shadow_sample_bind_group);
-        impl->shadow_sample_bind_group = NULL;
-    }
-    if (impl->shadow_sample_bind_layout) {
-        wgpuBindGroupLayoutRelease(impl->shadow_sample_bind_layout);
-        impl->shadow_sample_bind_layout = NULL;
-    }
     for (int i = 0; i < FLECS_ENGINE_SHADOW_CASCADE_COUNT; i++) {
         if (impl->shadow_pass_bind_groups[i]) {
             wgpuBindGroupRelease(impl->shadow_pass_bind_groups[i]);

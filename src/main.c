@@ -127,7 +127,15 @@ void initEngine(
   FlecsRenderView view = {
     .shadow.enabled = true,
     .shadow.pcf_samples = 1,
-    .shadow.map_size = 4096
+    .shadow.map_size = 4096,
+    .ambient_light = {0, 0, 0, 255},
+    .background = {
+      .sky_color = {30, 100, 200},
+      .haze_color = {255, 255, 255},
+      .horizon_color = {255, 255, 255},
+      .ground_color = {50, 50, 50},
+      .ibl = true
+    }
   };
 
   FlecsRenderBatchSet batch_set = {};
@@ -139,16 +147,12 @@ void initEngine(
       .width = options.width,
       .height = options.height,
       .path = options.frame_output_path,
-      .sky_color = {0, 0, 0},
-      .ground_color = {0, 0, 0}
     });
   } else {
     ecs_set(world, window, FlecsWindow, {
       .title = "Hello World",
       .width = options.width,
       .height = options.height,
-      .sky_color = {50, 120, 255},
-      .ground_color = {80, 90, 100},
       .resolution_scale = 1,
       .msaa = true
     });
@@ -158,24 +162,24 @@ void initEngine(
   view.camera = ecs_entity(world, { .name = "camera" });
   ecs_set(world, view.camera, FlecsCamera, {
       .fov = glm_rad(60.0f),
-      .near_ = 1.0f,
+      .near_ = 0.2f,
       .far_ = 1000.0f,
       .aspect_ratio = options.width / (float)options.height
   });
   ecs_add(world, view.camera, FlecsCameraController);
-  ecs_set(world, view.camera, FlecsPosition3, {0, 10, 10});
-  ecs_set(world, view.camera, FlecsLookAt, {0, 8, 0});
+  ecs_set(world, view.camera, FlecsPosition3, {-18.675, 2.03, 19.243});
+  ecs_set(world, view.camera, FlecsLookAt, {-18.607, 2.178, 18.256});
 
   // Light
   view.light = ecs_entity(world, { .name = "light" });
-  ecs_set(world, view.light, FlecsPosition3, {8, 5, 5});
-  ecs_set(world, view.light, FlecsDirectionalLight, { .intensity = 1.0f });
+  ecs_set(world, view.light, FlecsPosition3, {1, 5, 2});
+  ecs_set(world, view.light, FlecsDirectionalLight, { .intensity = 5.0f });
   ecs_set(world, view.light, FlecsLookAt, { 0, 0, 0 });
-  ecs_set(world, view.light, FlecsRgba, {255, 255, 255, 255});
+  ecs_set(world, view.light, FlecsRgba, {255, 255, 230, 255});
 
   // HDRI (optional, for image based lighting)
   // view.hdri = flecsEngine_createHdri(
-  //   world, view_entity, "hdri", "industrial_sunset_puresky_4k.exr", 1024, 64);
+  //   world, view_entity, "hdri", "etc/assets/hdri/industrial_sunset_puresky_4k.exr", 1024, 64);
 
   // RenderBatches (what to render in scene)
   ecs_vec_append_t(NULL, &batch_set.batches, ecs_entity_t)[0] =
@@ -185,15 +189,15 @@ void initEngine(
 
   // Post process effects
   FlecsSSAO ssao_settings = flecsEngine_ssaoSettingsDefault();
-  ssao_settings.radius = 1.0;
-  ssao_settings.blur = 2;
+  ssao_settings.radius = 0.5;
+  ssao_settings.blur = 0;
   FlecsBloom bloom_settings = flecsEngine_bloomSettingsDefault();
   FlecsExponentialHeightFog fog_settings =
     flecsEngine_exponentialHeightFogSettingsDefault();
   fog_settings.density = 0;
 
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
-    (flecs_render_view_effect_t){ .enabled = false, .effect =
+    (flecs_render_view_effect_t){ .enabled = true, .effect =
       flecsEngine_createEffect_ssao(world, view_entity,
         "ssao", 0, &ssao_settings) };
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
@@ -201,7 +205,7 @@ void initEngine(
       flecsEngine_createEffect_bloom(world, view_entity,
         "bloom", 1, &bloom_settings) };
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
-    (flecs_render_view_effect_t){ .enabled = false, .effect =
+    (flecs_render_view_effect_t){ .enabled = true, .effect =
       flecsEngine_createEffect_exponentialHeightFog(
         world, view_entity, "heightFog", 2, &fog_settings) };
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
@@ -248,13 +252,18 @@ int main(
   initEngine(world, options);
 
   ecs_entity_t s = ecs_script(world, {
-    // .filename = "city.flecs"
-    .filename = "museum.flecs"
-    // .filename = "cube.flecs"
-    // .filename = "empty.flecs"
+    // .filename = "etc/assets/scenes/sponza.flecs"
+    .filename = "etc/assets/scenes/bistro.flecs"
+    // .filename = "etc/assets/scenes/a_beautiful_game.flecs"
+    // .filename = "etc/assets/scenes/flight_helmet.flecs"
+    // .filename = "etc/assets/scenes/damaged_helmet.flecs"
+    // .filename = "etc/assets/scenes/city.flecs"
+    // .filename = "etc/assets/scenes/museum.flecs"
+    // .filename = "etc/assets/scenes/cube.flecs"
+    // .filename = "etc/assets/scenes/empty.flecs"
   });
   if (!s) {
-    printf("failed to load museum script\n");
+    ecs_err("failed to load script\n");
   }
 
 #ifndef __EMSCRIPTEN__

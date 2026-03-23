@@ -20,6 +20,14 @@ typedef struct {
 extern ECS_COMPONENT_DECLARE(FlecsLitVertex);
 
 typedef struct {
+    flecs_vec3_t p;
+    flecs_vec3_t n;
+    flecs_vec2_t uv;
+} FlecsLitVertexUv;
+
+extern ECS_COMPONENT_DECLARE(FlecsLitVertexUv);
+
+typedef struct {
     flecs_vec3_t c0;
     flecs_vec3_t c1;
     flecs_vec3_t c2;
@@ -101,6 +109,14 @@ ECS_STRUCT(flecs_engine_shadow_params_t, {
     float bias;
 });
 
+ECS_STRUCT(flecs_engine_background_t, {
+    flecs_rgba_t sky_color;
+    flecs_rgba_t ground_color;
+    flecs_rgba_t haze_color;
+    flecs_rgba_t horizon_color;
+    ecs_bool_t ibl;
+});
+
 ECS_STRUCT(flecs_render_view_effect_t, {
     ecs_bool_t enabled;
     ecs_entity_t effect;
@@ -111,6 +127,7 @@ ECS_STRUCT(FlecsRenderView, {
     ecs_entity_t light;
     ecs_entity_t hdri;
     flecs_rgba_t ambient_light;
+    flecs_engine_background_t background;
     flecs_engine_shadow_params_t shadow;
     ecs_vec_t effects;
 });

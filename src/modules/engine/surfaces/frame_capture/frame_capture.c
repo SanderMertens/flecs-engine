@@ -343,9 +343,7 @@ static void FlecsFrameOutputOnSet(
             .config = &output_cfg,
             .width = outputs[i].width,
             .height = outputs[i].height,
-            .msaa = outputs[i].msaa,
-            .sky_color = outputs[i].sky_color,
-            .ground_color = outputs[i].ground_color
+            .msaa = outputs[i].msaa
         };
 
         if (flecsEngine_init(it->world, &output_desc)) {

@@ -93,7 +93,7 @@ int flecsEngine_initDepthResolve(
             .primitive = {
                 .topology = WGPUPrimitiveTopology_TriangleList,
                 .cullMode = WGPUCullMode_None,
-                .frontFace = WGPUFrontFace_CW
+                .frontFace = WGPUFrontFace_CCW
             },
             .depthStencil = &depth_stencil,
             .multisample = WGPU_MULTISAMPLE_DEFAULT

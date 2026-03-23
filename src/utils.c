@@ -21,27 +21,6 @@ float flecsEngine_colorChannelToFloat(
     return (float)value / 255.0f;
 }
 
-WGPUColor flecsEngine_getSkyColor(
-    const FlecsEngineImpl *impl)
-{
-    return (WGPUColor){
-        .r = (double)flecsEngine_colorChannelToFloat(impl->sky_color.r),
-        .g = (double)flecsEngine_colorChannelToFloat(impl->sky_color.g),
-        .b = (double)flecsEngine_colorChannelToFloat(impl->sky_color.b),
-        .a = (double)flecsEngine_colorChannelToFloat(impl->sky_color.a)
-    };
-}
-
-void flecsEngine_getSkyColorVec4(
-    const FlecsEngineImpl *impl,
-    float out[4])
-{
-    out[0] = flecsEngine_colorChannelToFloat(impl->sky_color.r);
-    out[1] = flecsEngine_colorChannelToFloat(impl->sky_color.g);
-    out[2] = flecsEngine_colorChannelToFloat(impl->sky_color.b);
-    out[3] = flecsEngine_colorChannelToFloat(impl->sky_color.a);
-}
-
 uint64_t flecsEngine_type_sizeof(
     const ecs_world_t *world,
     ecs_entity_t type)
@@ -91,7 +70,13 @@ int32_t flecsEngine_vertexAttrFromType(
     } else {
         ecs_member_t *members = ecs_vec_first(&s->members);
         for (i = 0; i < member_count; i ++) {
-            if (members[i].type == ecs_id(flecs_vec3_t)) {
+            if (members[i].type == ecs_id(flecs_vec2_t)) {
+                attrs[attr].format = WGPUVertexFormat_Float32x2;
+                attrs[attr].shaderLocation = location_offset + attr;
+                attrs[attr].offset = members[i].offset;
+                attr ++;
+
+            } else if (members[i].type == ecs_id(flecs_vec3_t)) {
                 attrs[attr].format = WGPUVertexFormat_Float32x3;
                 attrs[attr].shaderLocation = location_offset + attr;
                 attrs[attr].offset = members[i].offset;
@@ -216,7 +201,7 @@ ecs_entity_t flecsEngine_vecVec3(
 }
 
 ecs_entity_t flecsEngine_vecU16(
-    ecs_world_t *world) 
+    ecs_world_t *world)
 {
     return ecs_vector(world, {
         .entity = ecs_entity(world, {
@@ -224,5 +209,29 @@ ecs_entity_t flecsEngine_vecU16(
             .root_sep = "::"
         }),
         .type = ecs_id(ecs_u16_t)
+    });
+}
+
+ecs_entity_t flecsEngine_vecVec2(
+    ecs_world_t *world)
+{
+    return ecs_vector(world, {
+        .entity = ecs_entity(world, {
+            .name = "::flecs.engine.types.vecVec2",
+            .root_sep = "::"
+        }),
+        .type = ecs_id(flecs_vec2_t)
+    });
+}
+
+ecs_entity_t flecsEngine_vecU32(
+    ecs_world_t *world)
+{
+    return ecs_vector(world, {
+        .entity = ecs_entity(world, {
+            .name = "::flecs.engine.types.vecU32",
+            .root_sep = "::"
+        }),
+        .type = ecs_id(ecs_u32_t)
     });
 }

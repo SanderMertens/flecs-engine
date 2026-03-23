@@ -31,13 +31,15 @@ static void FlecsMesh3_fini(
 {
     ecs_vec_fini_t(NULL, &ptr->vertices, flecs_vec3_t);
     ecs_vec_fini_t(NULL, &ptr->normals, flecs_vec3_t);
-    ecs_vec_fini_t(NULL, &ptr->indices, uint16_t);
+    ecs_vec_fini_t(NULL, &ptr->uvs, flecs_vec2_t);
+    ecs_vec_fini_t(NULL, &ptr->indices, uint32_t);
 }
 
 ECS_CTOR(FlecsMesh3, ptr, {
     ecs_vec_init_t(NULL, &ptr->vertices, flecs_vec3_t, 0);
     ecs_vec_init_t(NULL, &ptr->normals, flecs_vec3_t, 0);
-    ecs_vec_init_t(NULL, &ptr->indices, uint16_t, 0);
+    ecs_vec_init_t(NULL, &ptr->uvs, flecs_vec2_t, 0);
+    ecs_vec_init_t(NULL, &ptr->indices, uint32_t, 0);
 })
 
 ECS_MOVE(FlecsMesh3, dst, src, {
@@ -50,7 +52,8 @@ ECS_COPY(FlecsMesh3, dst, src, {
     FlecsMesh3_fini(dst);
     dst->vertices = ecs_vec_copy_t(NULL, &src->vertices, flecs_vec3_t);
     dst->normals = ecs_vec_copy_t(NULL, &src->normals, flecs_vec3_t);
-    dst->indices = ecs_vec_copy_t(NULL, &src->indices, uint16_t);
+    dst->uvs = ecs_vec_copy_t(NULL, &src->uvs, flecs_vec2_t);
+    dst->indices = ecs_vec_copy_t(NULL, &src->indices, uint32_t);
 })
 
 ECS_DTOR(FlecsMesh3, ptr, {
@@ -103,6 +106,11 @@ static void FlecsMesh3_on_set(
             mesh_impl->vertex_buffer = NULL;
         }
 
+        if (mesh_impl->vertex_uv_buffer) {
+            wgpuBufferRelease(mesh_impl->vertex_uv_buffer);
+            mesh_impl->vertex_uv_buffer = NULL;
+        }
+
         if (mesh_impl->index_buffer) {
             wgpuBufferRelease(mesh_impl->index_buffer);
             mesh_impl->index_buffer = NULL;
@@ -110,12 +118,17 @@ static void FlecsMesh3_on_set(
 
         int32_t vert_count = ecs_vec_count(&mesh[i].vertices);
         int32_t ind_count = ecs_vec_count(&mesh[i].indices);
+        int32_t uv_count = ecs_vec_count(&mesh[i].uvs);
+        bool has_uvs = uv_count == vert_count && uv_count > 0;
 
         if (!vert_count || !ind_count) {
             mesh_impl->vertex_count = 0;
             mesh_impl->index_count = 0;
+            mesh_impl->has_uvs = false;
             continue;
         }
+
+        mesh_impl->has_uvs = has_uvs;
 
         int32_t vert_size = vert_count * (int32_t)sizeof(FlecsLitVertex);
         WGPUBufferDescriptor vert_desc = {
@@ -135,43 +148,36 @@ static void FlecsMesh3_on_set(
         wgpuQueueWriteBuffer(impl->queue, mesh_impl->vertex_buffer, 0, verts, vert_size);
         ecs_os_free(verts);
 
-        int32_t ind_size = ind_count * (int32_t)sizeof(uint16_t);
-        int32_t ind_upload_size = (ind_size + 3) & ~3;
+        if (has_uvs) {
+            int32_t vert_uv_size = vert_count * (int32_t)sizeof(FlecsLitVertexUv);
+            WGPUBufferDescriptor vert_uv_desc = {
+                .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
+                .size = (uint64_t)vert_uv_size
+            };
+
+            FlecsLitVertexUv *uv_verts = ecs_os_malloc_n(FlecsLitVertexUv, vert_count);
+            flecs_vec2_t *mesh_uvs = ecs_vec_first_t(&mesh[i].uvs, flecs_vec2_t);
+            for (int v = 0; v < vert_count; v ++) {
+                uv_verts[v].p = mesh_vertices[v];
+                uv_verts[v].n = mesh_normals[v];
+                uv_verts[v].uv = mesh_uvs[v];
+            }
+
+            mesh_impl->vertex_uv_buffer = wgpuDeviceCreateBuffer(impl->device, &vert_uv_desc);
+            wgpuQueueWriteBuffer(impl->queue, mesh_impl->vertex_uv_buffer, 0, uv_verts, vert_uv_size);
+            ecs_os_free(uv_verts);
+        }
+
+        int32_t ind_size = ind_count * (int32_t)sizeof(uint32_t);
         WGPUBufferDescriptor ind_desc = {
             .usage = WGPUBufferUsage_Index | WGPUBufferUsage_CopyDst,
-            .size = (uint64_t)ind_upload_size
+            .size = (uint64_t)ind_size
         };
 
         mesh_impl->index_buffer = wgpuDeviceCreateBuffer(impl->device, &ind_desc);
-        uint16_t *indices = ecs_vec_first_t(&mesh[i].indices, uint16_t);
-
-        if (ind_upload_size == ind_size) {
-            wgpuQueueWriteBuffer(
-                impl->queue,
-                mesh_impl->index_buffer,
-                0,
-                indices,
-                ind_size);
-        } else {
-            int32_t padded_count = ind_upload_size / (int32_t)sizeof(uint16_t);
-            uint16_t *padded_indices = ecs_os_malloc_n(uint16_t, padded_count);
-
-            for (int32_t p = 0; p < padded_count; p ++) {
-                padded_indices[p] = 0;
-            }
-            for (int32_t p = 0; p < ind_count; p ++) {
-                padded_indices[p] = indices[p];
-            }
-
-            wgpuQueueWriteBuffer(
-                impl->queue,
-                mesh_impl->index_buffer,
-                0,
-                padded_indices,
-                ind_upload_size);
-
-            ecs_os_free(padded_indices);
-        }
+        uint32_t *indices = ecs_vec_first_t(&mesh[i].indices, uint32_t);
+        wgpuQueueWriteBuffer(
+            impl->queue, mesh_impl->index_buffer, 0, indices, ind_size);
 
         mesh_impl->vertex_count = vert_count;
         mesh_impl->index_count = ind_count;
@@ -225,6 +231,7 @@ void FlecsEngineGeometry3Import(
         .members = {
             { .name = "vertices", .type = flecsEngine_vecVec3(world) },
             { .name = "normals", .type = flecsEngine_vecVec3(world) },
+            { .name = "uvs", .type = flecsEngine_vecVec2(world) },
             { .name = "indices", .type = flecsEngine_vecU16(world) }
         }
     });

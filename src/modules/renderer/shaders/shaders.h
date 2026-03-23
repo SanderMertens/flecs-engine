@@ -24,4 +24,10 @@ ecs_entity_t flecsEngine_shader_infiniteGrid(
 ecs_entity_t flecsEngine_shader_skybox(
     ecs_world_t *world);
 
+bool flecsEngine_shader_usesTextures(
+    const FlecsShader *shader);
+
+ecs_entity_t flecsEngine_shader_pbrTextured(
+    ecs_world_t *world);
+
 #endif

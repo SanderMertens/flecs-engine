@@ -81,11 +81,17 @@ static bool flecsEngine_renderEffect_createInputSampler(
 
 static WGPURenderPassEncoder flecsEngine_renderEffect_beginPass(
     const FlecsEngineImpl *impl,
+    const FlecsRenderView *view,
     WGPUCommandEncoder encoder,
     WGPUTextureView color_view,
     WGPULoadOp color_load_op)
 {
-    WGPUColor sky_color = flecsEngine_getSkyColor(impl);
+    WGPUColor sky_color = {
+        .r = (double)flecsEngine_colorChannelToFloat(view->background.sky_color.r),
+        .g = (double)flecsEngine_colorChannelToFloat(view->background.sky_color.g),
+        .b = (double)flecsEngine_colorChannelToFloat(view->background.sky_color.b),
+        .a = (double)flecsEngine_colorChannelToFloat(view->background.sky_color.a)
+    };
 
     WGPURenderPassColorAttachment color_attachment = {
         .view = color_view,
@@ -214,7 +220,7 @@ void flecsEngine_renderView_renderEffects(
             });
 
         WGPURenderPassEncoder pass = flecsEngine_renderEffect_beginPass(
-            engine, encoder, view_texture, WGPULoadOp_Load);
+            engine, view, encoder, view_texture, WGPULoadOp_Load);
         wgpuRenderPassEncoderSetPipeline(pass, engine->passthrough_pipeline);
         wgpuRenderPassEncoderSetBindGroup(pass, 0, bg, 0, NULL);
         wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
@@ -280,6 +286,7 @@ void flecsEngine_renderView_renderEffects(
 
         WGPURenderPassEncoder effect_pass = flecsEngine_renderEffect_beginPass(
             engine,
+            view,
             encoder,
             output_view,
             load_op);
@@ -316,7 +323,7 @@ void flecsEngine_renderView_renderEffects(
             });
 
         WGPURenderPassEncoder pass = flecsEngine_renderEffect_beginPass(
-            engine, encoder, view_texture, WGPULoadOp_Load);
+            engine, view, encoder, view_texture, WGPULoadOp_Load);
         wgpuRenderPassEncoderSetPipeline(pass, engine->passthrough_pipeline);
         wgpuRenderPassEncoderSetBindGroup(pass, 0, bg, 0, NULL);
         wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
@@ -368,7 +375,7 @@ static WGPURenderPipeline flecsEngine_renderEffect_createPipeline(
         .primitive = {
             .topology = WGPUPrimitiveTopology_TriangleList,
             .cullMode = WGPUCullMode_None,
-            .frontFace = WGPUFrontFace_CW
+            .frontFace = WGPUFrontFace_CCW
         },
         .multisample = WGPU_MULTISAMPLE_DEFAULT
     };

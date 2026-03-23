@@ -19,6 +19,7 @@ extern ECS_COMPONENT_DECLARE(FlecsPbrMaterial);
 
 ECS_STRUCT(FlecsEmissive, {
     float strength;
+    flecs_rgba_t color;
 });
 
 typedef FlecsEmissive EcsEmissive;
@@ -30,5 +31,23 @@ ECS_STRUCT(FlecsMaterialId, {
 });
 
 extern ECS_COMPONENT_DECLARE(FlecsMaterialId);
+
+ECS_STRUCT(FlecsTexture, {
+    const char *path;
+});
+
+extern ECS_COMPONENT_DECLARE(FlecsTexture);
+
+ECS_STRUCT(FlecsPbrTextures, {
+    ecs_entity_t albedo;
+    ecs_entity_t emissive;
+    ecs_entity_t roughness;
+    ecs_entity_t normal;
+ECS_PRIVATE
+    void *_sampler;
+    void *_bind_group;
+});
+
+extern ECS_COMPONENT_DECLARE(FlecsPbrTextures);
 
 #endif

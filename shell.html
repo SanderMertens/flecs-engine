@@ -9,11 +9,27 @@
   html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
   canvas { display: block; width: 100%; height: 100%; }
   #error-canvas { position: absolute; top: 0; left: 0; display: none; }
+  #loading-bar-container {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 240px; height: 4px;
+    background: #333;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #loading-bar {
+    width: 0%;
+    height: 100%;
+    background: #fff;
+    transition: width 0.15s;
+  }
 </style>
 </head>
 <body>
 <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
 <canvas id="error-canvas"></canvas>
+<div id="loading-bar-container"><div id="loading-bar"></div></div>
 <script>
   var canvas = document.getElementById('canvas');
 
@@ -53,8 +69,26 @@
     });
   }
 
+  var loadingBar = document.getElementById('loading-bar');
+  var loadingContainer = document.getElementById('loading-bar-container');
+
   var Module = {
     canvas: canvas,
+    setStatus: function(text) {
+      if (!text) {
+        loadingContainer.style.display = 'none';
+        return;
+      }
+      var m = text.match(/(\d+(?:\.\d+)?)\/(\d+)/);
+      if (m) {
+        loadingBar.style.width = (parseInt(m[1]) / parseInt(m[2]) * 100) + '%';
+      }
+    },
+    monitorRunDependencies: function(left) {
+      if (left === 0) {
+        loadingContainer.style.display = 'none';
+      }
+    },
     print: function(text) { console.log(text); },
     printErr: function(text) { console.error(text); }
   };

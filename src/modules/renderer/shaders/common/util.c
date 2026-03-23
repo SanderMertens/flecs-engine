@@ -21,7 +21,7 @@ bool flecsEngine_shader_usesShadow(
 
     return strstr(
         shader->source,
-        "@group(2) @binding(0) var shadow_map") != NULL;
+        "@group(1) @binding(3) var shadow_map") != NULL;
 }
 
 bool flecsEngine_shader_usesCluster(
@@ -33,5 +33,17 @@ bool flecsEngine_shader_usesCluster(
 
     return strstr(
         shader->source,
-        "@group(3) @binding(0) var<uniform> cluster_info") != NULL;
+        "@binding(0) var<uniform> cluster_info") != NULL;
+}
+
+bool flecsEngine_shader_usesTextures(
+    const FlecsShader *shader)
+{
+    if (!shader || !shader->source) {
+        return false;
+    }
+
+    return strstr(
+        shader->source,
+        "@group(2) @binding(0) var albedo_tex") != NULL;
 }

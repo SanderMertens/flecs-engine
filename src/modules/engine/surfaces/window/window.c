@@ -206,9 +206,7 @@ static void FlecsOnWindowCreate(
         .width = w,
         .height = h,
         .resolution_scale = wnd->resolution_scale,
-        .msaa = wnd->msaa,
-        .sky_color = wnd->sky_color,
-        .ground_color = wnd->ground_color
+        .msaa = wnd->msaa
     };
 
     if (flecsEngine_init(it->world, &output_desc)) {

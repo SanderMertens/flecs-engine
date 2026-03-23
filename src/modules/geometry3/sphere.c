@@ -167,11 +167,11 @@ static void flecsEngine_sphere_generateSmoothMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     int32_t vi = 0;
     for (int32_t y = 0; y <= rings; y ++) {
@@ -194,18 +194,18 @@ static void flecsEngine_sphere_generateSmoothMesh(
     int32_t ii = 0;
     for (int32_t y = 0; y < rings; y ++) {
         for (int32_t x = 0; x < cols; x ++) {
-            uint16_t a = (uint16_t)(y * (cols + 1) + x);
-            uint16_t b = (uint16_t)(a + cols + 1);
-            uint16_t c = (uint16_t)(b + 1);
-            uint16_t d = (uint16_t)(a + 1);
+            uint32_t a = (uint32_t)(y * (cols + 1) + x);
+            uint32_t b = (uint32_t)(a + cols + 1);
+            uint32_t c = (uint32_t)(b + 1);
+            uint32_t d = (uint32_t)(a + 1);
 
             idx[ii ++] = a;
-            idx[ii ++] = b;
             idx[ii ++] = d;
+            idx[ii ++] = b;
 
             idx[ii ++] = b;
-            idx[ii ++] = c;
             idx[ii ++] = d;
+            idx[ii ++] = c;
         }
     }
 }
@@ -222,11 +222,11 @@ static void flecsEngine_sphere_generateFlatMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     int32_t vi = 0;
     int32_t ii = 0;
@@ -252,37 +252,37 @@ static void flecsEngine_sphere_generateFlatMesh(
 
             v[vi] = a;
             vn[vi] = n0;
-            idx[ii] = (uint16_t)vi;
-            vi ++;
-            ii ++;
-
-            v[vi] = b;
-            vn[vi] = n0;
-            idx[ii] = (uint16_t)vi;
+            idx[ii] = (uint32_t)vi;
             vi ++;
             ii ++;
 
             v[vi] = d;
             vn[vi] = n0;
-            idx[ii] = (uint16_t)vi;
+            idx[ii] = (uint32_t)vi;
+            vi ++;
+            ii ++;
+
+            v[vi] = b;
+            vn[vi] = n0;
+            idx[ii] = (uint32_t)vi;
             vi ++;
             ii ++;
 
             v[vi] = b;
             vn[vi] = n1;
-            idx[ii] = (uint16_t)vi;
+            idx[ii] = (uint32_t)vi;
+            vi ++;
+            ii ++;
+
+            v[vi] = d;
+            vn[vi] = n1;
+            idx[ii] = (uint32_t)vi;
             vi ++;
             ii ++;
 
             v[vi] = c;
             vn[vi] = n1;
-            idx[ii] = (uint16_t)vi;
-            vi ++;
-            ii ++;
-
-            v[vi] = d;
-            vn[vi] = n1;
-            idx[ii] = (uint16_t)vi;
+            idx[ii] = (uint32_t)vi;
             vi ++;
             ii ++;
         }

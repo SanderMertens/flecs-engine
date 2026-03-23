@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "flecs_engine.h"
 
+ECS_COMPONENT_DECLARE(flecs_engine_background_t);
 ECS_COMPONENT_DECLARE(flecs_engine_shadow_params_t);
 ECS_COMPONENT_DECLARE(flecs_render_view_effect_t);
 ECS_COMPONENT_DECLARE(FlecsRenderView);
@@ -12,6 +13,13 @@ ECS_CTOR(FlecsRenderView, ptr, {
     ptr->light = 0;
     ptr->hdri = 0;
     ptr->ambient_light = (flecs_rgba_t){20, 20, 20, 255};
+    ptr->background = (flecs_engine_background_t){
+        .sky_color = {0},
+        .ground_color = {0},
+        .haze_color = {255, 255, 255, 255},
+        .horizon_color = {255, 255, 255, 255},
+        .ibl = true
+    };
     ptr->shadow.enabled = true;
     ptr->shadow.map_size = FLECS_ENGINE_SHADOW_MAP_SIZE_DEFAULT;
     ptr->shadow.pcf_samples = 0;
@@ -30,6 +38,7 @@ ECS_COPY(FlecsRenderView, dst, src, {
     dst->light = src->light;
     dst->hdri = src->hdri;
     dst->ambient_light = src->ambient_light;
+    dst->background = src->background;
     dst->shadow = src->shadow;
     dst->effects = ecs_vec_copy_t(NULL, &src->effects, flecs_render_view_effect_t);
 })
@@ -245,6 +254,13 @@ static void flecsEngine_renderView_extract(
 {
     (void)impl;
 
+    /* Rebuild the sky background HDRI if the view's background colors
+     * changed since the last frame. */
+    if (!view->hdri) {
+        flecsEngine_ibl_ensureSkyBackground(
+            world, engine, &view->background);
+    }
+
     flecsEngine_renderView_extractBatches(world, view_entity, engine, view);
 }
 
@@ -288,6 +304,7 @@ void flecsEngine_renderView_renderAll(
 void flecsEngine_renderView_register(
     ecs_world_t *world)
 {
+    ECS_COMPONENT_DEFINE(world, flecs_engine_background_t);
     ECS_COMPONENT_DEFINE(world, flecs_engine_shadow_params_t);
     ECS_COMPONENT_DEFINE(world, flecs_render_view_effect_t);
     ECS_COMPONENT_DEFINE(world, FlecsRenderView);
@@ -307,6 +324,17 @@ void flecsEngine_renderView_register(
     });
 
     ecs_add_pair(world, ecs_id(FlecsRenderView), EcsWith, ecs_id(FlecsRenderViewImpl));
+
+    ecs_struct(world, {
+        .entity = ecs_id(flecs_engine_background_t),
+        .members = {
+            { .name = "sky_color", .type = ecs_id(flecs_rgba_t) },
+            { .name = "ground_color", .type = ecs_id(flecs_rgba_t) },
+            { .name = "haze_color", .type = ecs_id(flecs_rgba_t) },
+            { .name = "horizon_color", .type = ecs_id(flecs_rgba_t) },
+            { .name = "ibl", .type = ecs_id(ecs_bool_t) }
+        }
+    });
 
     ecs_struct(world, {
         .entity = ecs_id(flecs_engine_shadow_params_t),
@@ -340,6 +368,7 @@ void flecsEngine_renderView_register(
             { .name = "light", .type = ecs_id(ecs_entity_t) },
             { .name = "hdri", .type = ecs_id(ecs_entity_t) },
             { .name = "ambient_light", .type = ecs_id(flecs_rgba_t) },
+            { .name = "background", .type = ecs_id(flecs_engine_background_t) },
             { .name = "shadow", .type = ecs_id(flecs_engine_shadow_params_t) },
             { .name = "effects", .type = vec_view_effect }
         }

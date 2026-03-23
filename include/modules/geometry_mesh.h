@@ -9,7 +9,8 @@
 ECS_STRUCT(FlecsMesh3, {
     ecs_vec_t vertices;  /* vec<vec3> */
     ecs_vec_t normals;   /* vec<vec3> */
-    ecs_vec_t indices;   /* vec<uint16> */
+    ecs_vec_t uvs;       /* vec<vec2> */
+    ecs_vec_t indices;   /* vec<uint32> */
 });
 
 #endif

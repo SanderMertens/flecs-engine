@@ -8,47 +8,6 @@
 #define FLECS_ENGINE_CLUSTER_INITIAL_LIGHTS 32
 #define FLECS_ENGINE_CLUSTER_INITIAL_INDICES 4096
 
-/* (Re)create the bind group that references the current GPU buffers.
- * Must be called whenever a buffer is replaced due to growth. */
-static bool flecsEngine_cluster_createBindGroup(
-    FlecsEngineImpl *impl)
-{
-    if (impl->cluster_bind_group) {
-        wgpuBindGroupRelease(impl->cluster_bind_group);
-        impl->cluster_bind_group = NULL;
-    }
-
-    WGPUBindGroupEntry entries[5] = {0};
-    entries[0] = (WGPUBindGroupEntry){
-        .binding = 0, .buffer = impl->cluster_info_buffer,
-        .size = sizeof(FlecsClusterInfo) };
-    entries[1] = (WGPUBindGroupEntry){
-        .binding = 1, .buffer = impl->cluster_grid_buffer,
-        .size = (uint64_t)FLECS_ENGINE_CLUSTER_TOTAL *
-            sizeof(FlecsClusterEntry) };
-    entries[2] = (WGPUBindGroupEntry){
-        .binding = 2, .buffer = impl->cluster_index_buffer,
-        .size = (uint64_t)impl->cluster_index_capacity *
-            sizeof(uint32_t) };
-    entries[3] = (WGPUBindGroupEntry){
-        .binding = 3, .buffer = impl->point_light_buffer,
-        .size = (uint64_t)impl->point_light_capacity *
-            sizeof(FlecsGpuPointLight) };
-    entries[4] = (WGPUBindGroupEntry){
-        .binding = 4, .buffer = impl->spot_light_buffer,
-        .size = (uint64_t)impl->spot_light_capacity *
-            sizeof(FlecsGpuSpotLight) };
-
-    WGPUBindGroupDescriptor bg_desc = {
-        .layout = impl->cluster_bind_layout,
-        .entryCount = 5,
-        .entries = entries
-    };
-    impl->cluster_bind_group = wgpuDeviceCreateBindGroup(
-        impl->device, &bg_desc);
-    return impl->cluster_bind_group != NULL;
-}
-
 /* Grow a storage buffer to at least `needed` elements of `elem_size`.
  * Returns the new capacity via `*capacity`. Replaces *buffer in place. */
 static bool flecsEngine_cluster_growBuffer(
@@ -147,63 +106,12 @@ int flecsEngine_cluster_init(
         return -1;
     }
 
-    /* Bind group layout (5 bindings, fixed) */
-    WGPUBindGroupLayoutEntry layout_entries[5] = {0};
-    layout_entries[0] = (WGPUBindGroupLayoutEntry){
-        .binding = 0, .visibility = WGPUShaderStage_Fragment,
-        .buffer = { .type = WGPUBufferBindingType_Uniform,
-            .minBindingSize = sizeof(FlecsClusterInfo) }
-    };
-    layout_entries[1] = (WGPUBindGroupLayoutEntry){
-        .binding = 1, .visibility = WGPUShaderStage_Fragment,
-        .buffer = { .type = WGPUBufferBindingType_ReadOnlyStorage,
-            .minBindingSize = sizeof(FlecsClusterEntry) }
-    };
-    layout_entries[2] = (WGPUBindGroupLayoutEntry){
-        .binding = 2, .visibility = WGPUShaderStage_Fragment,
-        .buffer = { .type = WGPUBufferBindingType_ReadOnlyStorage,
-            .minBindingSize = sizeof(uint32_t) }
-    };
-    layout_entries[3] = (WGPUBindGroupLayoutEntry){
-        .binding = 3, .visibility = WGPUShaderStage_Fragment,
-        .buffer = { .type = WGPUBufferBindingType_ReadOnlyStorage,
-            .minBindingSize = sizeof(FlecsGpuPointLight) }
-    };
-    layout_entries[4] = (WGPUBindGroupLayoutEntry){
-        .binding = 4, .visibility = WGPUShaderStage_Fragment,
-        .buffer = { .type = WGPUBufferBindingType_ReadOnlyStorage,
-            .minBindingSize = sizeof(FlecsGpuSpotLight) }
-    };
-
-    WGPUBindGroupLayoutDescriptor layout_desc = {
-        .entryCount = 5, .entries = layout_entries
-    };
-    impl->cluster_bind_layout = wgpuDeviceCreateBindGroupLayout(
-        impl->device, &layout_desc);
-    if (!impl->cluster_bind_layout) {
-        ecs_err("failed to create cluster bind group layout");
-        return -1;
-    }
-
-    if (!flecsEngine_cluster_createBindGroup(impl)) {
-        ecs_err("failed to create cluster bind group");
-        return -1;
-    }
-
     return 0;
 }
 
 void flecsEngine_cluster_cleanup(
     FlecsEngineImpl *impl)
 {
-    if (impl->cluster_bind_group) {
-        wgpuBindGroupRelease(impl->cluster_bind_group);
-        impl->cluster_bind_group = NULL;
-    }
-    if (impl->cluster_bind_layout) {
-        wgpuBindGroupLayoutRelease(impl->cluster_bind_layout);
-        impl->cluster_bind_layout = NULL;
-    }
     if (impl->cluster_index_buffer) {
         wgpuBufferRelease(impl->cluster_index_buffer);
         impl->cluster_index_buffer = NULL;
@@ -485,7 +393,7 @@ void flecsEngine_cluster_build(
     bg_dirty |= flecsEngine_cluster_ensureIndices(
         engine, (int32_t)total_indices);
     if (bg_dirty) {
-        flecsEngine_cluster_createBindGroup(engine);
+        engine->scene_bind_version++;
         engine->cluster_bind_group_dirty = false;
     }
 

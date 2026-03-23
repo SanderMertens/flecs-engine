@@ -8,7 +8,10 @@
 extern ECS_COMPONENT_DECLARE(FlecsRenderEffect);
 ECS_COMPONENT_DECLARE(FlecsVertex);
 ECS_COMPONENT_DECLARE(FlecsLitVertex);
+ECS_COMPONENT_DECLARE(FlecsLitVertexUv);
 ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
+extern ECS_COMPONENT_DECLARE(FlecsTextureImpl);
+extern ECS_COMPONENT_DECLARE(FlecsPbrTextures);
 extern ECS_COMPONENT_DECLARE(FlecsRgba);
 extern ECS_COMPONENT_DECLARE(FlecsPbrMaterial);
 extern ECS_COMPONENT_DECLARE(FlecsEmissive);
@@ -330,8 +333,11 @@ int flecsEngine_initRenderer(
         .cache_kind = EcsQueryCacheAuto
     });
 
-    impl->fallback_hdri = flecsEngine_createHdri(
-        world, 0, "FallbackHdri", NULL, 1014, 64);
+    impl->sky_background_hdri = flecsEngine_createHdri(
+        world, 0, "SkyBackgroundHdri", NULL, 1014, 64);
+
+    impl->black_hdri = flecsEngine_createHdri(
+        world, 0, "BlackHdri", NULL, 1014, 64);
 
     if (flecsEngine_initPassthrough(impl)) {
         goto error;
@@ -497,6 +503,7 @@ void FlecsEngineRendererImport(
 
     ECS_COMPONENT_DEFINE(world, FlecsVertex);
     ECS_COMPONENT_DEFINE(world, FlecsLitVertex);
+    ECS_COMPONENT_DEFINE(world, FlecsLitVertexUv);
     ECS_COMPONENT_DEFINE(world, FlecsInstanceTransform);
     ECS_COMPONENT_DEFINE(world, FlecsUniform);
 
@@ -514,6 +521,16 @@ void FlecsEngineRendererImport(
             { .name = "n", .type = ecs_id(flecs_vec3_t) }
         }
     });
+
+    ecs_struct(world, {
+        .entity = ecs_id(FlecsLitVertexUv),
+        .members = {
+            { .name = "p", .type = ecs_id(flecs_vec3_t) },
+            { .name = "n", .type = ecs_id(flecs_vec3_t) },
+            { .name = "uv", .type = ecs_id(flecs_vec2_t) }
+        }
+    });
+
 
     ecs_struct(world, {
         .entity = ecs_id(FlecsInstanceTransform),

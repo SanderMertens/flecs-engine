@@ -20,6 +20,7 @@ You should probably not use this, unless:
 ## Features
 - Primitive shapes
 - Meshes
+- GLTF loader
 - Movement systems
 - Instancing
 - PBR materials
@@ -39,6 +40,7 @@ You should probably not use this, unless:
 
 ## Dependencies
 - cglm
+- cgltf
 - glfw
 - tinyexr
 - stb_image

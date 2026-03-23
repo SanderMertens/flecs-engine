@@ -13,11 +13,11 @@ static void flecsEngine_trianglePrism_generateMesh(
 
     ecs_vec_set_count_t(NULL, &mesh->vertices, flecs_vec3_t, vert_count);
     ecs_vec_set_count_t(NULL, &mesh->normals, flecs_vec3_t, vert_count);
-    ecs_vec_set_count_t(NULL, &mesh->indices, uint16_t, index_count);
+    ecs_vec_set_count_t(NULL, &mesh->indices, uint32_t, index_count);
 
     flecs_vec3_t *v = ecs_vec_first_t(&mesh->vertices, flecs_vec3_t);
     flecs_vec3_t *vn = ecs_vec_first_t(&mesh->normals, flecs_vec3_t);
-    uint16_t *idx = ecs_vec_first_t(&mesh->indices, uint16_t);
+    uint32_t *idx = ecs_vec_first_t(&mesh->indices, uint32_t);
 
     /* Front (-Z). */
     v[0] = (flecs_vec3_t){-half_width, -0.5f, -half_z};
@@ -53,33 +53,33 @@ static void flecsEngine_trianglePrism_generateMesh(
     vn[14] = vn[15] = vn[16] = vn[17] = (flecs_vec3_t){-side_nx, side_ny, 0.0f};
 
     idx[0] = 0;
-    idx[1] = 1;
-    idx[2] = 2;
+    idx[1] = 2;
+    idx[2] = 1;
 
     idx[3] = 3;
-    idx[4] = 4;
-    idx[5] = 5;
+    idx[4] = 5;
+    idx[5] = 4;
 
     idx[6] = 6;
-    idx[7] = 7;
-    idx[8] = 8;
+    idx[7] = 8;
+    idx[8] = 7;
     idx[9] = 6;
-    idx[10] = 8;
-    idx[11] = 9;
+    idx[10] = 9;
+    idx[11] = 8;
 
     idx[12] = 10;
-    idx[13] = 11;
-    idx[14] = 12;
+    idx[13] = 12;
+    idx[14] = 11;
     idx[15] = 10;
-    idx[16] = 12;
-    idx[17] = 13;
+    idx[16] = 13;
+    idx[17] = 12;
 
     idx[18] = 14;
-    idx[19] = 15;
-    idx[20] = 16;
+    idx[19] = 16;
+    idx[20] = 15;
     idx[21] = 14;
-    idx[22] = 16;
-    idx[23] = 17;
+    idx[22] = 17;
+    idx[23] = 16;
 }
 
 const FlecsMesh3Impl* flecsEngine_trianglePrism_getAsset(

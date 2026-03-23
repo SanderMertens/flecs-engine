@@ -14,6 +14,7 @@ typedef struct {
     float metallic;
     float roughness;
     float emissive_strength;
+    flecs_rgba_t emissive_color;
 } FlecsGpuMaterial;
 
 typedef struct {
@@ -36,8 +37,6 @@ typedef struct {
     const struct FlecsEngineSurfaceInterface *surface_impl;
     bool output_done;
     const char *frame_output_path;
-    flecs_rgba_t sky_color;
-    flecs_rgba_t ground_color;
 
     WGPUInstance instance;
     WGPUSurface surface;
@@ -65,8 +64,11 @@ typedef struct {
     WGPUSurfaceConfiguration surface_config;
     WGPUTextureFormat hdr_color_format;
 
-    ecs_entity_t fallback_hdri;
-    WGPUBindGroupLayout ibl_bind_layout;
+    ecs_entity_t sky_background_hdri;
+    ecs_entity_t black_hdri;
+    flecs_engine_background_t sky_bg_colors;
+    WGPUBindGroupLayout ibl_shadow_bind_layout;
+    uint32_t scene_bind_version;
 
     WGPUBuffer material_buffer;
     FlecsGpuMaterial *cpu_materials;
@@ -91,8 +93,6 @@ typedef struct {
     WGPUBindGroup shadow_pass_bind_groups[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
     int current_shadow_cascade;
     WGPUSampler shadow_sampler;
-    WGPUBindGroupLayout shadow_sample_bind_layout;
-    WGPUBindGroup shadow_sample_bind_group;
     mat4 current_light_vp[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
     float cascade_splits[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
 
@@ -111,8 +111,6 @@ typedef struct {
     WGPUBuffer cluster_info_buffer;
     WGPUBuffer cluster_grid_buffer;
     WGPUBuffer cluster_index_buffer;
-    WGPUBindGroupLayout cluster_bind_layout;
-    WGPUBindGroup cluster_bind_group;
     bool cluster_bind_group_dirty;
 
     /* Passthrough effect for blitting batch output to screen when no
@@ -125,6 +123,17 @@ typedef struct {
      * texture so that post-process effects (SSAO, fog, …) can read it. */
     WGPURenderPipeline depth_resolve_pipeline;
     WGPUBindGroupLayout depth_resolve_bind_layout;
+
+    WGPUBindGroupLayout pbr_texture_bind_layout;
+    WGPUSampler pbr_sampler;
+    WGPUTexture fallback_white_tex;
+    WGPUTextureView fallback_white_view;
+    WGPUTexture fallback_black_tex;
+    WGPUTextureView fallback_black_view;
+    WGPUTexture fallback_normal_tex;
+    WGPUTextureView fallback_normal_view;
+
+    bool in_shadow_pass;
 
     FlecsDefaultAttrCache *default_attr_cache;
 } FlecsEngineImpl;
@@ -139,20 +148,30 @@ typedef struct {
     WGPUTexture ibl_brdf_lut_texture;
     WGPUTextureView ibl_brdf_lut_texture_view;
     WGPUSampler ibl_sampler;
-    WGPUBindGroup ibl_bind_group;
+    WGPUBindGroup ibl_shadow_bind_group;
+    uint32_t scene_bind_version;
     uint32_t ibl_prefilter_mip_count;
 } FlecsHdriImpl;
 
 extern ECS_COMPONENT_DECLARE(FlecsHdriImpl);
 
 typedef struct {
-    WGPUBuffer vertex_buffer; /* vec<FlecsLitVertex> */
-    WGPUBuffer index_buffer;  /* vec<uint16_t> */
+    WGPUBuffer vertex_buffer;    /* vec<FlecsLitVertex> */
+    WGPUBuffer vertex_uv_buffer; /* vec<FlecsLitVertexUv> (only if mesh has UVs) */
+    WGPUBuffer index_buffer;     /* vec<uint32_t> */
     int32_t vertex_count;
     int32_t index_count;
+    bool has_uvs;
 } FlecsMesh3Impl;
 
 extern ECS_COMPONENT_DECLARE(FlecsMesh3Impl);
+
+typedef struct {
+    WGPUTexture texture;
+    WGPUTextureView view;
+} FlecsTextureImpl;
+
+extern ECS_COMPONENT_DECLARE(FlecsTextureImpl);
 
 typedef struct {
     WGPUShaderModule shader_module;
@@ -184,6 +203,7 @@ typedef struct {
     bool uses_ibl;
     bool uses_shadow;
     bool uses_cluster;
+    bool uses_textures;
 } FlecsRenderBatchImpl;
 
 extern ECS_COMPONENT_DECLARE(FlecsRenderBatchImpl);
@@ -297,8 +317,6 @@ typedef struct FlecsEngineOutputDesc {
     int32_t height;
     int32_t resolution_scale;
     bool msaa;
-    flecs_rgba_t sky_color;
-    flecs_rgba_t ground_color;
 } FlecsEngineOutputDesc;
 
 #endif

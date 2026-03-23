@@ -1,0 +1,75 @@
+using flecs.engine.*
+using flecs.script
+
+{
+    Position3: {}
+    Quad: {10000, 10000}
+    Rotation3: {-math.PI / 2}
+    Rgba: {0, 0, 0}
+}
+
+prefab Bistro {
+    Gltf: {"etc/assets/gltf/Bistro/bistro.gltf"}
+}
+
+_ : Bistro {
+    Position3: {y: 0, z: 0}
+    Rotation3: {}
+    Scale3: {1, 1, 1}
+
+    exterior_lights {
+        {
+            Position3: {-5, 5, 0}
+            PointLight: {intensity: 5, range: 30}
+            Rgba: {255, 255, 255}
+            Sphere: {radius: 5, segments: 8, radius: 0.05}
+            Emissive: {1.0}
+        } {
+            Position3: {5, 5, 0}
+            PointLight: {intensity: 5, range: 30}
+            Rgba: {255, 255, 255}
+            Sphere: {radius: 5, segments: 8, radius: 0.05}
+            Emissive: {1.0}
+        } {
+            Position3: {0, 5, -5}
+            PointLight: {intensity: 5, range: 30}
+            Rgba: {255, 255, 255}
+            Sphere: {radius: 5, segments: 8, radius: 0.05}
+            Emissive: {1.0}
+        } {
+            Position3: {0, 5, 5}
+            PointLight: {intensity: 5, range: 30}
+            Rgba: {255, 255, 255}
+            Sphere: {radius: 5, segments: 8, radius: 0.05}
+            Emissive: {1.0}
+        }
+    }
+
+    interior_lights {
+        {
+            Position3: {-3, 3, -2}
+            PointLight: {intensity: 3, range: 15}
+            Rgba: {255, 220, 180}
+            Sphere: {radius: 5, segments: 8, radius: 0.03}
+            Emissive: {1.0}
+        } {
+            Position3: {3, 3, -2}
+            PointLight: {intensity: 3, range: 15}
+            Rgba: {255, 220, 180}
+            Sphere: {radius: 5, segments: 8, radius: 0.03}
+            Emissive: {1.0}
+        } {
+            Position3: {-3, 3, 2}
+            PointLight: {intensity: 3, range: 15}
+            Rgba: {255, 220, 180}
+            Sphere: {radius: 5, segments: 8, radius: 0.03}
+            Emissive: {1.0}
+        } {
+            Position3: {3, 3, 2}
+            PointLight: {intensity: 3, range: 15}
+            Rgba: {255, 220, 180}
+            Sphere: {radius: 5, segments: 8, radius: 0.03}
+            Emissive: {1.0}
+        }
+    }
+}

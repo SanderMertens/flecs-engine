@@ -4,13 +4,6 @@ void flecsEngine_registerVec3Type(
     ecs_world_t *world,
     ecs_entity_t component);
 
-WGPUColor flecsEngine_getSkyColor(
-    const FlecsEngineImpl *impl);
-
-void flecsEngine_getSkyColorVec4(
-    const FlecsEngineImpl *impl,
-    float out[4]);
-
 uint64_t flecsEngine_type_sizeof(
     const ecs_world_t *world,
     ecs_entity_t type);
@@ -49,4 +42,10 @@ ecs_entity_t flecsEngine_vecVec3(
     ecs_world_t *world);
 
 ecs_entity_t flecsEngine_vecU16(
+    ecs_world_t *world);
+
+ecs_entity_t flecsEngine_vecVec2(
+    ecs_world_t *world);
+
+ecs_entity_t flecsEngine_vecU32(
     ecs_world_t *world);
