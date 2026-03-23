@@ -1,31 +1,17 @@
 #!/usr/bin/env sh
 set -eu
 
-EMSDK_DIR="${EMSDK_DIR:-$HOME/GitHub/emsdk}"
+SCRIPT_DIR="$(dirname "$0")"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PORT=8090
 CDP_PORT=9222
 BUILD_DIR="build-wasm"
 TIMEOUT="${1:-15}"
 
-if [ ! -f "$EMSDK_DIR/emsdk_env.sh" ]; then
-  echo "emsdk not found at $EMSDK_DIR"
-  echo "Set EMSDK_DIR to point to your emsdk installation."
-  exit 1
-fi
-
-# shellcheck disable=SC1091
-. "$EMSDK_DIR/emsdk_env.sh" > /dev/null 2>&1
-
-echo "Configuring wasm build..."
-emcmake cmake -S . -B "$BUILD_DIR" \
-  -DCMAKE_BUILD_TYPE=Release
-
-echo "Building..."
-cmake --build "$BUILD_DIR" --parallel 8
+"$SCRIPT_DIR/build-wasm.sh"
 
 echo ""
-echo "Build complete. Running headless test (${TIMEOUT}s timeout)..."
+echo "Running headless test (${TIMEOUT}s timeout)..."
 
 # Clean up on exit
 cleanup() {

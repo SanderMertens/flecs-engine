@@ -126,7 +126,8 @@ void initEngine(
   ecs_entity_t view_entity =  ecs_entity(world, { .name = "view" });
   FlecsRenderView view = {
     .shadow.enabled = true,
-    .shadow.pcf_samples = 1
+    .shadow.pcf_samples = 1,
+    .shadow.map_size = 4096
   };
 
   FlecsRenderBatchSet batch_set = {};
@@ -192,7 +193,7 @@ void initEngine(
   fog_settings.density = 0;
 
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
-    (flecs_render_view_effect_t){ .enabled = true, .effect =
+    (flecs_render_view_effect_t){ .enabled = false, .effect =
       flecsEngine_createEffect_ssao(world, view_entity,
         "ssao", 0, &ssao_settings) };
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
