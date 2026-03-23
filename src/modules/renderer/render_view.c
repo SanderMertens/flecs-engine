@@ -71,33 +71,14 @@ static void flecsEngine_renderView_releaseTargets(
     impl->effect_target_format = WGPUTextureFormat_Undefined;
 }
 
-static void flecsEngine_renderView_releasePassthrough(
-    FlecsRenderViewImpl *impl)
-{
-    if (impl->passthrough_pipeline) {
-        wgpuRenderPipelineRelease(impl->passthrough_pipeline);
-        impl->passthrough_pipeline = NULL;
-    }
-    if (impl->passthrough_bind_layout) {
-        wgpuBindGroupLayoutRelease(impl->passthrough_bind_layout);
-        impl->passthrough_bind_layout = NULL;
-    }
-    if (impl->passthrough_sampler) {
-        wgpuSamplerRelease(impl->passthrough_sampler);
-        impl->passthrough_sampler = NULL;
-    }
-}
-
 ECS_MOVE(FlecsRenderViewImpl, dst, src, {
     flecsEngine_renderView_releaseTargets(dst);
-    flecsEngine_renderView_releasePassthrough(dst);
     *dst = *src;
     ecs_os_memset_t(src, 0, FlecsRenderViewImpl);
 })
 
 ECS_DTOR(FlecsRenderViewImpl, ptr, {
     flecsEngine_renderView_releaseTargets(ptr);
-    flecsEngine_renderView_releasePassthrough(ptr);
 })
 
 static bool flecsEngine_renderView_createTargets(
@@ -209,8 +190,9 @@ static void flecsEngine_renderView_render(
 {
     engine->last_pipeline = NULL;
 
-    if (flecsEngine_renderView_ensureTargets(
-        engine, impl, ecs_vec_count(&view->effects)))
+    int32_t effect_count = ecs_vec_count(&view->effects);
+    int32_t target_count = effect_count > 0 ? effect_count : 1;
+    if (flecsEngine_renderView_ensureTargets(engine, impl, target_count))
     {
         ecs_err("failed to allocate effect render targets");
         return;
@@ -237,7 +219,7 @@ static void flecsEngine_renderView_render(
     flecsEngine_cluster_build(world, engine, view);
 
     flecsEngine_renderView_renderBatches(
-        world, view_entity, engine, view, impl, view_texture, encoder);
+        world, view_entity, engine, view, impl, encoder);
 
     flecsEngine_renderView_renderEffects(
         world, view_entity, engine, view, impl, view_texture, encoder);

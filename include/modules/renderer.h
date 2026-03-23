@@ -123,10 +123,4 @@ ecs_entity_t flecsEngine_createHdri(
     uint32_t filterSampleCount,
     uint32_t lutSampleCount);
 
-ecs_entity_t flecsEngine_createEffect_passthrough(
-    ecs_world_t *world,
-    ecs_entity_t parent,
-    const char *name,
-    int32_t input);
-
 #endif

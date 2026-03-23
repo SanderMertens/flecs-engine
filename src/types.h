@@ -102,6 +102,12 @@ typedef struct {
     WGPUBindGroup cluster_bind_group;
     bool cluster_bind_group_dirty;
 
+    /* Passthrough effect for blitting batch output to screen when no
+     * effects are enabled. Built directly during renderer init. */
+    WGPURenderPipeline passthrough_pipeline;
+    WGPUBindGroupLayout passthrough_bind_layout;
+    WGPUSampler passthrough_sampler;
+
     FlecsDefaultAttrCache *default_attr_cache;
 } FlecsEngineImpl;
 
@@ -143,12 +149,6 @@ typedef struct {
     uint32_t effect_target_width;
     uint32_t effect_target_height;
     WGPUTextureFormat effect_target_format;
-
-    /* Passthrough pipeline used to blit batch output to screen when all
-     * effects are disabled. */
-    WGPURenderPipeline passthrough_pipeline;
-    WGPUBindGroupLayout passthrough_bind_layout;
-    WGPUSampler passthrough_sampler;
 } FlecsRenderViewImpl;
 
 extern ECS_COMPONENT_DECLARE(FlecsRenderViewImpl);

@@ -84,6 +84,9 @@ ECS_PRIVATE
     void (*free_ctx)(void *ctx);
 });
 
+int flecsEngine_initPassthrough(
+    FlecsEngineImpl *impl);
+
 int flecsEngine_initRenderer(
     ecs_world_t *world,
     FlecsEngineImpl *impl);
@@ -171,7 +174,6 @@ void flecsEngine_renderView_renderBatches(
     FlecsEngineImpl *engine,
     const FlecsRenderView *view,
     const FlecsRenderViewImpl *viewImpl,
-    WGPUTextureView view_texture,
     WGPUCommandEncoder encoder);
 
 void flecsEngine_renderView_extractBatches(

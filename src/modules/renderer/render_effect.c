@@ -175,92 +175,6 @@ static int32_t flecsEngine_resolveEffectInput(
     return 0;
 }
 
-static const char *passthrough_blit_src =
-    FLECS_ENGINE_FULLSCREEN_VS_WGSL
-    "@group(0) @binding(0) var input_texture : texture_2d<f32>;\n"
-    "@group(0) @binding(1) var input_sampler : sampler;\n"
-    "@fragment fn fs_main(in : VertexOutput) -> @location(0) vec4<f32> {\n"
-    "  return textureSample(input_texture, input_sampler, in.uv);\n"
-    "}\n";
-
-/* Lazily create a passthrough pipeline on the view impl for blitting the batch
- * output to the screen when all effects are disabled. Builds the shader module
- * directly via the GPU device to avoid deferred ECS operations. */
-static bool flecsEngine_renderView_ensurePassthrough(
-    FlecsEngineImpl *engine,
-    FlecsRenderViewImpl *viewImpl)
-{
-    if (viewImpl->passthrough_pipeline) {
-        return true;
-    }
-
-    WGPUShaderModule module = flecsEngine_createShaderModule(
-        engine->device, passthrough_blit_src);
-    if (!module) {
-        return false;
-    }
-
-    WGPUSamplerDescriptor sampler_desc = {
-        .addressModeU = WGPUAddressMode_ClampToEdge,
-        .addressModeV = WGPUAddressMode_ClampToEdge,
-        .addressModeW = WGPUAddressMode_ClampToEdge,
-        .magFilter = WGPUFilterMode_Linear,
-        .minFilter = WGPUFilterMode_Linear,
-        .mipmapFilter = WGPUMipmapFilterMode_Linear,
-        .lodMinClamp = 0.0f,
-        .lodMaxClamp = 32.0f,
-        .maxAnisotropy = 1
-    };
-    viewImpl->passthrough_sampler = wgpuDeviceCreateSampler(
-        engine->device, &sampler_desc);
-    if (!viewImpl->passthrough_sampler) {
-        wgpuShaderModuleRelease(module);
-        return false;
-    }
-
-    WGPUBindGroupLayoutEntry layout_entries[2] = {
-        {
-            .binding = 0,
-            .visibility = WGPUShaderStage_Fragment,
-            .texture = {
-                .sampleType = WGPUTextureSampleType_Float,
-                .viewDimension = WGPUTextureViewDimension_2D
-            }
-        },
-        {
-            .binding = 1,
-            .visibility = WGPUShaderStage_Fragment,
-            .sampler = { .type = WGPUSamplerBindingType_Filtering }
-        }
-    };
-
-    WGPUBindGroupLayoutDescriptor bl_desc = {
-        .entries = layout_entries,
-        .entryCount = 2
-    };
-    viewImpl->passthrough_bind_layout = wgpuDeviceCreateBindGroupLayout(
-        engine->device, &bl_desc);
-    if (!viewImpl->passthrough_bind_layout) {
-        wgpuShaderModuleRelease(module);
-        return false;
-    }
-
-    FlecsShader shader = {
-        .source = passthrough_blit_src,
-        .vertex_entry = "vs_main",
-        .fragment_entry = "fs_main"
-    };
-    FlecsShaderImpl shader_impl = { .shader_module = module };
-
-    viewImpl->passthrough_pipeline = flecsEngine_renderEffect_createPipeline(
-        engine, &shader, &shader_impl,
-        viewImpl->passthrough_bind_layout,
-        engine->surface_config.format);
-
-    wgpuShaderModuleRelease(module);
-    return viewImpl->passthrough_pipeline != NULL;
-}
-
 void flecsEngine_renderView_renderEffects(
     ecs_world_t *world,
     ecs_entity_t view_entity,
@@ -271,47 +185,36 @@ void flecsEngine_renderView_renderEffects(
     WGPUCommandEncoder encoder)
 {
     int32_t effect_count = ecs_vec_count(&view->effects);
-    if (!effect_count) {
-        return;
-    }
+    const flecs_render_view_effect_t *effects = NULL;
 
-    const flecs_render_view_effect_t *effects =
-        ecs_vec_first(&view->effects);
-
-    /* Find the last enabled effect. If none are enabled, nothing to do. */
+    /* Find the last enabled effect. */
     int32_t last_enabled = -1;
-    for (int32_t i = effect_count - 1; i >= 0; i --) {
-        if (effects[i].enabled) {
-            last_enabled = i;
-            break;
+    if (effect_count > 0) {
+        effects = ecs_vec_first(&view->effects);
+        for (int32_t i = effect_count - 1; i >= 0; i --) {
+            if (effects[i].enabled) {
+                last_enabled = i;
+                break;
+            }
         }
     }
 
-
+    /* No effects enabled — blit batch output to screen via passthrough. */
     if (last_enabled < 0) {
-        /* All effects are disabled, but batches already rendered into
-         * effect_target_views[0]. Use a dedicated passthrough pipeline to
-         * blit the batch output to the screen. */
-        if (!flecsEngine_renderView_ensurePassthrough(engine, viewImpl)){
-            ecs_err("failed to create passthrough blit pipeline");
-            return;
-        }
-
         WGPUBindGroupEntry entries[2] = {
             { .binding = 0, .textureView = viewImpl->effect_target_views[0] },
-            { .binding = 1, .sampler = viewImpl->passthrough_sampler }
+            { .binding = 1, .sampler = engine->passthrough_sampler }
         };
-        WGPUBindGroupDescriptor bg_desc = {
-            .layout = viewImpl->passthrough_bind_layout,
-            .entryCount = 2,
-            .entries = entries
-        };
-        WGPUBindGroup bg = wgpuDeviceCreateBindGroup(
-            engine->device, &bg_desc);
+        WGPUBindGroup bg = wgpuDeviceCreateBindGroup(engine->device,
+            &(WGPUBindGroupDescriptor){
+                .layout = engine->passthrough_bind_layout,
+                .entryCount = 2,
+                .entries = entries
+            });
 
         WGPURenderPassEncoder pass = flecsEngine_renderEffect_beginPass(
             engine, encoder, view_texture, WGPULoadOp_Load);
-        wgpuRenderPassEncoderSetPipeline(pass, viewImpl->passthrough_pipeline);
+        wgpuRenderPassEncoderSetPipeline(pass, engine->passthrough_pipeline);
         wgpuRenderPassEncoderSetBindGroup(pass, 0, bg, 0, NULL);
         wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
         wgpuRenderPassEncoderEnd(pass);

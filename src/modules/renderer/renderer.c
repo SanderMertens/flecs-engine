@@ -187,6 +187,10 @@ int flecsEngine_initRenderer(
     impl->fallback_hdri = flecsEngine_createHdri(
         world, 0, "FallbackHdri", NULL, 1014, 64);
 
+    if (flecsEngine_initPassthrough(impl)) {
+        goto error;
+    }
+
     return 0;
 error:
     return -1;

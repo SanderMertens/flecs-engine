@@ -42,6 +42,19 @@ static void flecsEngine_cleanup(
 
     impl->fallback_hdri = 0;
 
+    if (impl->passthrough_pipeline) {
+        wgpuRenderPipelineRelease(impl->passthrough_pipeline);
+        impl->passthrough_pipeline = NULL;
+    }
+    if (impl->passthrough_bind_layout) {
+        wgpuBindGroupLayoutRelease(impl->passthrough_bind_layout);
+        impl->passthrough_bind_layout = NULL;
+    }
+    if (impl->passthrough_sampler) {
+        wgpuSamplerRelease(impl->passthrough_sampler);
+        impl->passthrough_sampler = NULL;
+    }
+
     flecsEngine_shadow_cleanup(impl);
     flecsEngine_material_releaseBuffer(impl);
 

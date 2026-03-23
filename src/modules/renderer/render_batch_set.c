@@ -224,19 +224,15 @@ void flecsEngine_renderView_renderBatches(
     FlecsEngineImpl *engine,
     const FlecsRenderView *view,
     const FlecsRenderViewImpl *viewImpl,
-    WGPUTextureView view_texture,
     WGPUCommandEncoder encoder)
 {
     const FlecsRenderBatchSet *batch_set = ecs_get(
         world, view_entity, FlecsRenderBatchSet);
     ecs_assert(batch_set != NULL, ECS_INTERNAL_ERROR, NULL);
 
-    /* If there are effects, batches render into the first effect target.
-     * Otherwise, batches render directly to the final view texture. */
-    WGPUTextureView batch_target =
-        (viewImpl->effect_target_views && viewImpl->effect_target_count > 0)
-            ? viewImpl->effect_target_views[0]
-            : view_texture;
+    /* Batches always render into the first effect target. A passthrough
+     * effect (or the user's effect chain) blits to the final view texture. */
+    WGPUTextureView batch_target = viewImpl->effect_target_views[0];
 
     WGPURenderPassEncoder batch_pass = flecsEngine_renderBatch_beginPass(
         engine,
