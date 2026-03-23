@@ -87,6 +87,13 @@ ECS_PRIVATE
 int flecsEngine_initPassthrough(
     FlecsEngineImpl *impl);
 
+int flecsEngine_initDepthResolve(
+    FlecsEngineImpl *impl);
+
+void flecsEngine_depthResolve(
+    const FlecsEngineImpl *impl,
+    WGPUCommandEncoder encoder);
+
 void flecsEngine_releaseMsaaResources(
     FlecsEngineImpl *impl);
 

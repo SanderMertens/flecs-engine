@@ -55,6 +55,15 @@ static void flecsEngine_cleanup(
         impl->passthrough_sampler = NULL;
     }
 
+    if (impl->depth_resolve_pipeline) {
+        wgpuRenderPipelineRelease(impl->depth_resolve_pipeline);
+        impl->depth_resolve_pipeline = NULL;
+    }
+    if (impl->depth_resolve_bind_layout) {
+        wgpuBindGroupLayoutRelease(impl->depth_resolve_bind_layout);
+        impl->depth_resolve_bind_layout = NULL;
+    }
+
     flecsEngine_releaseMsaaResources(impl);
     flecsEngine_shadow_cleanup(impl);
     flecsEngine_material_releaseBuffer(impl);

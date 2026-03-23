@@ -225,32 +225,11 @@ static void flecsEngine_renderView_render(
         world, view_entity, engine, view, impl, encoder);
 
     /* When MSAA is active, the batch pass writes to the MSAA depth texture
-     * rather than the 1-sample depth texture.  Effects like SSAO read from
-     * the 1-sample depth, so clear it to 1.0 so they gracefully skip pixels
-     * with no valid depth. */
-    if (engine->sample_count > 1 && engine->depth_texture_view) {
-        WGPURenderPassDepthStencilAttachment depth_clear = {
-            .view = engine->depth_texture_view,
-            .depthLoadOp = WGPULoadOp_Clear,
-            .depthStoreOp = WGPUStoreOp_Store,
-            .depthClearValue = 1.0f,
-            .depthReadOnly = false,
-            .stencilLoadOp = WGPULoadOp_Undefined,
-            .stencilStoreOp = WGPUStoreOp_Undefined,
-            .stencilClearValue = 0,
-            .stencilReadOnly = true
-        };
-
-        WGPURenderPassDescriptor clear_desc = {
-            .colorAttachmentCount = 0,
-            .colorAttachments = NULL,
-            .depthStencilAttachment = &depth_clear
-        };
-
-        WGPURenderPassEncoder clear_pass =
-            wgpuCommandEncoderBeginRenderPass(encoder, &clear_desc);
-        wgpuRenderPassEncoderEnd(clear_pass);
-        wgpuRenderPassEncoderRelease(clear_pass);
+     * rather than the 1-sample depth texture.  Resolve the multisampled depth
+     * into the 1-sample texture so that post-process effects (SSAO, fog, …)
+     * can read it. */
+    if (engine->sample_count > 1) {
+        flecsEngine_depthResolve(engine, encoder);
     }
 
     flecsEngine_renderView_renderEffects(

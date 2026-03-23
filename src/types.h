@@ -121,6 +121,11 @@ typedef struct {
     WGPUBindGroupLayout passthrough_bind_layout;
     WGPUSampler passthrough_sampler;
 
+    /* Depth resolve pass: resolves MSAA depth into the 1-sample depth
+     * texture so that post-process effects (SSAO, fog, …) can read it. */
+    WGPURenderPipeline depth_resolve_pipeline;
+    WGPUBindGroupLayout depth_resolve_bind_layout;
+
     FlecsDefaultAttrCache *default_attr_cache;
 } FlecsEngineImpl;
 

@@ -192,7 +192,7 @@ void initEngine(
   fog_settings.density = 0;
 
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
-    (flecs_render_view_effect_t){ .enabled = false, .effect =
+    (flecs_render_view_effect_t){ .enabled = true, .effect =
       flecsEngine_createEffect_ssao(world, view_entity,
         "ssao", 0, &ssao_settings) };
   *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =

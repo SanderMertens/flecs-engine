@@ -206,7 +206,7 @@ static int flecsEngine_ensureMsaaResources(
 
     /* MSAA depth texture */
     WGPUTextureDescriptor depth_desc = {
-        .usage = WGPUTextureUsage_RenderAttachment,
+        .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding,
         .dimension = WGPUTextureDimension_2D,
         .size = (WGPUExtent3D){
             .width = width,
@@ -334,6 +334,10 @@ int flecsEngine_initRenderer(
         world, 0, "FallbackHdri", NULL, 1014, 64);
 
     if (flecsEngine_initPassthrough(impl)) {
+        goto error;
+    }
+
+    if (flecsEngine_initDepthResolve(impl)) {
         goto error;
     }
 
