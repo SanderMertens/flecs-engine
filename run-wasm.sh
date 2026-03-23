@@ -5,7 +5,7 @@ SCRIPT_DIR="$(dirname "$0")"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PORT=8090
 CDP_PORT=9222
-BUILD_DIR="build-wasm"
+BUILD_DIR="etc"
 TIMEOUT="${1:-15}"
 
 "$SCRIPT_DIR/build-wasm.sh"
@@ -38,7 +38,7 @@ sleep 1
   --no-first-run \
   --disable-background-networking \
   --remote-debugging-port="$CDP_PORT" \
-  "http://localhost:$PORT/flecs_engine.html" \
+  "http://localhost:$PORT/index.html" \
   > /dev/null 2>&1 &
 CHROME_PID=$!
 

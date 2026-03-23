@@ -20,4 +20,11 @@ emcmake cmake -S . -B "$BUILD_DIR" \
 echo "Building..."
 cmake --build "$BUILD_DIR" --config Release --parallel 8
 
+echo "Copying web artifacts to etc/..."
+mkdir -p etc
+cp "$BUILD_DIR"/flecs_engine.html etc/index.html
+cp "$BUILD_DIR"/flecs_engine.data etc/
+cp "$BUILD_DIR"/flecs_engine.wasm etc/
+cp "$BUILD_DIR"/flecs_engine.js etc/
+
 echo "Build complete."

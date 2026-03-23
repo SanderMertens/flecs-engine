@@ -4,4 +4,5 @@ build-asan
 build-release
 build-wasm
 .vscode
+.claude
 _deps
