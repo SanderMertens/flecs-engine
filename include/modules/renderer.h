@@ -107,6 +107,7 @@ ECS_STRUCT(flecs_engine_shadow_params_t, {
     int32_t map_size;
     int32_t pcf_samples;
     float bias;
+    float max_range;
 });
 
 ECS_STRUCT(flecs_engine_background_t, {

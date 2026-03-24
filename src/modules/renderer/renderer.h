@@ -288,6 +288,7 @@ void flecsEngine_shadow_computeCascades(
     const FlecsRenderView *view,
     uint32_t shadow_map_size,
     const uint32_t cascade_sizes[FLECS_ENGINE_SHADOW_CASCADE_COUNT],
+    float max_range,
     mat4 out_light_vp[FLECS_ENGINE_SHADOW_CASCADE_COUNT],
     float out_splits[FLECS_ENGINE_SHADOW_CASCADE_COUNT]);
 

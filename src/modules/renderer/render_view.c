@@ -24,6 +24,7 @@ ECS_CTOR(FlecsRenderView, ptr, {
     ptr->shadow.map_size = FLECS_ENGINE_SHADOW_MAP_SIZE_DEFAULT;
     ptr->shadow.pcf_samples = 0;
     ptr->shadow.bias = 0.0005f;
+    ptr->shadow.max_range = 100.0f;
 })
 
 ECS_MOVE(FlecsRenderView, dst, src, {
@@ -342,7 +343,8 @@ void flecsEngine_renderView_register(
             { .name = "enabled", .type = ecs_id(ecs_bool_t) },
             { .name = "map_size", .type = ecs_id(ecs_i32_t) },
             { .name = "pcf_samples", .type = ecs_id(ecs_i32_t) },
-            { .name = "bias", .type = ecs_id(ecs_f32_t) }
+            { .name = "bias", .type = ecs_id(ecs_f32_t) },
+            { .name = "max_range", .type = ecs_id(ecs_f32_t) }
         }
     });
 

@@ -155,6 +155,7 @@ void flecsEngine_renderView_renderShadow(
     flecsEngine_shadow_computeCascades(
         world, view, engine->shadow.map_size,
         engine->shadow.cascade_sizes,
+        view->shadow.max_range,
         engine->shadow.current_light_vp, engine->shadow.cascade_splits);
 
     /* Upload all cascade VP matrices to their own buffers upfront.

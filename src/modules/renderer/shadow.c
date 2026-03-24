@@ -36,14 +36,9 @@ int flecsEngine_shadow_init(
     (void)world;
     impl->shadow.map_size = shadow_map_size;
 
-    /* Compute per-cascade effective sizes. Each successive cascade halves
-     * in resolution, with a minimum of 256. The actual texture array uses
-     * shadow_map_size for all layers; per-cascade sizes are realized via
-     * viewport restrictions during rendering. */
+    /* All cascades use the full shadow map resolution. */
     for (int i = 0; i < FLECS_ENGINE_SHADOW_CASCADE_COUNT; i++) {
-        uint32_t size = shadow_map_size >> i;
-        if (size < 256) size = 256;
-        impl->shadow.cascade_sizes[i] = size;
+        impl->shadow.cascade_sizes[i] = shadow_map_size;
     }
 
     /* Compile shadow depth shader directly (bypasses ECS shader system
@@ -243,6 +238,7 @@ void flecsEngine_shadow_computeCascades(
     const FlecsRenderView *view,
     uint32_t shadow_map_size,
     const uint32_t cascade_sizes[FLECS_ENGINE_SHADOW_CASCADE_COUNT],
+    float max_range,
     mat4 out_light_vp[FLECS_ENGINE_SHADOW_CASCADE_COUNT],
     float out_splits[FLECS_ENGINE_SHADOW_CASCADE_COUNT])
 {
@@ -283,6 +279,9 @@ void flecsEngine_shadow_computeCascades(
 
     float near = cam->near_;
     float far = cam->far_;
+    if (max_range > 0 && max_range < far) {
+        far = max_range;
+    }
     float fov = cam->fov;
     float aspect = cam->aspect_ratio;
     if (aspect <= 0.0f) {
