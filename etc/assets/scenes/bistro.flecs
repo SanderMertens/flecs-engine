@@ -1,19 +1,21 @@
 using flecs.engine.*
 using flecs.script
 
-{
-    Position3: {}
-    Quad: {10000, 10000}
-    Rotation3: {-math.PI / 2}
-    Rgba: {0, 0, 0}
-}
+// prefab Bistro {
+//     Gltf: {"etc/assets/gltf/Bistro/bistro.gltf"}
+// }
 
-prefab Bistro {
-    Gltf: {"etc/assets/gltf/Bistro/bistro.gltf"}
-}
+// _ : Bistro {
+//     Position3: {y: 0, z: 0}
+//     Rotation3: {}
+//     Scale3: {1, 1, 1}
+// }
 
-_ : Bistro {
-    Position3: {y: 0, z: 0}
-    Rotation3: {}
-    Scale3: {1, 1, 1}
-}
+
+// bistro {
+//     Gltf: {"etc/assets/gltf/Bistro/bistro.gltf"}
+
+//     Position3: {y: 0, z: 0}
+//     Rotation3: {}
+//     Scale3: {1, 1, 1}
+// }

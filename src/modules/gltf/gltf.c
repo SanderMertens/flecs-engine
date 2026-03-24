@@ -176,6 +176,70 @@ static void flecsEngine_gltf_decomposeTransform(
     }
 }
 
+static void flecsEngine_gltf_quatToEuler(
+    const float q[4],
+    FlecsRotation3 *rot)
+{
+    float qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+
+    /* R[0][2] = 2(xz + wy) = sin(ry) for Rx*Ry*Rz decomposition */
+    float sinry = 2.0f * (qx * qz + qw * qy);
+    rot->y = asinf(fmaxf(-1.0f, fminf(1.0f, sinry)));
+
+    if (fabsf(sinry) < 0.9999f) {
+        rot->x = atan2f(2.0f * (qw * qx - qy * qz),
+                         1.0f - 2.0f * (qx * qx + qy * qy));
+        rot->z = atan2f(2.0f * (qw * qz - qx * qy),
+                         1.0f - 2.0f * (qy * qy + qz * qz));
+    } else {
+        rot->x = atan2f(2.0f * (qx * qy + qw * qz),
+                         1.0f - 2.0f * (qx * qx + qz * qz));
+        rot->z = 0;
+    }
+}
+
+static void flecsEngine_gltf_setNodeTransform(
+    ecs_world_t *world,
+    ecs_entity_t entity,
+    const cgltf_node *node)
+{
+    if (node->has_matrix) {
+        FlecsPosition3 pos = {0};
+        FlecsRotation3 rot = {0};
+        FlecsScale3 scale = {1, 1, 1};
+        flecsEngine_gltf_decomposeTransform(node->matrix, &pos, &rot, &scale);
+        ecs_set_ptr(world, entity, FlecsPosition3, &pos);
+        if (fabsf(rot.x) > 1e-6f || fabsf(rot.y) > 1e-6f ||
+            fabsf(rot.z) > 1e-6f) {
+            ecs_set_ptr(world, entity, FlecsRotation3, &rot);
+        }
+        if (fabsf(scale.x - 1.0f) > 1e-6f || fabsf(scale.y - 1.0f) > 1e-6f ||
+            fabsf(scale.z - 1.0f) > 1e-6f) {
+            ecs_set_ptr(world, entity, FlecsScale3, &scale);
+        }
+    } else {
+        FlecsPosition3 pos = {0};
+        if (node->has_translation) {
+            pos.x = node->translation[0];
+            pos.y = node->translation[1];
+            pos.z = node->translation[2];
+        }
+        ecs_set_ptr(world, entity, FlecsPosition3, &pos);
+
+        if (node->has_rotation) {
+            FlecsRotation3 rot = {0};
+            flecsEngine_gltf_quatToEuler(node->rotation, &rot);
+            ecs_set_ptr(world, entity, FlecsRotation3, &rot);
+        }
+
+        if (node->has_scale) {
+            ecs_set(world, entity, FlecsScale3, {
+                node->scale[0], node->scale[1], node->scale[2]
+            });
+        }
+    }
+}
+
 static ecs_entity_t flecsEngine_gltf_getImageEntity(
     ecs_world_t *world,
     ecs_entity_t *image_entities,
@@ -209,6 +273,7 @@ static ecs_entity_t flecsEngine_gltf_getImageEntity(
         .name = path,
         .sep = "/"
     });
+
     ecs_add_id(world, e, EcsPrefab);
     ecs_set(world, e, FlecsTexture, { .path = path });
     ecs_os_free(path);
@@ -298,12 +363,45 @@ static void flecsEngine_gltf_setupMaterial(
     }
 }
 
+static ecs_entity_t flecsEngine_gltf_getNodeEntity(
+    ecs_world_t *world,
+    ecs_entity_t *node_entities,
+    const cgltf_data *data,
+    const cgltf_node *node,
+    ecs_entity_t nodes_parent)
+{
+    ptrdiff_t node_idx = node - data->nodes;
+    if (node_entities[node_idx]) {
+        return node_entities[node_idx];
+    }
+
+    ecs_entity_t parent;
+    if (node->parent) {
+        parent = flecsEngine_gltf_getNodeEntity(
+            world, node_entities, data, node->parent, nodes_parent);
+    } else {
+        parent = nodes_parent;
+    }
+
+    ecs_entity_t e = ecs_entity(world, { .parent = parent });
+    ecs_add_id(world, e, EcsPrefab);
+    if (node->name) {
+        ecs_doc_set_name(world, e, node->name);
+    }
+
+    flecsEngine_gltf_setNodeTransform(world, e, node);
+
+    node_entities[node_idx] = e;
+    return e;
+}
+
 static ecs_entity_t flecsEngine_gltf_getMeshEntity(
     ecs_world_t *world,
     ecs_entity_t **mesh_entities,
     const cgltf_data *data,
     const cgltf_mesh *mesh,
     cgltf_size prim_index,
+    ecs_entity_t meshes_parent,
     const char *gltf_path,
     ecs_entity_t *image_entities)
 {
@@ -319,13 +417,7 @@ static ecs_entity_t flecsEngine_gltf_getMeshEntity(
         return 0;
     }
 
-    ecs_entity_t assets = ecs_lookup(world, "assets");
-    if (!assets) {
-        assets = ecs_entity(world, { .name = "assets" });
-        ecs_add_id(world, assets, EcsModule);
-    }
-
-    ecs_entity_t e = ecs_new_w_parent(world, assets, NULL);
+    ecs_entity_t e = ecs_entity(world, { .parent = meshes_parent });
     ecs_add_id(world, e, EcsPrefab);
     ecs_set_ptr(world, e, FlecsMesh3, &mesh3);
 
@@ -339,41 +431,31 @@ static ecs_entity_t flecsEngine_gltf_getMeshEntity(
     return e;
 }
 
-static void flecsEngine_gltf_setupPrimitive(
+static ecs_entity_t flecsEngine_gltf_getInstEntity(
     ecs_world_t *world,
-    ecs_entity_t entity,
-    const cgltf_mesh *mesh,
-    cgltf_size prim_index,
-    const float node_transform[16],
-    ecs_entity_t **mesh_entities,
+    ecs_entity_t *inst_entities,
     const cgltf_data *data,
-    const char *gltf_path,
-    ecs_entity_t *image_entities)
+    const cgltf_node *node,
+    ecs_entity_t root)
 {
-    ecs_entity_t mesh_prefab = flecsEngine_gltf_getMeshEntity(
-        world, mesh_entities, data, mesh, prim_index,
-        gltf_path, image_entities);
-    if (!mesh_prefab) {
-        return;
+    ptrdiff_t node_idx = node - data->nodes;
+    if (inst_entities[node_idx]) {
+        return inst_entities[node_idx];
     }
 
-    ecs_add_pair(world, entity, EcsIsA, mesh_prefab);
-
-    FlecsPosition3 pos = {0};
-    FlecsRotation3 rot = {0};
-    FlecsScale3 scale = {1, 1, 1};
-    flecsEngine_gltf_decomposeTransform(node_transform, &pos, &rot, &scale);
-
-    ecs_set_ptr(world, entity, FlecsPosition3, &pos);
-
-    if (fabsf(rot.x) > 1e-6f || fabsf(rot.y) > 1e-6f || fabsf(rot.z) > 1e-6f) {
-        ecs_set_ptr(world, entity, FlecsRotation3, &rot);
+    ecs_entity_t parent;
+    if (node->parent) {
+        parent = flecsEngine_gltf_getInstEntity(
+            world, inst_entities, data, node->parent, root);
+    } else {
+        parent = root;
     }
 
-    if (fabsf(scale.x - 1.0f) > 1e-6f || fabsf(scale.y - 1.0f) > 1e-6f ||
-        fabsf(scale.z - 1.0f) > 1e-6f) {
-        ecs_set_ptr(world, entity, FlecsScale3, &scale);
-    }
+    ecs_entity_t e = ecs_new_w_parent(world, parent, NULL);
+    flecsEngine_gltf_setNodeTransform(world, e, node);
+
+    inst_entities[node_idx] = e;
+    return e;
 }
 
 static void flecsEngine_gltf_load(
@@ -397,14 +479,52 @@ static void flecsEngine_gltf_load(
         return;
     }
 
-    /* Pre-allocate image entity lookup table for texture deduplication */
+    /* Create asset hierarchy: assets/<gltf_dir>/nodes + meshes */
+    ecs_entity_t assets = ecs_lookup(world, "assets");
+    if (!assets) {
+        assets = ecs_entity(world, { .name = "assets" });
+        ecs_add_id(world, assets, EcsModule);
+    }
+
+    const char *last_sep = strrchr(path, '/');
+    if (!last_sep) {
+        last_sep = strrchr(path, '\\');
+    }
+
+    char *dir_path = NULL;
+    if (last_sep) {
+        dir_path = ecs_os_malloc((ecs_size_t)(last_sep - path + 1));
+        memcpy(dir_path, path, (size_t)(last_sep - path));
+        dir_path[last_sep - path] = '\0';
+    }
+
+    ecs_entity_t gltf_e = ecs_entity(world, {
+        .parent = assets,
+        .name = dir_path ? dir_path : path,
+        .sep = "/"
+    });
+    ecs_add_id(world, gltf_e, EcsPrefab);
+    ecs_os_free(dir_path);
+
+    ecs_entity_t nodes_e = ecs_entity(world, {
+        .parent = gltf_e,
+        .name = "nodes"
+    });
+    ecs_add_id(world, nodes_e, EcsPrefab);
+
+    ecs_entity_t meshes_e = ecs_entity(world, {
+        .parent = gltf_e,
+        .name = "meshes"
+    });
+    ecs_add_id(world, meshes_e, EcsPrefab);
+
+    /* Pre-allocate lookup tables */
     ecs_entity_t *image_entities = NULL;
     if (data->images_count) {
         image_entities = ecs_os_calloc_n(
             ecs_entity_t, (int32_t)data->images_count);
     }
 
-    /* Pre-allocate mesh entity lookup table for mesh deduplication */
     ecs_entity_t **mesh_entities = NULL;
     if (data->meshes_count) {
         mesh_entities = ecs_os_calloc_n(
@@ -418,13 +538,57 @@ static void flecsEngine_gltf_load(
         }
     }
 
-    /* Create child prefab per (node, primitive) pair, deduplicating meshes */
+    ecs_entity_t *node_entities = NULL;
+    if (data->nodes_count) {
+        node_entities = ecs_os_calloc_n(
+            ecs_entity_t, (int32_t)data->nodes_count);
+    }
+
+    ecs_entity_t *inst_entities = NULL;
+    if (data->nodes_count) {
+        inst_entities = ecs_os_calloc_n(
+            ecs_entity_t, (int32_t)data->nodes_count);
+    }
+
+    /* Pass 1: create asset tree (all nodes with hierarchy + transforms) */
+    for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
+        flecsEngine_gltf_getNodeEntity(
+            world, node_entities, data, &data->nodes[ni], nodes_e);
+    }
+
+    /* Pass 2: create deduplicated mesh prefabs and add references to asset
+     * nodes that have meshes */
     for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
         const cgltf_node *node = &data->nodes[ni];
         if (!node->mesh) continue;
 
-        float transform[16];
-        cgltf_node_transform_world(node, transform);
+        ecs_entity_t asset_node = node_entities[ni];
+        const cgltf_mesh *mesh = node->mesh;
+        for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
+            if (mesh->primitives[pi].type != cgltf_primitive_type_triangles) {
+                continue;
+            }
+
+            ecs_entity_t mesh_prefab = flecsEngine_gltf_getMeshEntity(
+                world, mesh_entities, data, mesh, pi,
+                meshes_e, path, image_entities);
+            if (!mesh_prefab) continue;
+
+            /* Add (IsA, meshPrefab) child to asset node */
+            ecs_entity_t prim_e = ecs_entity(world, { .parent = asset_node });
+            ecs_add_id(world, prim_e, EcsPrefab);
+            ecs_add_pair(world, prim_e, EcsIsA, mesh_prefab);
+        }
+    }
+
+    /* Pass 3: create instance hierarchy under root with local transforms */
+    for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
+        const cgltf_node *node = &data->nodes[ni];
+
+        ecs_entity_t inst = flecsEngine_gltf_getInstEntity(
+            world, inst_entities, data, node, root);
+
+        if (!node->mesh) continue;
 
         const cgltf_mesh *mesh = node->mesh;
         for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
@@ -432,15 +596,19 @@ static void flecsEngine_gltf_load(
                 continue;
             }
 
-            ecs_entity_t mesh_e = ecs_new_w_parent(world, root, NULL);
-            ecs_add_id(world, mesh_e, EcsPrefab);
-            flecsEngine_gltf_setupPrimitive(
-                world, mesh_e, mesh, pi, transform,
-                mesh_entities, data, path, image_entities);
+            ptrdiff_t mesh_idx = mesh - data->meshes;
+            ecs_entity_t mesh_prefab = mesh_entities[mesh_idx][pi];
+            if (!mesh_prefab) continue;
+
+            ecs_entity_t prim_inst = ecs_new_w_parent(world, inst, NULL);
+            ecs_add_pair(world, prim_inst, EcsIsA, mesh_prefab);
+            ecs_set(world, prim_inst, FlecsPosition3, {0, 0, 0});
         }
     }
 
     ecs_os_free(image_entities);
+    ecs_os_free(node_entities);
+    ecs_os_free(inst_entities);
     if (mesh_entities) {
         for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
             ecs_os_free(mesh_entities[mi]);
