@@ -138,35 +138,41 @@ static bool flecsEngine_gltf_readMesh(
     return true;
 }
 
-static void flecsEngine_gltf_applyNodeTransform(
-    FlecsMesh3 *mesh3,
-    const float node_transform[16])
+static void flecsEngine_gltf_decomposeTransform(
+    const float m[16],
+    FlecsPosition3 *pos,
+    FlecsRotation3 *rot,
+    FlecsScale3 *scale)
 {
-    int32_t vert_count = ecs_vec_count(&mesh3->vertices);
-    flecs_vec3_t *positions = ecs_vec_first_t(&mesh3->vertices, flecs_vec3_t);
-    flecs_vec3_t *normals = ecs_vec_first_t(&mesh3->normals, flecs_vec3_t);
-    const float *m = node_transform;
+    pos->x = m[12]; pos->y = m[13]; pos->z = m[14];
 
-    for (int32_t vi = 0; vi < vert_count; vi++) {
-        float x = positions[vi].x;
-        float y = positions[vi].y;
-        float z = positions[vi].z;
-        positions[vi].x = m[0]*x + m[4]*y + m[8]*z  + m[12];
-        positions[vi].y = m[1]*x + m[5]*y + m[9]*z  + m[13];
-        positions[vi].z = m[2]*x + m[6]*y + m[10]*z + m[14];
+    scale->x = sqrtf(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+    scale->y = sqrtf(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]);
+    scale->z = sqrtf(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]);
 
-        x = normals[vi].x;
-        y = normals[vi].y;
-        z = normals[vi].z;
-        float nx = m[0]*x + m[4]*y + m[8]*z;
-        float ny = m[1]*x + m[5]*y + m[9]*z;
-        float nz = m[2]*x + m[6]*y + m[10]*z;
-        float len = sqrtf(nx*nx + ny*ny + nz*nz);
-        if (len > 0.0f) {
-            normals[vi].x = nx / len;
-            normals[vi].y = ny / len;
-            normals[vi].z = nz / len;
-        }
+    /* Detect reflection (negative determinant) */
+    float det = m[0]*(m[5]*m[10] - m[6]*m[9])
+              - m[4]*(m[1]*m[10] - m[2]*m[9])
+              + m[8]*(m[1]*m[6] - m[2]*m[5]);
+    if (det < 0) {
+        scale->x = -scale->x;
+    }
+
+    float sx = scale->x, sy = scale->y, sz = scale->z;
+    if (fabsf(sx) < 1e-6f || fabsf(sy) < 1e-6f || fabsf(sz) < 1e-6f) {
+        rot->x = rot->y = rot->z = 0;
+        return;
+    }
+
+    /* Extract euler angles (XYZ order) from normalized rotation matrix */
+    float r02 = m[8] / sz;
+    rot->y = asinf(fmaxf(-1.0f, fminf(1.0f, r02)));
+    if (fabsf(r02) < 0.9999f) {
+        rot->x = atan2f(-m[9] / sz, m[10] / sz);
+        rot->z = atan2f(-m[4] / sy, m[0] / sx);
+    } else {
+        rot->x = atan2f(m[6] / sy, m[5] / sy);
+        rot->z = 0;
     }
 }
 
@@ -292,28 +298,81 @@ static void flecsEngine_gltf_setupMaterial(
     }
 }
 
-static void flecsEngine_gltf_setupPrimitive(
+static ecs_entity_t flecsEngine_gltf_getMeshEntity(
     ecs_world_t *world,
-    ecs_entity_t entity,
-    const cgltf_primitive *prim,
+    ecs_entity_t **mesh_entities,
+    const cgltf_data *data,
+    const cgltf_mesh *mesh,
+    cgltf_size prim_index,
     const char *gltf_path,
-    const float node_transform[16],
-    ecs_entity_t *image_entities,
-    const cgltf_data *data)
+    ecs_entity_t *image_entities)
 {
-    FlecsMesh3 mesh3 = {0};
-    if (!flecsEngine_gltf_readMesh(&mesh3, prim)) {
-        return;
+    ptrdiff_t mesh_idx = mesh - data->meshes;
+    if (mesh_entities[mesh_idx][prim_index]) {
+        return mesh_entities[mesh_idx][prim_index];
     }
 
-    flecsEngine_gltf_applyNodeTransform(&mesh3, node_transform);
+    const cgltf_primitive *prim = &mesh->primitives[prim_index];
 
-    ecs_set_ptr(world, entity, FlecsMesh3, &mesh3);
+    FlecsMesh3 mesh3 = {0};
+    if (!flecsEngine_gltf_readMesh(&mesh3, prim)) {
+        return 0;
+    }
+
+    ecs_entity_t assets = ecs_lookup(world, "assets");
+    if (!assets) {
+        assets = ecs_entity(world, { .name = "assets" });
+        ecs_add_id(world, assets, EcsModule);
+    }
+
+    ecs_entity_t e = ecs_new_w_parent(world, assets, NULL);
+    ecs_add_id(world, e, EcsPrefab);
+    ecs_set_ptr(world, e, FlecsMesh3, &mesh3);
 
     if (prim->material) {
         flecsEngine_gltf_setupMaterial(
-            world, entity, prim->material, gltf_path,
+            world, e, prim->material, gltf_path,
             image_entities, data);
+    }
+
+    mesh_entities[mesh_idx][prim_index] = e;
+    return e;
+}
+
+static void flecsEngine_gltf_setupPrimitive(
+    ecs_world_t *world,
+    ecs_entity_t entity,
+    const cgltf_mesh *mesh,
+    cgltf_size prim_index,
+    const float node_transform[16],
+    ecs_entity_t **mesh_entities,
+    const cgltf_data *data,
+    const char *gltf_path,
+    ecs_entity_t *image_entities)
+{
+    ecs_entity_t mesh_prefab = flecsEngine_gltf_getMeshEntity(
+        world, mesh_entities, data, mesh, prim_index,
+        gltf_path, image_entities);
+    if (!mesh_prefab) {
+        return;
+    }
+
+    ecs_add_pair(world, entity, EcsIsA, mesh_prefab);
+
+    FlecsPosition3 pos = {0};
+    FlecsRotation3 rot = {0};
+    FlecsScale3 scale = {1, 1, 1};
+    flecsEngine_gltf_decomposeTransform(node_transform, &pos, &rot, &scale);
+
+    ecs_set_ptr(world, entity, FlecsPosition3, &pos);
+
+    if (fabsf(rot.x) > 1e-6f || fabsf(rot.y) > 1e-6f || fabsf(rot.z) > 1e-6f) {
+        ecs_set_ptr(world, entity, FlecsRotation3, &rot);
+    }
+
+    if (fabsf(scale.x - 1.0f) > 1e-6f || fabsf(scale.y - 1.0f) > 1e-6f ||
+        fabsf(scale.z - 1.0f) > 1e-6f) {
+        ecs_set_ptr(world, entity, FlecsScale3, &scale);
     }
 }
 
@@ -345,67 +404,49 @@ static void flecsEngine_gltf_load(
             ecs_entity_t, (int32_t)data->images_count);
     }
 
-    /* Count total triangle primitives across all nodes */
-    int32_t prim_count = 0;
-    for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
-        const cgltf_node *node = &data->nodes[ni];
-        if (!node->mesh) continue;
-        const cgltf_mesh *mesh = node->mesh;
-        for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
-            if (mesh->primitives[pi].type == cgltf_primitive_type_triangles) {
-                const cgltf_accessor *pos = flecsEngine_gltf_findAttribute(
-                    &mesh->primitives[pi], cgltf_attribute_type_position);
-                if (pos && mesh->primitives[pi].indices) {
-                    prim_count++;
-                }
+    /* Pre-allocate mesh entity lookup table for mesh deduplication */
+    ecs_entity_t **mesh_entities = NULL;
+    if (data->meshes_count) {
+        mesh_entities = ecs_os_calloc_n(
+            ecs_entity_t*, (int32_t)data->meshes_count);
+        for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
+            if (data->meshes[mi].primitives_count) {
+                mesh_entities[mi] = ecs_os_calloc_n(
+                    ecs_entity_t,
+                    (int32_t)data->meshes[mi].primitives_count);
             }
         }
     }
 
-    if (prim_count == 1) {
-        /* Single primitive: set mesh/material directly on root */
-        for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
-            const cgltf_node *node = &data->nodes[ni];
-            if (!node->mesh) continue;
+    /* Create child prefab per (node, primitive) pair, deduplicating meshes */
+    for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
+        const cgltf_node *node = &data->nodes[ni];
+        if (!node->mesh) continue;
 
-            float transform[16];
-            cgltf_node_transform_world(node, transform);
+        float transform[16];
+        cgltf_node_transform_world(node, transform);
 
-            const cgltf_mesh *mesh = node->mesh;
-            for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
-                if (mesh->primitives[pi].type == cgltf_primitive_type_triangles) {
-                    flecsEngine_gltf_setupPrimitive(
-                        world, root, &mesh->primitives[pi], path, transform,
-                        image_entities, data);
-                }
+        const cgltf_mesh *mesh = node->mesh;
+        for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
+            if (mesh->primitives[pi].type != cgltf_primitive_type_triangles) {
+                continue;
             }
-        }
-    } else {
-        /* Multiple primitives: create child prefab per primitive */
-        for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
-            const cgltf_node *node = &data->nodes[ni];
-            if (!node->mesh) continue;
 
-            float transform[16];
-            cgltf_node_transform_world(node, transform);
-
-            const cgltf_mesh *mesh = node->mesh;
-            for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
-                if (mesh->primitives[pi].type != cgltf_primitive_type_triangles) {
-                    continue;
-                }
-
-                ecs_entity_t mesh_e = ecs_new_w_parent(world, root, NULL);
-                ecs_add_id(world, mesh_e, EcsPrefab);
-                ecs_set(world, mesh_e, FlecsPosition3, {0, 0, 0});
-                flecsEngine_gltf_setupPrimitive(
-                    world, mesh_e, &mesh->primitives[pi], path, transform,
-                    image_entities, data);
-            }
+            ecs_entity_t mesh_e = ecs_new_w_parent(world, root, NULL);
+            ecs_add_id(world, mesh_e, EcsPrefab);
+            flecsEngine_gltf_setupPrimitive(
+                world, mesh_e, mesh, pi, transform,
+                mesh_entities, data, path, image_entities);
         }
     }
 
     ecs_os_free(image_entities);
+    if (mesh_entities) {
+        for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
+            ecs_os_free(mesh_entities[mi]);
+        }
+        ecs_os_free(mesh_entities);
+    }
     cgltf_free(data);
 
     ecs_dbg("loaded GLTF: %s", path);
