@@ -5,7 +5,7 @@
 #include "common/cluster_wgsl.h"
 #include "common/pbr_functions_wgsl.h"
 #include "common/shadow_wgsl.h"
-#include "common/pbr_lighting_textured_wgsl.h"
+#include "common/pbr_lighting_wgsl.h"
 
 static const char *kShaderSource =
     FLECS_ENGINE_SHADER_COMMON_UNIFORMS_WGSL
@@ -71,7 +71,7 @@ static const char *kShaderSource =
     "}\n"
 
     FLECS_ENGINE_SHADER_COMMON_PBR_FUNCTIONS_WGSL
-    FLECS_ENGINE_SHADER_COMMON_PBR_LIGHTING_TEXTURED_WGSL
+    FLECS_ENGINE_SHADER_COMMON_PBR_LIGHTING_WGSL
 
     "@fragment fn fs_main(input : VertexOutput) -> @location(0) vec4<f32> {\n"
     "  let material = materials[input.material_id];\n"
@@ -104,7 +104,7 @@ static const char *kShaderSource =
     "  let tbn = mat3x3<f32>(T * invmax, B * invmax, N);\n"
     "  let mapped_normal = normalize(tbn * tangent_normal);\n"
     "\n"
-    "  let lit = computePbrLightingTextured(\n"
+    "  let lit = computePbrLighting(\n"
     "    albedo,\n"
     "    metallic,\n"
     "    roughness,\n"

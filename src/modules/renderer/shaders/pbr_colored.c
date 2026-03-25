@@ -60,12 +60,14 @@ static const char *kShaderSource =
     FLECS_ENGINE_SHADER_COMMON_PBR_FUNCTIONS_WGSL
     FLECS_ENGINE_SHADER_COMMON_PBR_LIGHTING_WGSL
     "@fragment fn fs_main(input : VertexOutput) -> @location(0) vec4<f32> {\n"
+    "  let has_em_color = dot(input.emissive_color, input.emissive_color) > 0.0;\n"
+    "  let em_base = select(input.color.rgb, input.emissive_color, has_em_color);\n"
+    "  let emissive = em_base * max(input.emissive_strength, 0.0);\n"
     "  let lit = computePbrLighting(\n"
     "    input.color.rgb,\n"
     "    input.metallic,\n"
     "    input.roughness,\n"
-    "    input.emissive_strength,\n"
-    "    input.emissive_color,\n"
+    "    emissive,\n"
     "    input.world_pos,\n"
     "    input.normal,\n"
     "    input.pos);\n"

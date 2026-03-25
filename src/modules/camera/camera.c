@@ -38,13 +38,13 @@ static void FlecsCameraTransform(ecs_iter_t *it) {
 
         vec3 eye = {0.0f, 0.0f, 0.0f};
         if (wt) {
-            const FlecsWorldTransform3 *cam_wt = ecs_field_is_self(it, 2) ? &wt[i] : wt;
+            const FlecsWorldTransform3 *cam_wt = ecs_field_is_self(it, 3) ? &wt[i] : wt;
             eye[0] = cam_wt->m[3][0];
             eye[1] = cam_wt->m[3][1];
             eye[2] = cam_wt->m[3][2];
         }
 
-        vec3 center = {lookat->x, lookat->y, lookat->z};
+        vec3 center = {lookat[i].x, lookat[i].y, lookat[i].z};
         vec3 up = {0.0f, 1.0f, 0.0f};
 
         if (eye[0] == center[0] && eye[1] == center[1] && eye[2] == center[2]) {

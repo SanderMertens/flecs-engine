@@ -33,7 +33,7 @@ bool flecsEngine_shader_usesCluster(
 
     return strstr(
         shader->source,
-        "@binding(0) var<uniform> cluster_info") != NULL;
+        "@binding(5) var<uniform> cluster_info") != NULL;
 }
 
 bool flecsEngine_shader_usesTextures(

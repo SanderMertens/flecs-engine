@@ -10,7 +10,9 @@
     "  return f0 * brdf.x + vec3<f32>(brdf.y);\n" \
     "}\n" \
     "fn fresnelSchlick(cos_theta : f32, f0 : vec3<f32>) -> vec3<f32> {\n" \
-    "  return f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - cos_theta, 5.0);\n" \
+    "  let x = 1.0 - cos_theta;\n" \
+    "  let x2 = x * x;\n" \
+    "  return f0 + (vec3<f32>(1.0) - f0) * (x2 * x2 * x);\n" \
     "}\n" \
     "fn distributionGGX(n : vec3<f32>, h : vec3<f32>, roughness : f32) -> f32 {\n" \
     "  let a = roughness * roughness;\n" \
@@ -97,9 +99,6 @@
     "  let diffuse = computeDiffuse(albedo, metallic, f);\n" \
     "  let specular = computeSpecular(n, ndotv, ggx_v, l, h, roughness, f);\n" \
     "  return (diffuse + specular) * uniforms.light_color.rgb * ndotl;\n" \
-    "}\n" \
-    "fn computeAmbientLighting(albedo : vec3<f32>, metallic : f32) -> vec3<f32> {\n" \
-    "  return albedo * uniforms.ambient_light.rgb * (1.0 - metallic);\n" \
     "}\n" \
     "fn computePointLighting(\n" \
     "  n : vec3<f32>,\n" \

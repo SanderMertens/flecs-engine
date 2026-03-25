@@ -42,8 +42,14 @@ static void flecsEngine_transform3_rotationAndScale(
     }
 
     if (s) {
-        for (i = 0; i < it->count; i ++) {
-            glm_scale(t[i].m, *(vec3*)&s[i]);
+        if (ecs_field_is_self(it, 3)) {
+            for (i = 0; i < it->count; i ++) {
+                glm_scale(t[i].m, *(vec3*)&s[i]);
+            }
+        } else {
+            for (i = 0; i < it->count; i ++) {
+                glm_scale(t[i].m, *(vec3*)s);
+            }
         }
     }
 }
@@ -111,13 +117,13 @@ static bool flecsEngine_transform3_parent(ecs_iter_t *it) {
             }
 
             if (!t_parent) {
-                if (ecs_field_is_self(it, 2)) {
+                if (ecs_field_is_self(it, 1)) {
                     glm_translate_make((vec4*)t[i].m, *(vec3*)&p[i]);
                 } else {
                     glm_translate_make((vec4*)t[i].m, *(vec3*)p);
                 }
             } else {
-                if (ecs_field_is_self(it, 2)) {
+                if (ecs_field_is_self(it, 1)) {
                     glm_translate_to((vec4*)t_parent[0].m, *(vec3*)&p[i], t[i].m);
                 } else {
                     glm_translate_to((vec4*)t_parent[0].m, *(vec3*)p, t[i].m);

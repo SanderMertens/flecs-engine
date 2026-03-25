@@ -6,8 +6,7 @@
     "  albedo : vec3<f32>,\n" \
     "  metallic_raw : f32,\n" \
     "  roughness_raw : f32,\n" \
-    "  emissive_strength : f32,\n" \
-    "  emissive_color : vec3<f32>,\n" \
+    "  emissive : vec3<f32>,\n" \
     "  world_pos : vec3<f32>,\n" \
     "  normal : vec3<f32>,\n" \
     "  frag_coord : vec4<f32>\n" \
@@ -34,9 +33,9 @@
     "  let lod = roughness * max_mip;\n" \
     "  let prefiltered_color = textureSampleLevel(ibl_prefiltered_env, ibl_sampler, r, lod).rgb;\n" \
     "  let brdf = textureSample(ibl_brdf_lut, ibl_sampler, vec2<f32>(ndotv, roughness)).rg;\n" \
-    "  let specular_ibl = prefiltered_color * computeSplitSumSpecularTerm(f0, brdf);\n" \
-    "  let irradiance = textureSampleLevel(ibl_prefiltered_env, ibl_sampler, n, max_mip).rgb;\n" \
     "  let kS = computeSplitSumSpecularTerm(f0, brdf);\n" \
+    "  let specular_ibl = prefiltered_color * kS;\n" \
+    "  let irradiance = textureSampleLevel(ibl_prefiltered_env, ibl_sampler, n, max_mip).rgb;\n" \
     "  let kD = (vec3<f32>(1.0) - kS) * (1.0 - metallic);\n" \
     "  let diffuse_ibl = irradiance * albedo * kD;\n" \
     "  let cluster_idx = getClusterIndex(frag_coord);\n" \
@@ -46,9 +45,6 @@
     "  let spot = computeSpotLighting(\n" \
     "    n, v, world_pos, albedo, metallic, direct_roughness,\n" \
     "    f0, ndotv, ggx_v, cluster_idx);\n" \
-    "  let has_em_color = dot(emissive_color, emissive_color) > 0.0;\n" \
-    "  let em_base = select(albedo, emissive_color, has_em_color);\n" \
-    "  let emissive = em_base * max(emissive_strength, 0.0);\n" \
     "  return diffuse_ibl + direct + point + spot + specular_ibl + emissive;\n" \
     "}\n"
 

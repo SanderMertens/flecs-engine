@@ -30,27 +30,25 @@
     "  let scaled_uv = shadow_uv * scale;\n" \
     "  let current_depth = light_ndc.z - uniforms.shadow_info.y;\n" \
     "  let texel_size = 1.0 / vec2<f32>(textureDimensions(shadow_map));\n" \
-    "  let pcf_half = i32(uniforms.shadow_info.x);\n" \
     "  var shadow = 0.0;\n" \
-    "  for (var x = -pcf_half; x <= pcf_half; x++) {\n" \
-    "    for (var y = -pcf_half; y <= pcf_half; y++) {\n" \
+    "  for (var x = -1; x <= 1; x++) {\n" \
+    "    for (var y = -1; y <= 1; y++) {\n" \
     "      let offset = vec2<f32>(f32(x), f32(y)) * texel_size;\n" \
     "      shadow += textureSampleCompareLevel(\n" \
     "        shadow_map, shadow_sampler,\n" \
     "        scaled_uv + offset, cascade, current_depth);\n" \
     "    }\n" \
     "  }\n" \
-    "  let pcf_width = f32(2 * pcf_half + 1);\n" \
-    "  return shadow / (pcf_width * pcf_width);\n" \
+    "  return shadow / 9.0;\n" \
     "}\n" \
     "fn computeShadow(world_pos : vec3<f32>) -> ShadowResult {\n" \
     "  var result : ShadowResult;\n" \
     "  let clip = uniforms.vp * vec4<f32>(world_pos, 1.0);\n" \
     "  let view_depth = clip.w;\n" \
     "  var cascade : i32 = 0;\n" \
-    "  if (view_depth > uniforms.cascade_splits.x) { cascade = 1; }\n" \
-    "  if (view_depth > uniforms.cascade_splits.y) { cascade = 2; }\n" \
     "  if (view_depth > uniforms.cascade_splits.z) { cascade = 3; }\n" \
+    "  else if (view_depth > uniforms.cascade_splits.y) { cascade = 2; }\n" \
+    "  else if (view_depth > uniforms.cascade_splits.x) { cascade = 1; }\n" \
     "  if (view_depth > uniforms.cascade_splits.w) {\n" \
     "    result.shadow = 1.0;\n" \
     "    result.debug_color = vec3<f32>(1.0, 1.0, 1.0);\n" \
