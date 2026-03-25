@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "frustum_cull.h"
 #include "flecs_engine.h"
 
 ECS_COMPONENT_DECLARE(flecs_engine_background_t);
@@ -264,6 +265,19 @@ static void flecsEngine_renderView_extract(
     if (!view->hdri) {
         flecsEngine_ibl_ensureSkyBackground(
             world, engine, &view->background);
+    }
+
+    /* Extract frustum planes from camera view-projection matrix */
+    engine->frustum_valid = false;
+    if (view->camera) {
+        const FlecsCameraImpl *camera = ecs_get(
+            world, view->camera, FlecsCameraImpl);
+        if (camera) {
+            flecsEngine_frustum_extractPlanes(
+                camera->mvp,
+                engine->frustum_planes);
+            engine->frustum_valid = true;
+        }
     }
 
     flecsEngine_renderView_extractBatches(world, view_entity, engine, view);

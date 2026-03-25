@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "batches.h"
+#include "../frustum_cull.h"
 
 /* --- Shared buffer lifecycle --- */
 
@@ -306,49 +307,113 @@ void flecsEngine_batch_extractInstances(
     int32_t base = ctx->offset;
     ctx->count = 0;
 
+    /* Frustum culling state */
+    bool do_cull = engine->frustum_valid &&
+        (ctx->mesh.aabb_min[0] <= ctx->mesh.aabb_max[0]);
+    const float *aabb_min = ctx->mesh.aabb_min;
+    const float *aabb_max = ctx->mesh.aabb_max;
+
     ecs_iter_t it = ecs_query_iter(world, batch->query);
     ecs_iter_set_group(&it, ctx->group_id);
     while (ecs_query_next(&it)) {
         int32_t dst = base + ctx->count;
 
-        if ((dst + it.count) <= buf->capacity) {
-            const FlecsWorldTransform3 *wt = ecs_field(
-                &it, FlecsWorldTransform3, 1);
+        /* If not enough capacity, count conservatively for resize */
+        if ((dst + it.count) > buf->capacity) {
+            ctx->count += it.count;
+            continue;
+        }
 
-            if (ctx->scale_callback) {
-                const void *scale_data = ecs_field_w_size(
-                    &it, ctx->component_size, 0);
-                for (int32_t i = 0; i < it.count; i ++) {
-                    void *ptr = ECS_ELEM(
-                        scale_data, ctx->component_size, i);
-                    vec3 scale;
-                    ctx->scale_callback(ptr, scale);
-                    flecsEngine_batch_transformInstance(
-                        &buf->cpu_transforms[dst + i],
-                        &wt[i], scale[0], scale[1], scale[2]);
+        const FlecsWorldTransform3 *wt = ecs_field(
+            &it, FlecsWorldTransform3, 1);
+
+        /* Fetch material data pointers up front */
+        const FlecsRgba *colors = NULL;
+        const FlecsPbrMaterial *materials = NULL;
+        const FlecsEmissive *emissives = NULL;
+        const FlecsMaterialId *material_id = NULL;
+
+        if (buf->owns_material_data) {
+            colors = ecs_field(&it, FlecsRgba, 2);
+            materials = ecs_field(&it, FlecsPbrMaterial, 3);
+            emissives = ecs_field(&it, FlecsEmissive, 4);
+        } else {
+            material_id = ecs_field(&it, FlecsMaterialId, 2);
+        }
+
+        int32_t added = 0;
+
+        if (ctx->scale_callback) {
+            const void *scale_data = ecs_field_w_size(
+                &it, ctx->component_size, 0);
+            for (int32_t i = 0; i < it.count; i ++) {
+                void *ptr = ECS_ELEM(
+                    scale_data, ctx->component_size, i);
+                vec3 scale;
+                ctx->scale_callback(ptr, scale);
+
+                if (do_cull && !flecsEngine_frustumTestAABB(
+                    engine->frustum_planes, &wt[i],
+                    aabb_min, aabb_max,
+                    scale[0], scale[1], scale[2]))
+                {
+                    continue;
                 }
-            } else {
-                for (int32_t i = 0; i < it.count; i ++) {
-                    flecsEngine_batch_transformInstance(
-                        &buf->cpu_transforms[dst + i],
-                        &wt[i], 1.0f, 1.0f, 1.0f);
+
+                int32_t out = dst + added;
+                flecsEngine_batch_transformInstance(
+                    &buf->cpu_transforms[out],
+                    &wt[i], scale[0], scale[1], scale[2]);
+
+                if (buf->owns_material_data) {
+                    buf->cpu_colors[out] = colors
+                        ? colors[i]
+                        : flecsEngine_defaultAttrCache_getColor(engine, 1)[0];
+                    buf->cpu_pbr_materials[out] = materials
+                        ? materials[i]
+                        : flecsEngine_defaultAttrCache_getMaterial(engine, 1)[0];
+                    buf->cpu_emissives[out] = emissives
+                        ? emissives[i]
+                        : flecsEngine_defaultAttrCache_getEmissive(engine, 1)[0];
+                } else {
+                    buf->cpu_material_ids[out] = material_id[0];
                 }
+
+                added ++;
             }
+        } else {
+            for (int32_t i = 0; i < it.count; i ++) {
+                if (do_cull && !flecsEngine_frustumTestAABB(
+                    engine->frustum_planes, &wt[i],
+                    aabb_min, aabb_max, 1.0f, 1.0f, 1.0f))
+                {
+                    continue;
+                }
 
-            if (buf->owns_material_data) {
-                flecsEngine_batch_copyMaterialData(
-                    engine, buf, dst, it.count,
-                    ecs_field(&it, FlecsRgba, 2),
-                    ecs_field(&it, FlecsPbrMaterial, 3),
-                    ecs_field(&it, FlecsEmissive, 4));
-            } else {
-                flecsEngine_batch_copyMaterialIds(
-                    buf, dst, it.count,
-                    ecs_field(&it, FlecsMaterialId, 2));
+                int32_t out = dst + added;
+                flecsEngine_batch_transformInstance(
+                    &buf->cpu_transforms[out],
+                    &wt[i], 1.0f, 1.0f, 1.0f);
+
+                if (buf->owns_material_data) {
+                    buf->cpu_colors[out] = colors
+                        ? colors[i]
+                        : flecsEngine_defaultAttrCache_getColor(engine, 1)[0];
+                    buf->cpu_pbr_materials[out] = materials
+                        ? materials[i]
+                        : flecsEngine_defaultAttrCache_getMaterial(engine, 1)[0];
+                    buf->cpu_emissives[out] = emissives
+                        ? emissives[i]
+                        : flecsEngine_defaultAttrCache_getEmissive(engine, 1)[0];
+                } else {
+                    buf->cpu_material_ids[out] = material_id[0];
+                }
+
+                added ++;
             }
         }
 
-        ctx->count += it.count;
+        ctx->count += added;
     }
 }
 

@@ -181,6 +181,23 @@ static void FlecsMesh3_on_set(
 
         mesh_impl->vertex_count = vert_count;
         mesh_impl->index_count = ind_count;
+
+        /* Compute local-space AABB from vertex positions */
+        float *bb_min = mesh_impl->aabb_min;
+        float *bb_max = mesh_impl->aabb_max;
+        bb_min[0] = bb_min[1] = bb_min[2] =  1e18f;
+        bb_max[0] = bb_max[1] = bb_max[2] = -1e18f;
+        for (int v = 0; v < vert_count; v ++) {
+            float px = mesh_vertices[v].x;
+            float py = mesh_vertices[v].y;
+            float pz = mesh_vertices[v].z;
+            if (px < bb_min[0]) bb_min[0] = px;
+            if (py < bb_min[1]) bb_min[1] = py;
+            if (pz < bb_min[2]) bb_min[2] = pz;
+            if (px > bb_max[0]) bb_max[0] = px;
+            if (py > bb_max[1]) bb_max[1] = py;
+            if (pz > bb_max[2]) bb_max[2] = pz;
+        }
     }
 }
 

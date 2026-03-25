@@ -151,6 +151,12 @@ typedef struct {
     flecs_engine_depth_t depth;
 
     FlecsDefaultAttrCache *default_attr_cache;
+
+    /* Frustum planes extracted from camera VP matrix (Gribb-Hartmann).
+     * Each plane is (a,b,c,d) where ax+by+cz+d >= 0 means inside.
+     * Order: left, right, bottom, top, near, far. */
+    float frustum_planes[6][4];
+    bool frustum_valid;
 } FlecsEngineImpl;
 
 extern ECS_COMPONENT_DECLARE(FlecsEngineImpl);
@@ -177,6 +183,8 @@ typedef struct {
     int32_t vertex_count;
     int32_t index_count;
     bool has_uvs;
+    float aabb_min[3];           /* local-space AABB minimum */
+    float aabb_max[3];           /* local-space AABB maximum */
 } FlecsMesh3Impl;
 
 extern ECS_COMPONENT_DECLARE(FlecsMesh3Impl);
