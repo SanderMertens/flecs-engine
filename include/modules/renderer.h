@@ -105,7 +105,6 @@ extern ECS_COMPONENT_DECLARE(FlecsHdri);
 ECS_STRUCT(flecs_engine_shadow_params_t, {
     ecs_bool_t enabled;
     int32_t map_size;
-    int32_t pcf_samples;
     float bias;
     float max_range;
 });

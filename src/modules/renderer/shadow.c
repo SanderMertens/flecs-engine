@@ -39,6 +39,10 @@ int flecsEngine_shadow_init(
     /* All cascades use the full shadow map resolution. */
     for (int i = 0; i < FLECS_ENGINE_SHADOW_CASCADE_COUNT; i++) {
         impl->shadow.cascade_sizes[i] = shadow_map_size;
+        shadow_map_size /= 2;
+        if (shadow_map_size < 256) {
+            shadow_map_size = 256;
+        }
     }
 
     /* Compile shadow depth shader directly (bypasses ECS shader system

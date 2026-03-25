@@ -127,8 +127,7 @@ void initEngine(
   FlecsRenderView view = {
     .shadow = {
       .enabled = true,
-      .pcf_samples = 3,
-      .map_size = 2048,
+      .map_size = 4096,
       .max_range = 150
     },
     .ambient_light = {0, 0, 0, 255},
