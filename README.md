@@ -59,7 +59,7 @@ You should probably not use this, unless:
 ## Screenshots
 <img width="600" height="380" alt="Screenshot 2026-03-26 at 2 18 50 AM" src="https://github.com/user-attachments/assets/bd1069e6-94fa-4a50-8e70-494cb006b164" />
 
-<img width="600" height="379" alt="Screenshot 2026-03-26 at 2 21 08 AM" src="https://github.com/user-attachments/assets/0200713b-909b-47a8-b940-39fa87899656" />
+<img width="600" height="380" alt="Screenshot 2026-03-26 at 3 05 06 AM" src="https://github.com/user-attachments/assets/95461d03-58c1-43ff-9773-dd90ee3577f1" />
 
 <img width="600" height="379" alt="Screenshot 2026-03-26 at 2 24 22 AM" src="https://github.com/user-attachments/assets/c0dbd260-6e20-4f39-9790-580fac062d82" />
 
