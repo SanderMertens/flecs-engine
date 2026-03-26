@@ -55,9 +55,8 @@ WGPUBindGroupLayout flecsEngine_ibl_ensureBindLayout(
      *   binding 5: Cluster info uniform
      *   binding 6: Cluster grid storage
      *   binding 7: Light indices storage
-     *   binding 8: Point lights storage
-     *   binding 9: Spot lights storage */
-    WGPUBindGroupLayoutEntry layout_entries[10] = {
+     *   binding 8: Lights storage (unified point + spot) */
+    WGPUBindGroupLayoutEntry layout_entries[9] = {
         {
             .binding = 0,
             .visibility = WGPUShaderStage_Fragment,
@@ -128,15 +127,7 @@ WGPUBindGroupLayout flecsEngine_ibl_ensureBindLayout(
             .visibility = WGPUShaderStage_Fragment,
             .buffer = {
                 .type = WGPUBufferBindingType_ReadOnlyStorage,
-                .minBindingSize = sizeof(FlecsGpuPointLight)
-            }
-        },
-        {
-            .binding = 9,
-            .visibility = WGPUShaderStage_Fragment,
-            .buffer = {
-                .type = WGPUBufferBindingType_ReadOnlyStorage,
-                .minBindingSize = sizeof(FlecsGpuSpotLight)
+                .minBindingSize = sizeof(FlecsGpuLight)
             }
         }
     };
@@ -144,7 +135,7 @@ WGPUBindGroupLayout flecsEngine_ibl_ensureBindLayout(
     impl->ibl_shadow_bind_layout = wgpuDeviceCreateBindGroupLayout(
         impl->device,
         &(WGPUBindGroupLayoutDescriptor){
-            .entryCount = 10,
+            .entryCount = 9,
             .entries = layout_entries
         });
 
@@ -170,8 +161,7 @@ bool flecsEngine_ibl_createRuntimeBindGroup(
     }
 
     if (!engine->lighting.cluster_info_buffer || !engine->lighting.cluster_grid_buffer ||
-        !engine->lighting.cluster_index_buffer || !engine->lighting.point_light_buffer ||
-        !engine->lighting.spot_light_buffer)
+        !engine->lighting.cluster_index_buffer || !engine->lighting.light_buffer)
     {
         return false;
     }
@@ -180,8 +170,8 @@ bool flecsEngine_ibl_createRuntimeBindGroup(
         engine->device,
         &(WGPUBindGroupDescriptor){
             .layout = bind_layout,
-            .entryCount = 10,
-            .entries = (WGPUBindGroupEntry[10]){
+            .entryCount = 9,
+            .entries = (WGPUBindGroupEntry[9]){
                 {
                     .binding = 0,
                     .textureView = ibl->ibl_prefiltered_cubemap_view
@@ -221,15 +211,9 @@ bool flecsEngine_ibl_createRuntimeBindGroup(
                 },
                 {
                     .binding = 8,
-                    .buffer = engine->lighting.point_light_buffer,
-                    .size = (uint64_t)engine->lighting.point_light_capacity *
-                        sizeof(FlecsGpuPointLight)
-                },
-                {
-                    .binding = 9,
-                    .buffer = engine->lighting.spot_light_buffer,
-                    .size = (uint64_t)engine->lighting.spot_light_capacity *
-                        sizeof(FlecsGpuSpotLight)
+                    .buffer = engine->lighting.light_buffer,
+                    .size = (uint64_t)engine->lighting.light_capacity *
+                        sizeof(FlecsGpuLight)
                 }
             }
         });

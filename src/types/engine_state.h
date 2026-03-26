@@ -28,15 +28,10 @@ typedef struct {
 } flecs_engine_shadow_t;
 
 typedef struct {
-    FlecsGpuPointLight *cpu_point_lights;
-    int32_t point_light_count;
-    int32_t point_light_capacity;
-    WGPUBuffer point_light_buffer;
-
-    FlecsGpuSpotLight *cpu_spot_lights;
-    int32_t spot_light_count;
-    int32_t spot_light_capacity;
-    WGPUBuffer spot_light_buffer;
+    FlecsGpuLight *cpu_lights;
+    int32_t light_count;
+    int32_t light_capacity;
+    WGPUBuffer light_buffer;
 
     uint32_t *cpu_cluster_indices;
     int32_t cluster_index_capacity;

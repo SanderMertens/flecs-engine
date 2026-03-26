@@ -100,7 +100,7 @@
     "  let specular = computeSpecular(n, ndotv, ggx_v, l, h, roughness, f);\n" \
     "  return (diffuse + specular) * uniforms.light_color.rgb * ndotl;\n" \
     "}\n" \
-    "fn computePointLighting(\n" \
+    "fn computeClusterLighting(\n" \
     "  n : vec3<f32>,\n" \
     "  v : vec3<f32>,\n" \
     "  world_pos : vec3<f32>,\n" \
@@ -113,69 +113,33 @@
     "  cluster_idx : u32) -> vec3<f32> {\n" \
     "  var result = vec3<f32>(0.0);\n" \
     "  let entry = cluster_grid[cluster_idx];\n" \
-    "  for (var j = 0u; j < entry.point_count; j++) {\n" \
-    "    let i = light_indices[entry.point_offset + j];\n" \
-    "    let light_pos = point_lights[i].position.xyz;\n" \
-    "    let light_range = point_lights[i].position.w;\n" \
-    "    let light_color = point_lights[i].color.rgb;\n" \
+    "  for (var j = 0u; j < entry.light_count; j++) {\n" \
+    "    let i = light_indices[entry.light_offset + j];\n" \
+    "    let light_pos = lights[i].position.xyz;\n" \
+    "    let light_range = lights[i].position.w;\n" \
+    "    let light_dir = lights[i].direction.xyz;\n" \
+    "    let outer_cos = lights[i].direction.w;\n" \
+    "    let light_color = lights[i].color.rgb;\n" \
+    "    let inner_cos = lights[i].color.w;\n" \
     "    let to_light = light_pos - world_pos;\n" \
     "    let dist = length(to_light);\n" \
     "    if (dist > light_range || dist < 0.001) {\n" \
     "      continue;\n" \
     "    }\n" \
     "    let l = to_light / dist;\n" \
-    "    let h = getHalfVector(v, l);\n" \
-    "    let ndotl = max(dot(n, l), 0.0);\n" \
-    "    if (ndotl <= 0.0) {\n" \
-    "      continue;\n" \
-    "    }\n" \
-    "    let ratio = dist / light_range;\n" \
-    "    let r2 = ratio * ratio;\n" \
-    "    let attenuation = clamp(1.0 - r2 * r2, 0.0, 1.0) / (dist * dist + 1.0);\n" \
-    "    let f = fresnelSchlick(max(dot(h, v), 0.0), f0);\n" \
-    "    let diffuse = computeDiffuse(albedo, metallic, f);\n" \
-    "    let specular = computeSpecular(n, ndotv, ggx_v, l, h, roughness, f);\n" \
-    "    result += (diffuse + specular) * light_color * ndotl * attenuation;\n" \
-    "  }\n" \
-    "  return result;\n" \
-    "}\n" \
-    "fn computeSpotLighting(\n" \
-    "  n : vec3<f32>,\n" \
-    "  v : vec3<f32>,\n" \
-    "  world_pos : vec3<f32>,\n" \
-    "  albedo : vec3<f32>,\n" \
-    "  metallic : f32,\n" \
-    "  roughness : f32,\n" \
-    "  f0 : vec3<f32>,\n" \
-    "  ndotv : f32,\n" \
-    "  ggx_v : f32,\n" \
-    "  cluster_idx : u32) -> vec3<f32> {\n" \
-    "  var result = vec3<f32>(0.0);\n" \
-    "  let entry = cluster_grid[cluster_idx];\n" \
-    "  for (var j = 0u; j < entry.spot_count; j++) {\n" \
-    "    let i = light_indices[entry.spot_offset + j];\n" \
-    "    let light_pos = spot_lights[i].position.xyz;\n" \
-    "    let light_range = spot_lights[i].position.w;\n" \
-    "    let light_dir = spot_lights[i].direction.xyz;\n" \
-    "    let outer_cos = spot_lights[i].direction.w;\n" \
-    "    let light_color = spot_lights[i].color.rgb;\n" \
-    "    let inner_cos = spot_lights[i].color.w;\n" \
-    "    let to_light = light_pos - world_pos;\n" \
-    "    let dist = length(to_light);\n" \
-    "    if (dist > light_range || dist < 0.001) {\n" \
-    "      continue;\n" \
-    "    }\n" \
-    "    let l = to_light / dist;\n" \
-    "    let theta = dot(l, -light_dir);\n" \
-    "    if (theta < outer_cos) {\n" \
-    "      continue;\n" \
+    "    var spot_effect = 1.0;\n" \
+    "    if (outer_cos > -1.5) {\n" \
+    "      let theta = dot(l, -light_dir);\n" \
+    "      if (theta < outer_cos) {\n" \
+    "        continue;\n" \
+    "      }\n" \
+    "      spot_effect = clamp((theta - outer_cos) / max(inner_cos - outer_cos, 1e-4), 0.0, 1.0);\n" \
     "    }\n" \
     "    let h = getHalfVector(v, l);\n" \
     "    let ndotl = max(dot(n, l), 0.0);\n" \
     "    if (ndotl <= 0.0) {\n" \
     "      continue;\n" \
     "    }\n" \
-    "    let spot_effect = clamp((theta - outer_cos) / max(inner_cos - outer_cos, 1e-4), 0.0, 1.0);\n" \
     "    let ratio = dist / light_range;\n" \
     "    let r2 = ratio * ratio;\n" \
     "    let attenuation = clamp(1.0 - r2 * r2, 0.0, 1.0) / (dist * dist + 1.0);\n" \

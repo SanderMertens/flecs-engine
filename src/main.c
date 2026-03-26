@@ -170,8 +170,8 @@ void initEngine(
       .aspect_ratio = options.width / (float)options.height
   });
   ecs_add(world, view.camera, FlecsCameraController);
-  ecs_set(world, view.camera, FlecsPosition3, {-18.675, 2.03, 19.243});
-  ecs_set(world, view.camera, FlecsLookAt, {-18.607, 2.178, 18.256});
+  ecs_set(world, view.camera, FlecsPosition3, {-20.38, 2.023, 16.23});
+  ecs_set(world, view.camera, FlecsLookAt, {-19.46, 1.967, 15.842});
 
   // Light
   view.light = ecs_entity(world, { .name = "light" });

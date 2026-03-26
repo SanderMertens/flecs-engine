@@ -39,13 +39,10 @@
     "  let kD = (vec3<f32>(1.0) - kS) * (1.0 - metallic);\n" \
     "  let diffuse_ibl = irradiance * albedo * kD;\n" \
     "  let cluster_idx = getClusterIndex(frag_coord);\n" \
-    "  let point = computePointLighting(\n" \
+    "  let cluster_light = computeClusterLighting(\n" \
     "    n, v, world_pos, albedo, metallic, direct_roughness,\n" \
     "    f0, ndotv, ggx_v, cluster_idx);\n" \
-    "  let spot = computeSpotLighting(\n" \
-    "    n, v, world_pos, albedo, metallic, direct_roughness,\n" \
-    "    f0, ndotv, ggx_v, cluster_idx);\n" \
-    "  return diffuse_ibl + direct + point + spot + specular_ibl + emissive;\n" \
+    "  return diffuse_ibl + direct + cluster_light + specular_ibl + emissive;\n" \
     "}\n"
 
 #endif

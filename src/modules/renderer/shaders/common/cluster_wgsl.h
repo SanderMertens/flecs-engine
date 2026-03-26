@@ -3,11 +3,7 @@
 
 /* Cluster struct definitions (no bind group dependency) */
 #define FLECS_ENGINE_SHADER_COMMON_CLUSTER_TYPES_WGSL \
-    "struct PointLight {\n" \
-    "  position : vec4<f32>,\n" \
-    "  color : vec4<f32>\n" \
-    "};\n" \
-    "struct SpotLight {\n" \
+    "struct Light {\n" \
     "  position : vec4<f32>,\n" \
     "  direction : vec4<f32>,\n" \
     "  color : vec4<f32>\n" \
@@ -17,10 +13,10 @@
     "  screen_info : vec4<f32>\n" \
     "};\n" \
     "struct ClusterEntry {\n" \
-    "  point_offset : u32,\n" \
-    "  point_count : u32,\n" \
-    "  spot_offset : u32,\n" \
-    "  spot_count : u32\n" \
+    "  light_offset : u32,\n" \
+    "  light_count : u32,\n" \
+    "  _pad0 : u32,\n" \
+    "  _pad1 : u32\n" \
     "};\n"
 
 /* Cluster bind group bindings at group 1 (shared with IBL + shadow). */
@@ -28,8 +24,7 @@
     "@group(1) @binding(5) var<uniform> cluster_info : ClusterInfo;\n" \
     "@group(1) @binding(6) var<storage, read> cluster_grid : array<ClusterEntry>;\n" \
     "@group(1) @binding(7) var<storage, read> light_indices : array<u32>;\n" \
-    "@group(1) @binding(8) var<storage, read> point_lights : array<PointLight>;\n" \
-    "@group(1) @binding(9) var<storage, read> spot_lights : array<SpotLight>;\n"
+    "@group(1) @binding(8) var<storage, read> lights : array<Light>;\n"
 
 /* Cluster index lookup function */
 #define FLECS_ENGINE_SHADER_COMMON_CLUSTER_FUNCTIONS_WGSL \

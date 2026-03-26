@@ -44,15 +44,10 @@ extern ECS_COMPONENT_DECLARE(FlecsInstanceTransform);
     (FLECS_ENGINE_CLUSTER_X * FLECS_ENGINE_CLUSTER_Y * FLECS_ENGINE_CLUSTER_Z)
 
 typedef struct {
-    float position[4]; /* xyz = position, w = range */
-    float color[4];    /* rgb = color * intensity */
-} FlecsGpuPointLight;
-
-typedef struct {
     float position[4];  /* xyz = position, w = range */
-    float direction[4]; /* xyz = direction, w = outer_cos */
+    float direction[4]; /* xyz = direction, w = outer_cos (-2 = point light) */
     float color[4];     /* rgb = color * intensity, w = inner_cos */
-} FlecsGpuSpotLight;
+} FlecsGpuLight;
 
 typedef struct {
     uint32_t grid_size[4];   /* x, y, z, total */
@@ -60,10 +55,10 @@ typedef struct {
 } FlecsClusterInfo;
 
 typedef struct {
-    uint32_t point_offset;
-    uint32_t point_count;
-    uint32_t spot_offset;
-    uint32_t spot_count;
+    uint32_t light_offset;
+    uint32_t light_count;
+    uint32_t _pad0;
+    uint32_t _pad1;
 } FlecsClusterEntry;
 
 typedef struct {

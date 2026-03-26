@@ -246,11 +246,7 @@ FlecsRgba* flecsEngine_defaultAttrCache_getColor(
     const FlecsEngineImpl *engine,
     int32_t count);
 
-void flecsEngine_setupPointLights(
-    const ecs_world_t *world,
-    FlecsEngineImpl *engine);
-
-void flecsEngine_setupSpotLights(
+void flecsEngine_setupLights(
     const ecs_world_t *world,
     FlecsEngineImpl *engine);
 
@@ -260,10 +256,7 @@ int flecsEngine_cluster_init(
 void flecsEngine_cluster_cleanup(
     FlecsEngineImpl *impl);
 
-bool flecsEngine_cluster_ensurePointLights(
-    FlecsEngineImpl *engine, int32_t needed);
-
-bool flecsEngine_cluster_ensureSpotLights(
+bool flecsEngine_cluster_ensureLights(
     FlecsEngineImpl *engine, int32_t needed);
 
 void flecsEngine_cluster_build(
