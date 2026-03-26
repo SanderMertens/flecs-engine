@@ -64,62 +64,61 @@ void flecsEngine_frustum_extractPlanes(
     }
 }
 
-/* Test whether a world-space AABB is inside (or intersects) the frustum.
- * Uses the P-vertex (most-positive-corner) approach: for each plane, find
- * the AABB corner closest to the plane's positive half-space. If that corner
- * is behind the plane, the AABB is fully outside.
- *
- * The world-space AABB is computed on the fly from the local AABB, an
- * optional primitive scale, and the entity's 4x4 world matrix using the
- * Arvo method (18 multiplies instead of transforming 8 corners). */
-bool flecsEngine_frustumTestAABB(
-    const float planes[6][4],
+/* Compute world-space AABB from local AABB + world transform + scale
+ * using the Arvo method.
+ * world_pos = M * local_pos, where M is column-major m[col][row].
+ * world[i] = m[0][i]*p.x + m[1][i]*p.y + m[2][i]*p.z + m[3][i] */
+void flecsEngine_computeWorldAABB(
     const FlecsWorldTransform3 *wt,
     const float local_min[3],
     const float local_max[3],
     float sx,
     float sy,
-    float sz)
+    float sz,
+    float world_min[3],
+    float world_max[3])
 {
-    /* Scale the local AABB by primitive scale factors */
     float smin[3] = { local_min[0] * sx, local_min[1] * sy, local_min[2] * sz };
     float smax[3] = { local_max[0] * sx, local_max[1] * sy, local_max[2] * sz };
 
-    /* Compute world-space AABB via Arvo's method.
-     * world_pos = M * local_pos, where M is column-major m[col][row].
-     * world[i] = m[0][i]*p.x + m[1][i]*p.y + m[2][i]*p.z + m[3][i] */
-    float wmin[3], wmax[3];
     for (int i = 0; i < 3; i ++) {
-        wmin[i] = wmax[i] = wt->m[3][i]; /* translation */
+        world_min[i] = world_max[i] = wt->m[3][i];
         for (int j = 0; j < 3; j ++) {
             float e = wt->m[j][i] * smin[j];
             float f = wt->m[j][i] * smax[j];
             if (e < f) {
-                wmin[i] += e;
-                wmax[i] += f;
+                world_min[i] += e;
+                world_max[i] += f;
             } else {
-                wmin[i] += f;
-                wmax[i] += e;
+                world_min[i] += f;
+                world_max[i] += e;
             }
         }
     }
+}
 
-    /* Test against each frustum plane (P-vertex approach) */
+/* Test a world-space AABB against 6 frustum planes (P-vertex approach).
+ * For each plane, the corner most aligned with the plane normal is tested.
+ * If that corner is behind the plane, the AABB is fully outside. */
+bool flecsEngine_testAABBFrustum(
+    const float planes[6][4],
+    const float world_min[3],
+    const float world_max[3])
+{
     for (int p = 0; p < 6; p ++) {
         float a = planes[p][0];
         float b = planes[p][1];
         float c = planes[p][2];
         float d = planes[p][3];
 
-        /* Pick the corner most in the direction of the plane normal */
-        float px = (a >= 0.0f) ? wmax[0] : wmin[0];
-        float py = (b >= 0.0f) ? wmax[1] : wmin[1];
-        float pz = (c >= 0.0f) ? wmax[2] : wmin[2];
+        float px = (a >= 0.0f) ? world_max[0] : world_min[0];
+        float py = (b >= 0.0f) ? world_max[1] : world_min[1];
+        float pz = (c >= 0.0f) ? world_max[2] : world_min[2];
 
         if (a * px + b * py + c * pz + d < 0.0f) {
-            return false; /* entirely outside this plane */
+            return false;
         }
     }
 
-    return true; /* inside or intersecting all planes */
+    return true;
 }

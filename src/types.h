@@ -152,10 +152,10 @@ typedef struct {
 
     FlecsDefaultAttrCache *default_attr_cache;
 
-    /* Frustum planes extracted from camera VP matrix (Gribb-Hartmann).
-     * Each plane is (a,b,c,d) where ax+by+cz+d >= 0 means inside.
-     * Order: left, right, bottom, top, near, far. */
+    /* Frustum culling state (computed once per frame during extract) */
     float frustum_planes[6][4];
+    float shadow_frustum_planes[FLECS_ENGINE_SHADOW_CASCADE_COUNT][6][4];
+    int32_t shadow_frustum_count;
     bool frustum_valid;
 } FlecsEngineImpl;
 

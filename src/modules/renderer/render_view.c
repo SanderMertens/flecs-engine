@@ -269,6 +269,8 @@ static void flecsEngine_renderView_extract(
 
     /* Extract frustum planes from camera view-projection matrix */
     engine->frustum_valid = false;
+    engine->shadow_frustum_count = 0;
+
     if (view->camera) {
         const FlecsCameraImpl *camera = ecs_get(
             world, view->camera, FlecsCameraImpl);
@@ -277,6 +279,28 @@ static void flecsEngine_renderView_extract(
                 camera->mvp,
                 engine->frustum_planes);
             engine->frustum_valid = true;
+        }
+    }
+
+    /* Extract shadow cascade frustum planes so entities that cast shadows
+     * into the visible area are not culled during batch extraction. */
+    if (view->shadow.enabled && view->camera && view->light) {
+        mat4 cascade_vps[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
+        float cascade_splits[FLECS_ENGINE_SHADOW_CASCADE_COUNT];
+
+        flecsEngine_shadow_computeCascades(
+            world, view, engine->shadow.map_size,
+            engine->shadow.cascade_sizes,
+            view->shadow.max_range,
+            cascade_vps, cascade_splits);
+
+        if (cascade_splits[0] > 0.0f) {
+            for (int c = 0; c < FLECS_ENGINE_SHADOW_CASCADE_COUNT; c ++) {
+                flecsEngine_frustum_extractPlanes(
+                    cascade_vps[c],
+                    engine->shadow_frustum_planes[c]);
+            }
+            engine->shadow_frustum_count = FLECS_ENGINE_SHADOW_CASCADE_COUNT;
         }
     }
 

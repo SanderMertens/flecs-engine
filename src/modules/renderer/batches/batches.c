@@ -295,6 +295,28 @@ static void flecsEngine_batch_copyMaterialIds(
 
 /* --- Extract / Draw --- */
 
+/* Test a world-space AABB against the camera frustum and all shadow cascade
+ * frustums. Returns true if the AABB is visible from any of them. */
+static bool flecsEngine_isVisibleAABB(
+    const FlecsEngineImpl *engine,
+    const float wmin[3],
+    const float wmax[3])
+{
+    if (flecsEngine_testAABBFrustum(engine->frustum_planes, wmin, wmax)) {
+        return true;
+    }
+
+    for (int32_t c = 0; c < engine->shadow_frustum_count; c ++) {
+        if (flecsEngine_testAABBFrustum(
+            engine->shadow_frustum_planes[c], wmin, wmax))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void flecsEngine_batch_extractInstances(
     const ecs_world_t *world,
     const FlecsEngineImpl *engine,
@@ -352,12 +374,14 @@ void flecsEngine_batch_extractInstances(
                 vec3 scale;
                 ctx->scale_callback(ptr, scale);
 
-                if (do_cull && !flecsEngine_frustumTestAABB(
-                    engine->frustum_planes, &wt[i],
-                    aabb_min, aabb_max,
-                    scale[0], scale[1], scale[2]))
-                {
-                    continue;
+                if (do_cull) {
+                    float wmin[3], wmax[3];
+                    flecsEngine_computeWorldAABB(&wt[i],
+                        aabb_min, aabb_max,
+                        scale[0], scale[1], scale[2], wmin, wmax);
+                    if (!flecsEngine_isVisibleAABB(engine, wmin, wmax)) {
+                        continue;
+                    }
                 }
 
                 int32_t out = dst + added;
@@ -383,11 +407,14 @@ void flecsEngine_batch_extractInstances(
             }
         } else {
             for (int32_t i = 0; i < it.count; i ++) {
-                if (do_cull && !flecsEngine_frustumTestAABB(
-                    engine->frustum_planes, &wt[i],
-                    aabb_min, aabb_max, 1.0f, 1.0f, 1.0f))
-                {
-                    continue;
+                if (do_cull) {
+                    float wmin[3], wmax[3];
+                    flecsEngine_computeWorldAABB(&wt[i],
+                        aabb_min, aabb_max,
+                        1.0f, 1.0f, 1.0f, wmin, wmax);
+                    if (!flecsEngine_isVisibleAABB(engine, wmin, wmax)) {
+                        continue;
+                    }
                 }
 
                 int32_t out = dst + added;
