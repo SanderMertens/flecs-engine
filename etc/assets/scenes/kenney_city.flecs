@@ -107,6 +107,31 @@ prefabs {
   prefab commercial_m {
     Gltf: {"etc/assets/kenney/city-kit-commercial/Models/GLB format/building-m.glb"}
   }
+
+  prefab industrial_a {
+    Gltf: {"etc/assets/kenney/city-kit-industrial/Models/GLB format/building-a.glb"}
+  }
+  prefab industrial_b {
+    Gltf: {"etc/assets/kenney/city-kit-industrial/Models/GLB format/building-b.glb"}
+  }
+  prefab industrial_c {
+    Gltf: {"etc/assets/kenney/city-kit-industrial/Models/GLB format/building-c.glb"}
+  }
+  prefab industrial_d {
+    Gltf: {"etc/assets/kenney/city-kit-industrial/Models/GLB format/building-d.glb"}
+  }
+  prefab industrial_e {
+    Gltf: {"etc/assets/kenney/city-kit-industrial/Models/GLB format/building-e.glb"}
+  }
+  prefab industrial_f {
+    Gltf: {"etc/assets/kenney/city-kit-industrial/Models/GLB format/building-f.glb"}
+  }
+  prefab industrial_g {
+    Gltf: {"etc/assets/kenney/city-kit-industrial/Models/GLB format/building-g.glb"}
+  }
+  prefab industrial_h {
+    Gltf: {"etc/assets/kenney/city-kit-industrial/Models/GLB format/building-h.glb"}
+  }
 }
 
 @tree Parent
@@ -114,38 +139,27 @@ template RandomSuburban {
   const p = rng.u(12)
   if p == 0 {
     _ : prefabs.suburban_b {}
-  }
-  if p == 1 {
+  } else if p == 1 {
     _ : prefabs.suburban_c {}
-  }
-  if p == 2 {
+  } else if p == 2 {
     _ : prefabs.suburban_d {}
-  }
-  if p == 3 {
+  } else if p == 3 {
     _ : prefabs.suburban_e {}
-  }
-  if p == 4 {
+  } else if p == 4 {
     _ : prefabs.suburban_f {}
-  }
-  if p == 5 {
+  } else if p == 5 {
     _ : prefabs.suburban_g {}
-  }
-  if p == 6 {
+  } else if p == 6 {
     _ : prefabs.suburban_h {}
-  }
-  if p == 7 {
+  } else if p == 7 {
     _ : prefabs.suburban_i {}
-  }
-  if p == 8 {
+  } else if p == 8 {
     _ : prefabs.suburban_k {}
-  }
-  if p == 9 {
+  } else if p == 9 {
     _ : prefabs.suburban_l {}
-  }
-  if p == 10 {
+  } else if p == 10 {
     _ : prefabs.suburban_o {}
-  }
-  if p == 11 {
+  } else if p == 11 {
     _ : prefabs.suburban_u {}
   }
 }
@@ -155,23 +169,17 @@ template RandomCommercial {
   const p = rng.u(7)
   if p == 0 {
     _ : prefabs.commercial_a {}
-  }
-  if p == 1 {
+  } else if p == 1 {
     _ : prefabs.commercial_b {}
-  }
-  if p == 2 {
+  } else if p == 2 {
     _ : prefabs.commercial_c {}
-  }
-  if p == 3 {
+  } else if p == 3 {
     _ : prefabs.commercial_d {}
-  }
-  if p == 4 {
+  } else if p == 4 {
     _ : prefabs.commercial_f {}
-  }
-  if p == 5 {
+  } else if p == 5 {
     _ : prefabs.commercial_g {}
-  }
-  if p == 6 {
+  } else if p == 6 {
     _ : prefabs.commercial_h {}
   }
 }
@@ -181,23 +189,17 @@ template RandomSkyscraper {
   const p = rng.u(7)
   if p == 0 {
     _ : prefabs.skyscraper_a {}
-  }
-  if p == 1 {
+  } else if p == 1 {
     _ : prefabs.skyscraper_b {}
-  }
-  if p == 2 {
+  } else if p == 2 {
     _ : prefabs.skyscraper_c {}
-  }
-  if p == 3 {
+  } else if p == 3 {
     _ : prefabs.skyscraper_d {}
-  }
-  if p == 4 {
+  } else if p == 4 {
     _ : prefabs.skyscraper_e {}
-  }
-  if p == 5 {
+  } else if p == 5 {
     _ : prefabs.commercial_l {}
-  }
-  if p == 6 {
+  } else if p == 6 {
     _ : prefabs.commercial_m {}
   }
 }
@@ -344,12 +346,12 @@ template KenneyCity {
 
       const density = math.perlin2(xP * 0.025, zP * 0.025) * 0.5 + 0.5
 
-      if density < 0.3 {
+      if density < 0.4 {
         ForestBlock() {
           Position3: {xP, 0, zP}
         }
       }
-      if density >= 0.3 {
+      if density >= 0.4 {
         if density < 0.6 {
           LowDensityBlock() {
             Position3: {xP, 0, zP}

@@ -136,7 +136,7 @@ void initEngine(
       .haze_color = {250, 130, 0},
       .horizon_color = {250, 255, 255},
       .ground_color = {50, 50, 50},
-      .ambient_intensity = 1.0
+      .ambient_intensity = 0.2
     }
   };
 
@@ -171,7 +171,7 @@ void initEngine(
   });
   ecs_add(world, view.camera, FlecsCameraController);
   ecs_set(world, view.camera, FlecsPosition3, {-20.38, 2.023, 16.23});
-  ecs_set(world, view.camera, FlecsLookAt, {-19.46, 1, 15.842});
+  ecs_set(world, view.camera, FlecsLookAt, {-19.46, 2, 15.842});
 
   // Light
   view.light = ecs_entity(world, { .name = "light" });
