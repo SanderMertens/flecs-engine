@@ -9,10 +9,12 @@ typedef struct {
     flecsEngine_batch_buffers_t buffers;
     FlecsWorldTransform3 transform;
     FlecsRgba color;
+    ecs_entity_t view_entity;
 } flecs_engine_infinite_plane_ctx_t;
 
 static flecs_engine_infinite_plane_ctx_t* flecsEngine_infinite_plane_createCtx(
-    ecs_world_t *world)
+    ecs_world_t *world,
+    ecs_entity_t view_entity)
 {
     flecs_engine_infinite_plane_ctx_t *result =
         ecs_os_calloc_t(flecs_engine_infinite_plane_ctx_t);
@@ -22,6 +24,7 @@ static flecs_engine_infinite_plane_ctx_t* flecsEngine_infinite_plane_createCtx(
     result->batch.buffers = &result->buffers;
     glm_mat4_identity(result->transform.m);
     result->color = (FlecsRgba){140, 135, 125, 255};
+    result->view_entity = view_entity;
     return result;
 }
 
@@ -39,8 +42,14 @@ static void flecsEngine_infinite_plane_extractCallback(
     const FlecsEngineImpl *engine,
     const FlecsRenderBatch *batch)
 {
-    (void)world;
     flecs_engine_infinite_plane_ctx_t *ctx = batch->ctx;
+    const FlecsRenderView *view = ecs_get(world, ctx->view_entity, FlecsRenderView);
+    if (view) {
+        ctx->color = view->background.ground_color;
+        if (!ctx->color.a) {
+            ctx->color.a = 255;
+        }
+    }
     flecsEngine_batch_extractSingleInstance(
         engine, &ctx->batch, &ctx->transform, &ctx->color,
         2.0f, 2.0f, 1.0f);
@@ -78,7 +87,7 @@ ecs_entity_t flecsEngine_createBatch_infinitePlane(
         },
         .extract_callback = flecsEngine_infinite_plane_extractCallback,
         .callback = flecsEngine_infinite_plane_renderCallback,
-        .ctx = flecsEngine_infinite_plane_createCtx((ecs_world_t*)world),
+        .ctx = flecsEngine_infinite_plane_createCtx((ecs_world_t*)world, parent),
         .free_ctx = flecsEngine_infinite_plane_deleteCtx
     });
 
