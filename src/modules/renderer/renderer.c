@@ -446,14 +446,9 @@ static void FlecsEngineRender(
     // Sync materials
     flecsEngine_material_uploadBuffer(it->world, impl);
 
-    WGPUTextureView render_target = flecsEngine_getGammaRenderTarget(
-        impl, frame_target.view_texture);
-
     // Render all views
-    flecsEngine_renderView_renderAll(it->world, impl, render_target, encoder);
-
-    flecsEngine_gammaBlitIfNeeded(
-        impl, encoder, render_target, frame_target.view_texture);
+    flecsEngine_renderView_renderAll(
+        it->world, impl, frame_target.view_texture, encoder);
 
     if (flecsEngine_surfaceInterface_encodeFrame(
         surface_impl, impl, encoder, &frame_target))

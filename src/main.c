@@ -216,6 +216,14 @@ void initEngine(
       flecsEngine_createEffect_tonyMcMapFace(world, view_entity,
         "tonyMcMapFace", 3) };
 
+  *ecs_vec_append_t(NULL, &view.effects, flecs_render_view_effect_t) =
+    (flecs_render_view_effect_t){
+#ifdef __EMSCRIPTEN__
+      .enabled = true,
+#endif
+      .effect = flecsEngine_createEffect_gammaCorrect(world, view_entity,
+        "gammaCorrect", 4) };
+
   ecs_set_ptr(world, view_entity, FlecsRenderView, &view);
   ecs_set_ptr(world, view_entity, FlecsRenderBatchSet, &batch_set);
 }

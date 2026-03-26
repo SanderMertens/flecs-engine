@@ -77,4 +77,10 @@ ecs_entity_t flecsEngine_createEffect_ssao(
     int32_t input,
     const FlecsSSAO *settings);
 
+ecs_entity_t flecsEngine_createEffect_gammaCorrect(
+    ecs_world_t *world,
+    ecs_entity_t parent,
+    const char *name,
+    int32_t input);
+
 #endif

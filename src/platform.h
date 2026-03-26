@@ -92,20 +92,4 @@ void flecsEngine_presentSurface(
 /* Release swap-chain resources.  No-op on native. */
 void flecsEngine_releaseSwapChain(void);
 
-/* ---- Gamma correction (emscripten only) ---- */
-
-/* On emscripten, returns an intermediate render target for gamma correction.
-   On native, returns `fallback` unchanged. */
-WGPUTextureView flecsEngine_getGammaRenderTarget(
-    FlecsEngineImpl *impl,
-    WGPUTextureView fallback);
-
-/* If render_target differs from frame_target, blit with linear→sRGB
-   conversion (emscripten).  No-op on native. */
-void flecsEngine_gammaBlitIfNeeded(
-    FlecsEngineImpl *impl,
-    WGPUCommandEncoder encoder,
-    WGPUTextureView render_target,
-    WGPUTextureView frame_target);
-
 #endif /* FLECS_ENGINE_PLATFORM_H */
